@@ -44,7 +44,11 @@ export type DictKey =
   | 'errorGeneric'
   | 'queuedOffline'
   | 'syncPendingCount'
-  | 'syncedUpToDate';
+  | 'syncedUpToDate'
+  | 'syncWarningBanner'
+  | 'syncWarningModalTitle'
+  | 'syncRetry'
+  | 'exportBackup';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -70,6 +74,10 @@ const en: Record<DictKey, DictValue> = {
   undo: 'Undo',
   syncPendingCount: ({ count }) => `${count} pending sync`,
   syncedUpToDate: 'Synced',
+  syncWarningBanner: 'Not backed up to the cloud yet — check your connection.',
+  syncWarningModalTitle: 'Some entries have been unsynced for a while.',
+  syncRetry: 'Retry sync',
+  exportBackup: 'Export backup',
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
@@ -103,6 +111,10 @@ const zh: Record<DictKey, DictValue> = {
   undo: '撤销',
   syncPendingCount: ({ count }) => `${count} 笔待同步`,
   syncedUpToDate: '已同步',
+  syncWarningBanner: '尚未备份到云端，检查一下网络。',
+  syncWarningModalTitle: '有些账目已经很久没同步了。',
+  syncRetry: '重试同步',
+  exportBackup: '导出备份',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',

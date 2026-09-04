@@ -6,6 +6,7 @@ import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
 import { QueuedRow } from '@/components/QueuedRow';
 import { SyncStatusDot } from '@/components/SyncStatusDot';
+import { SyncWarning } from '@/components/SyncWarning';
 import { UndoToast } from '@/components/UndoToast';
 import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
@@ -106,6 +107,7 @@ export default function Home() {
         </ul>
       )}
       <LedgerList transactions={transactions} />
+      <SyncWarning />
       {lastAdded.length > 0 && (
         // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
         // 让其内部的自动关闭计时器真正重新开始，而不是复用上一批还在
