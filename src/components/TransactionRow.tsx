@@ -1,8 +1,13 @@
+'use client';
+
+import { useState } from 'react';
 import type { Transaction } from '@/lib/ai/schema';
 import { useLocale } from '@/lib/i18n/context';
 import { CATEGORY_LABELS } from '@/lib/i18n/dictionary';
 import { useSyncExternalStore } from 'react';
 import { subscribe, getSnapshot as getSyncSnapshot, type SyncState } from '@/lib/sync/status';
+import { amendTransaction, removeTransaction } from '@/lib/ledger/store';
+import { EditForm } from '@/components/EditForm';
 
 const EMPTY_SYNC_STATE: SyncState = {
   unsyncedIds: [],
@@ -21,8 +26,27 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
   const syncState = useSyncExternalStore(subscribe, getSyncSnapshot, () => EMPTY_SYNC_STATE);
   const synced = !syncState.unsyncedIds.includes(transaction.id);
   const sign = transaction.type === 'INCOME' ? '+' : '-';
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <EditForm
+        transaction={transaction}
+        onSave={(changes) => {
+          void amendTransaction(transaction.id, changes);
+          setEditing(false);
+        }}
+        onDelete={() => {
+          void removeTransaction(transaction.id);
+          setEditing(false);
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
+
   return (
-    <li>
+    <li onClick={() => setEditing(true)}>
       {/* 未同步/已同步的持久视觉标记（spec §8.5 第 1 点），零打扰、永久可见 */}
       <span aria-hidden="true">{synced ? '●' : '○'}</span>
       <span>{transaction.merchant ?? '—'}</span>

@@ -1,10 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import { LedgerList } from '@/components/LedgerList';
 import { formatAmount } from '@/components/TransactionRow';
 import { markUnsynced, markSynced, getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
+import { amendTransaction, removeTransaction } from '@/lib/ledger/store';
 import type { Transaction } from '@/lib/ai/schema';
+
+vi.mock('@/lib/ledger/store', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/ledger/store')>(
+    '@/lib/ledger/store',
+  );
+  return { ...actual, amendTransaction: vi.fn(), removeTransaction: vi.fn() };
+});
 
 const tx = (id: string, over: Partial<Transaction> = {}): Transaction => ({
   id,
@@ -82,5 +90,37 @@ describe('同步状态圆点', () => {
   it('已同步的账目显示实心圆点', () => {
     render(<LedgerList transactions={[tx('a')]} />);
     expect(screen.getByText('●')).toBeDefined();
+  });
+});
+
+describe('点击展开编辑', () => {
+  it('点击一行展开编辑表单，显示当前字段值', () => {
+    render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
+    fireEvent.click(screen.getByText('买菜'));
+    expect(screen.getByLabelText('Description')).toHaveProperty('value', '买菜');
+  });
+
+  it('保存时调用 amendTransaction 并收起表单', async () => {
+    render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
+    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(amendTransaction).toHaveBeenCalledWith('a', expect.any(Object)));
+    expect(screen.queryByLabelText('Description')).toBeNull();
+  });
+
+  it('点删除调用 removeTransaction 并收起表单', async () => {
+    render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
+    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(removeTransaction).toHaveBeenCalledWith('a'));
+  });
+
+  it('点取消收起表单，不调用任何保存/删除', () => {
+    render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
+    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByLabelText('Description')).toBeNull();
+    expect(amendTransaction).not.toHaveBeenCalled();
+    expect(removeTransaction).not.toHaveBeenCalled();
   });
 });
