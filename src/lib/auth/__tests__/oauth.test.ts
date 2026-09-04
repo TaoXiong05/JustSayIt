@@ -69,3 +69,49 @@ describe('oauth', () => {
     expect(() => buildAuthorizeUrl('st', 'n1')).toThrow();
   });
 });
+
+describe('refreshAccessToken', () => {
+  it('用 refresh_token grant 换取 access token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: 'at-1', expires_in: 3599 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshAccessToken } = await import('@/lib/auth/oauth');
+    const out = await refreshAccessToken('rt-1');
+    expect(out).toEqual({ accessToken: 'at-1', expiresIn: 3599 });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://oauth2.googleapis.com/token');
+    const body = new URLSearchParams(init.body as string);
+    expect(body.get('grant_type')).toBe('refresh_token');
+    expect(body.get('refresh_token')).toBe('rt-1');
+    expect(body.get('client_id')).toBe('client-1');
+  });
+
+  it('HTTP 失败时抛错，不泄漏 refresh token', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 400 }));
+    const { refreshAccessToken } = await import('@/lib/auth/oauth');
+    await expect(refreshAccessToken('secret-rt')).rejects.toThrow(/400/);
+    await expect(refreshAccessToken('secret-rt')).rejects.not.toThrow(/secret-rt/);
+  });
+
+  it('响应缺少 access_token 时抛错', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    const { refreshAccessToken } = await import('@/lib/auth/oauth');
+    await expect(refreshAccessToken('rt-1')).rejects.toThrow(/access_token/);
+  });
+
+  it('响应缺少 expires_in 时回退到 3600 秒', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ access_token: 'at-1' }) }),
+    );
+    const { refreshAccessToken } = await import('@/lib/auth/oauth');
+    expect((await refreshAccessToken('rt-1')).expiresIn).toBe(3600);
+  });
+});

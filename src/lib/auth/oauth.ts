@@ -92,3 +92,27 @@ export async function exchangeCode(
   if (!data.id_token) throw new Error('Google token 响应缺少 id_token');
   return { idToken: data.id_token, refreshToken: data.refresh_token };
 }
+
+/**
+ * 用 refresh token 换一个短期 access token（spec §11.3 令牌流的核心动作）。
+ * 只在服务端调用——refresh token 从不进入浏览器。
+ */
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<{ accessToken: string; expiresIn: number }> {
+  const { id, secret } = clientConfig();
+  const res = await fetch(TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: id,
+      client_secret: secret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+  if (!res.ok) throw new Error(`Google token 刷新失败：HTTP ${res.status}`);
+  const data = (await res.json()) as { access_token?: string; expires_in?: number };
+  if (!data.access_token) throw new Error('Google 刷新响应缺少 access_token');
+  return { accessToken: data.access_token, expiresIn: data.expires_in ?? 3600 };
+}
