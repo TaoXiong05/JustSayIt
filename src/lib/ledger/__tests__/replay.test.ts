@@ -75,4 +75,15 @@ describe('replay', () => {
     const events = [evt('transaction_created', tx('a'))];
     expect(replay(events)).toEqual(replay(events));
   });
+
+  it('删除后同 id 重建不会产生重复条目', () => {
+    const l = replay([
+      evt('transaction_created', tx('a', { date: '2026-09-01', description: '第一次创建' })),
+      evt('transaction_deleted', { id: 'a' }),
+      evt('transaction_created', tx('a', { date: '2026-09-03', description: '第二次创建' })),
+    ]);
+    expect(l.transactions).toHaveLength(1);
+    expect(l.transactions[0].date).toBe('2026-09-03');
+    expect(l.transactions[0].description).toBe('第二次创建');
+  });
 });
