@@ -67,6 +67,33 @@ describe('POST /api/structure', () => {
     expect(structure).not.toHaveBeenCalled();
   });
 
+  it('非 development 但显式放行（flag=true）时返回 200', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('ALLOW_UNAUTHENTICATED_API', 'true');
+    vi.mocked(structure).mockResolvedValue([
+      {
+        type: 'EXPENSE',
+        amount: 25,
+        currency: null,
+        date: '2026-09-04',
+        category: 'FOOD',
+        merchant: '麦当劳',
+        description: '早餐',
+      },
+    ]);
+    const res = await POST(req(body));
+    expect(res.status).toBe(200);
+    expect((await res.json()).records).toHaveLength(1);
+  });
+
+  it('放行开关大小写不匹配（flag=TRUE）时仍返回 403', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('ALLOW_UNAUTHENTICATED_API', 'TRUE');
+    const res = await POST(req(body));
+    expect(res.status).toBe(403);
+    expect(structure).not.toHaveBeenCalled();
+  });
+
   it('上游失败返回 502，且响应体不含用户输入', async () => {
     vi.mocked(structure).mockRejectedValue(new Error('Groq 请求失败：HTTP 429'));
     const res = await POST(req(body));
