@@ -1,11 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { VoiceButton } from '@/components/VoiceButton';
 
 export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<void> }) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // STT 结果回填：追加到现有输入末尾（已有文本则在尾部补空格分隔）。
+  // 不自动提交——复用「用户在输入框确认 → 提交」的既有流程（spec §9 关键决定）。
+  const appendText = (t: string) => {
+    setText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t));
+  };
 
   const canSubmit = text.trim().length > 0 && !submitting;
 
@@ -40,6 +47,7 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
       <button type="button" onClick={handleSubmit} disabled={!canSubmit}>
         {submitting ? '提交中…' : '提交'}
       </button>
+      <VoiceButton onTranscribed={appendText} />
       {error && <p role="alert">{error}</p>}
     </div>
   );

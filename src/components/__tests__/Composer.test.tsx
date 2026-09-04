@@ -3,6 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Composer } from '@/components/Composer';
 
+// Mock VoiceButton：隔离录音链路，聚焦 Composer 的「回填→输入框」逻辑。
+vi.mock('@/components/VoiceButton', () => ({
+  VoiceButton: (props: { onTranscribed: (t: string) => void }) => (
+    <button type="button" onClick={() => props.onTranscribed('Woolworths 买菜')}>
+      voice-mock
+    </button>
+  ),
+}));
+
 describe('Composer', () => {
   it('提交后把文本交给 onSubmit 并清空输入框', async () => {
     const user = userEvent.setup();
@@ -92,5 +101,31 @@ describe('Composer', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
     expect((box as HTMLTextAreaElement).value).toBe('早餐25');
+  });
+
+  it('语音转写结果回填输入框（用户确认后提交，§9）', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<Composer onSubmit={onSubmit} />);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    // 触发 mocked VoiceButton 的 onTranscribed
+    await user.click(screen.getByRole('button', { name: /voice-mock/ }));
+    expect(box.value).toBe('Woolworths 买菜');
+
+    // 回填后由用户点击提交，复用既有流程
+    await user.click(screen.getByRole('button', { name: '提交' }));
+    expect(onSubmit).toHaveBeenCalledWith('Woolworths 买菜');
+  });
+
+  it('已有文本时语音回填追加到末尾并以空格分隔', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<Composer onSubmit={onSubmit} />);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    await user.type(box, '买菜');
+    await user.click(screen.getByRole('button', { name: /voice-mock/ }));
+    expect(box.value).toBe('买菜 Woolworths 买菜');
   });
 });
