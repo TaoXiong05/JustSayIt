@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const listeners = new Set<() => void>();
-let eventsSnapshot: Array<{ eventId: string; kind: string; payload: { id: string } }> = [];
+let eventsSnapshot: Array<{
+  eventId: string;
+  deviceId: string;
+  kind: string;
+  payload: { id: string };
+}> = [];
 
 vi.mock('@/lib/ledger/store', () => ({
   subscribe: vi.fn((fn: () => void) => {
@@ -10,6 +15,7 @@ vi.mock('@/lib/ledger/store', () => ({
   }),
   getEventsSnapshot: vi.fn(() => eventsSnapshot),
 }));
+vi.mock('@/lib/ledger/events', () => ({ getDeviceId: vi.fn(() => 'this-device') }));
 vi.mock('@/lib/sync/status', () => ({ markUnsynced: vi.fn() }));
 vi.mock('@/lib/sync/engine', () => ({ syncNow: vi.fn().mockResolvedValue(undefined) }));
 
@@ -29,7 +35,7 @@ describe('initSync', () => {
     initSync();
 
     eventsSnapshot = [
-      { eventId: 'e1', kind: 'transaction_created', payload: { id: 'tx1' } },
+      { eventId: 'e1', deviceId: 'this-device', kind: 'transaction_created', payload: { id: 'tx1' } },
     ];
     for (const fn of listeners) fn();
     await Promise.resolve();
@@ -44,7 +50,7 @@ describe('initSync', () => {
     initSync();
 
     eventsSnapshot = [
-      { eventId: 'e1', kind: 'transaction_created', payload: { id: 'tx1' } },
+      { eventId: 'e1', deviceId: 'this-device', kind: 'transaction_created', payload: { id: 'tx1' } },
     ];
     for (const fn of listeners) fn();
     for (const fn of listeners) fn(); // 同一份快照再通知一次
@@ -59,13 +65,34 @@ describe('initSync', () => {
     initSync();
 
     eventsSnapshot = [
-      { eventId: 'e1', kind: 'raw_input_queued', payload: { id: 'q1' } },
+      { eventId: 'e1', deviceId: 'this-device', kind: 'raw_input_queued', payload: { id: 'q1' } },
     ];
     for (const fn of listeners) fn();
     await Promise.resolve();
 
     expect(markUnsynced).not.toHaveBeenCalled();
     expect(syncNow).toHaveBeenCalled(); // 仍然触发同步——排队事件本身也要同步到 Drive
+  });
+
+  it('别的设备产生的事件不会被标记未同步（回归：新设备首次合并进历史账目时，圆点永远显示未同步）', async () => {
+    vi.resetModules();
+    const { initSync } = await import('@/lib/sync/init');
+    initSync();
+
+    // 模拟：本设备首次同步，从 Drive 下载合并了另一台设备已经同步过的账目
+    eventsSnapshot = [
+      {
+        eventId: 'e-from-other-device',
+        deviceId: 'other-device',
+        kind: 'transaction_created',
+        payload: { id: 'tx-from-other-device' },
+      },
+    ];
+    for (const fn of listeners) fn();
+    await Promise.resolve();
+
+    expect(markUnsynced).not.toHaveBeenCalled();
+    expect(syncNow).toHaveBeenCalled(); // 仍然要同步一次（比如本设备自己也有事情要传）
   });
 
   it('返回的取消函数会解除订阅', async () => {
