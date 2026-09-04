@@ -8,7 +8,7 @@ import { UndoToast } from '@/components/UndoToast';
 import { useLedger } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, knownMerchants } from '@/lib/ledger/store';
 import { normalizeMerchant } from '@/lib/ledger/normalize';
-import { toTransaction, type AiTransaction } from '@/lib/ai/schema';
+import { toTransaction, AiResponseSchema } from '@/lib/ai/schema';
 
 const DEFAULT_CURRENCY = 'AUD';
 
@@ -46,7 +46,11 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('结构化失败');
 
-      const { records } = (await res.json()) as { records: AiTransaction[] };
+      // 运行时校验，而非类型断言：这是数据流里唯一会写入不可变事件日志的
+      // 客户端边界，其它 Groq 相关边界（groq.ts）都已用同一 schema 校验过。
+      // 校验失败会抛出 ZodError，走下面既有的 handleSubmit 失败路径
+      // （占位行清除、Composer 显示失败提示、输入内容保留）。
+      const { records } = AiResponseSchema.parse(await res.json());
       const known = knownMerchants();
       const txs = records.map((r) =>
         toTransaction(

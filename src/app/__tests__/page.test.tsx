@@ -97,6 +97,42 @@ describe('主屏', () => {
     expect(screen.queryByText('Woolworth')).toBeNull();
   });
 
+  it('接口返回 ok:true 但形状不合法时不落地任何账目，走失败路径（回归：Finding 4）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        // 形状错误：records 里的记录缺 date 字段——不是网络失败，
+        // 是响应体本身不合法（例如反代返回了 200 的 HTML 错误页，
+        // 或未来路由改动导致的字段不匹配）
+        json: async () => ({
+          records: [
+            {
+              type: 'EXPENSE',
+              amount: 25,
+              currency: null,
+              category: 'FOOD',
+              merchant: '麦当劳',
+              description: '早餐',
+            },
+          ],
+        }),
+      }),
+    );
+    const user = userEvent.setup();
+    render(<Home />);
+    const box = screen.getByRole('textbox');
+    await user.type(box, '早餐麦当劳25');
+    await user.click(screen.getByRole('button', { name: '提交' }));
+
+    // 与网络失败同一条路径：占位行消失、Composer 显示失败提示、
+    // 原文还回输入框——账本里绝不能出现这条形状不合法的记录
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+    expect(screen.getByText(/还没有记录/)).toBeDefined();
+    expect(screen.queryByText('麦当劳')).toBeNull();
+    expect((box as HTMLTextAreaElement).value).toBe('早餐麦当劳25');
+  });
+
   it('后端返回空数组时不新增账目', async () => {
     vi.stubGlobal(
       'fetch',
