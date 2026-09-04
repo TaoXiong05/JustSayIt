@@ -19,3 +19,6 @@ prisma/*.db-journal
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# SDD 工作区（本地脚手架，不入库）
+.superpowers/

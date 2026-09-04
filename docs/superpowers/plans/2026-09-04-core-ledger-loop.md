@@ -19,7 +19,7 @@
 - **分类必须是 17 个枚举之一，且在 structured output 的 schema 层强制**（§5.3 规则一），不靠提示词请求。
 - **事件不可变。** 修改与删除表达为追加新事件，永不改写已有事件（§5.1）。
 - **零内容日志**（§10.5）：后端日志只记 `userId`、模型名、token 数、耗时、成功/失败、错误类型，**永不记录 prompt 与 response 内容**。
-- **provider 隔离**（§10.3）：`grep -ri "groq" src/` 只应命中 `src/lib/ai/providers/groq.ts` 一个文件。模型 ID、`language=zh`、`strict: true`、`reasoning_effort` 等参数全部封在该文件内。
+- **provider 隔离**（§10.3）：provider 的**具体取值**——模型 ID（`qwen/...`）、端点 `api.groq.com`、`reasoning_effort`、`json_schema`/`strict` 等私有参数——只允许出现在 `src/lib/ai/providers/groq.ts` 一个文件。`src/lib/ai/index.ts` 按名字 import 该 provider 属于接缝本身，不算泄漏。可执行判据见 Task 4 Step 5 与 Task 14 Step 6。
 - **提示词只讲抽取规则，不讲输出格式**（§10.6），且**必须包含全部 17 个分类的中文释义**（§10.2a）——这是正确性要求，不是调优。
 - **Groq 调用参数固定**：`model=qwen/qwen3.8-27b`、`temperature=0`、`reasoning_effort='none'`、`response_format` 为 strict json_schema（§10.2）。
 - **Groq strict 模式 schema 要求**（§10.2b）：所有字段必须列入 `required`、所有对象 `additionalProperties: false`、可空字段用 `{"type":["string","null"]}` 而非 `nullable`。
@@ -880,8 +880,11 @@ Expected: PASS，5 个测试全绿
 
 - [ ] **Step 5: 验证 provider 隔离判据**
 
-Run: `grep -ril "groq" src/ | grep -v __tests__`
-Expected: 只输出 `src/lib/ai/providers/groq.ts`
+Run: `grep -rl "groq" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 至多两个文件——`src/lib/ai/index.ts`（**仅** import 语句提及）与 `src/lib/ai/providers/groq.ts`。Task 5 之前只有后者。
+
+Run: `grep -rlE "qwen|api\.groq\.com|reasoning_effort|json_schema" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 只输出 `src/lib/ai/providers/groq.ts`。**这一条才是真正的隔离判据**——provider 的具体取值（模型 ID、端点、私有参数）只能存在于一个文件；窄接口按名字引用 provider 是接缝本身，不是泄漏。
 
 - [ ] **Step 6: Commit**
 
@@ -2361,7 +2364,6 @@ export function useLedger(): Ledger {
 ```tsx
 'use client';
 
-import { useMemo } from 'react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { useLedger } from '@/lib/ledger/useLedger';
@@ -2373,8 +2375,9 @@ const DEFAULT_CURRENCY = 'AUD';
 
 export default function Home() {
   const ledger = useLedger();
-  // 派生一律在组件里 memo —— getSnapshot 必须返回稳定引用（§6.6）
-  const transactions = useMemo(() => ledger.transactions, [ledger]);
+  // getSnapshot 返回缓存引用，ledger.transactions 本身即稳定，直接读即可。
+  // §6.6 的 useMemo 规则针对的是真正的派生（筛选/排序/分组），Plan 1 尚无此类。
+  const transactions = ledger.transactions;
 
   async function handleSubmit(text: string) {
     const res = await fetch('/api/structure', {
@@ -2438,8 +2441,11 @@ npm run dev
 
 - [ ] **Step 6: 验证 provider 隔离判据**
 
-Run: `grep -ril "groq" src/ | grep -v __tests__`
-Expected: 只输出 `src/lib/ai/providers/groq.ts`
+Run: `grep -rl "groq" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 至多两个文件——`src/lib/ai/index.ts`（**仅** import 语句提及）与 `src/lib/ai/providers/groq.ts`。Task 5 之前只有后者。
+
+Run: `grep -rlE "qwen|api\.groq\.com|reasoning_effort|json_schema" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 只输出 `src/lib/ai/providers/groq.ts`。**这一条才是真正的隔离判据**——provider 的具体取值（模型 ID、端点、私有参数）只能存在于一个文件；窄接口按名字引用 provider 是接缝本身，不是泄漏。
 
 - [ ] **Step 7: Commit**
 
@@ -2621,7 +2627,7 @@ export function UndoToast({
 ```tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
@@ -2635,7 +2641,7 @@ const DEFAULT_CURRENCY = 'AUD';
 
 export default function Home() {
   const ledger = useLedger();
-  const transactions = useMemo(() => ledger.transactions, [ledger]);
+  const transactions = ledger.transactions;   // 稳定引用，无需 memo（见 Task 14）
 
   const [pending, setPending] = useState<string[]>([]);
   const [lastAdded, setLastAdded] = useState<string[]>([]);
@@ -2719,7 +2725,7 @@ git commit -m "feat(ui): 乐观插入占位行与撤销"
 Plan 1 完成时应满足：
 
 - `npm test` 全绿，`npm run typecheck` 无错误
-- `grep -ril "groq" src/ | grep -v __tests__` 只命中一个文件
+- provider 取值隔离判据通过：`grep -rlE "qwen|api\.groq\.com|reasoning_effort|json_schema" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__` 只命中 `src/lib/ai/providers/groq.ts`
 - 手工验收 7 项全部通过（**由用户执行**——视觉、真实 AI 调用、录音与文字输入的实际效果不在代理验证范围内）
 - 金额在整个链路中以整数分存储，展示层才转两位小数
 - 事件日志只追加，刷新后数据完好
