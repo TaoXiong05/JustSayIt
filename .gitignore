@@ -13,6 +13,7 @@ dist/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+src/generated/
 
 # 日志与临时文件
 *.log

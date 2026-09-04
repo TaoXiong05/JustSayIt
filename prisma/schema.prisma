@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String   @id @default(cuid())
+  // 身份主键：稳定的 Google subject identifier（spec §11.5）。
+  // 所有"这是哪个用户"的判断一律走 googleSub，绝不用 email。
+  googleSub       String   @unique
+  // 仅供展示与联系；可空、绝不加 @unique（§11.5 硬性要求）。
+  // 每次登录用 ID token 的值覆盖写入。
+  email           String?
+  name            String?
+  picture         String?
+  // 加密存储的 Google refresh token（§11.3、§12.6）。Plan 3 用。
+  refreshTokenEnc String?
+  createdAt       DateTime @default(now())
+  lastLoginAt     DateTime @updatedAt
+  aiCallsToday    Int      @default(0)
+  // "YYYY-MM-DD" 本地日期键——决定 aiCallsToday 何时重置。
+  lastResetDate   String   @default("")
+}
