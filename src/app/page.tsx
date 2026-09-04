@@ -47,7 +47,7 @@ export default function Home() {
       if (!res.ok) throw new Error('结构化失败');
 
       // 运行时校验，而非类型断言：这是数据流里唯一会写入不可变事件日志的
-      // 客户端边界，其它 Groq 相关边界（groq.ts）都已用同一 schema 校验过。
+      // 客户端边界，其它 provider 相关边界（providers/ 内）都已用同一 schema 校验过。
       // 校验失败会抛出 ZodError，走下面既有的 handleSubmit 失败路径
       // （占位行清除、Composer 显示失败提示、输入内容保留）。
       const { records } = AiResponseSchema.parse(await res.json());

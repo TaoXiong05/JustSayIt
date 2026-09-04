@@ -7,7 +7,7 @@ import { userRepo } from '@/lib/server/user';
 export const runtime = 'nodejs';
 
 const RequestSchema = z.object({
-  // .max(2000) 是防御性上限——防止单次请求把任意长正文原样转发给 Groq，
+  // .max(2000) 是防御性上限——防止单次请求把任意长正文原样转发给 AI 上游，
   // 不成比例地消耗运营者的配额。
   text: z.string().trim().min(1).max(2000),
   localTime: z.string().min(1),
