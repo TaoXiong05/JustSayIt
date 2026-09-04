@@ -71,8 +71,19 @@ export async function groqStructure(
     throw new Error(`Groq 请求失败：HTTP ${res.status}`);
   }
 
-  const json = await res.json();
-  const content: string = json?.choices?.[0]?.message?.content ?? '';
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    // 外层信封解析失败（代理/网关错误页、响应被截断等）——不带响应体片段
+    throw new Error('Groq 响应格式异常');
+  }
+
+  const content = (json as { choices?: Array<{ message?: { content?: unknown } }> })
+    ?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string') {
+    throw new Error('Groq 响应缺少 content 字段');
+  }
 
   let raw: unknown;
   try {

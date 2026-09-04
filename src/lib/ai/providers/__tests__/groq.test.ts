@@ -95,6 +95,37 @@ describe('groqStructure', () => {
     await expect(groqStructure('x', ctx)).rejects.toThrow(/校验/);
   });
 
+  it('契约校验失败时的错误信息不包含用户输入或响应中的自由文本（隐私红线）', async () => {
+    // 用不可能巧合出现的哨兵值，证明错误信息确实不携带这些自由文本，
+    // 而不仅仅是「目前没有」——这个保证不应只靠人工检查 schema.ts。
+    const sentinelInput = 'ZZZ_SENTINEL_INPUT_8f3a1c2e';
+    const sentinelMerchant = 'ZZZ_SENTINEL_MERCHANT_9d4b2f1a';
+    const sentinelDescription = 'ZZZ_SENTINEL_DESC_7c1e5a3d';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        mockGroqReply([
+          {
+            type: 'EXPENSE',
+            amount: -5, // 负数违反规则二，触发 Zod 拒绝
+            currency: null,
+            date: '2026-09-04',
+            category: 'FOOD',
+            merchant: sentinelMerchant,
+            description: sentinelDescription,
+          },
+        ]),
+      ),
+    );
+    const err = await groqStructure(sentinelInput, ctx).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    const message = (err as Error).message;
+    expect(message).toMatch(/校验/);
+    expect(message).not.toContain(sentinelInput);
+    expect(message).not.toContain(sentinelMerchant);
+    expect(message).not.toContain(sentinelDescription);
+  });
+
   it('HTTP 错误时抛出且不泄漏请求内容', async () => {
     vi.stubGlobal(
       'fetch',
@@ -106,5 +137,46 @@ describe('groqStructure', () => {
     );
     await expect(groqStructure('买菜54块3', ctx)).rejects.toThrow(/429/);
     await expect(groqStructure('买菜54块3', ctx)).rejects.not.toThrow(/买菜/);
+  });
+
+  it('缺少 GROQ_API_KEY 时抛错', async () => {
+    const original = process.env.GROQ_API_KEY;
+    delete process.env.GROQ_API_KEY;
+    try {
+      await expect(groqStructure('随便什么', ctx)).rejects.toThrow(/GROQ_API_KEY/);
+    } finally {
+      // beforeEach 会在下一个测试前重新赋值，这里显式恢复是为了不依赖那个时序
+      if (original === undefined) {
+        delete process.env.GROQ_API_KEY;
+      } else {
+        process.env.GROQ_API_KEY = original;
+      }
+    }
+  });
+
+  it('响应信封本身不是合法 JSON 时抛错（如网关错误页、被截断的响应）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON');
+        },
+      } as unknown as Response),
+    );
+    await expect(groqStructure('随便什么', ctx)).rejects.toThrow(/响应格式异常/);
+  });
+
+  it('响应缺少 message.content 字段时抛错，且与「内容不是合法 JSON」区分', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: {} }] }),
+      } as unknown as Response),
+    );
+    await expect(groqStructure('随便什么', ctx)).rejects.toThrow(/缺少 content/);
   });
 });
