@@ -3,7 +3,10 @@ import { replay, type Ledger } from '@/lib/ledger/replay';
 import {
   createTransactionCreated,
   createTransactionDeleted,
+  createRawInputQueued,
+  createRawInputResolved,
   type LedgerEvent,
+  type RawInputQueuedPayload,
 } from '@/lib/ledger/events';
 import type { Transaction } from '@/lib/ai/schema';
 
@@ -51,6 +54,51 @@ export async function addTransactions(txs: Transaction[]): Promise<void> {
 
 export async function removeTransaction(id: string): Promise<void> {
   await push([createTransactionDeleted(id)]);
+}
+
+export async function queueRawInput(
+  input: Omit<RawInputQueuedPayload, 'id'>,
+): Promise<string> {
+  const event = createRawInputQueued(input);
+  await push([event]);
+  return event.payload.id;
+}
+
+export async function resolveRawInput(
+  queuedId: string,
+  txs: Transaction[],
+): Promise<void> {
+  await push([...txs.map(createTransactionCreated), createRawInputResolved(queuedId)]);
+}
+
+/**
+ * 纯函数：从一份事件序列里算出仍未结构化的排队输入。
+ * 不在 getEventsSnapshot 里直接做这个筛选——那会导致每次调用返回新数组，
+ * React 判定状态持续变化，无限重渲染（同 §6.6 对 getSnapshot 的规则）。
+ * 筛选交给调用方（useMemo 或一次性读取）。
+ */
+export function pendingRawInputsFrom(events: LedgerEvent[]): RawInputQueuedPayload[] {
+  const resolvedIds = new Set<string>();
+  const queued = new Map<string, RawInputQueuedPayload>();
+  for (const e of events) {
+    if (e.kind === 'raw_input_queued') queued.set(e.payload.id, e.payload);
+    else if (e.kind === 'raw_input_resolved') resolvedIds.add(e.payload.queuedId);
+  }
+  return [...queued.values()].filter((p) => !resolvedIds.has(p.id));
+}
+
+/** 非响应式的一次性读取，供不需要订阅更新的调用方用（如离线补跑引擎）。 */
+export function pendingRawInputs(): RawInputQueuedPayload[] {
+  return pendingRawInputsFrom(events);
+}
+
+/**
+ * 原始事件数组的稳定快照，规则同 getSnapshot：不变更时必须返回同一引用。
+ * 供需要访问"账本以外"信息（如待处理队列、Drive 同步要上传哪些事件）的
+ * 上层代码使用——ledger/store.ts 本身对这些用途一无所知，只负责给出事实。
+ */
+export function getEventsSnapshot(): LedgerEvent[] {
+  return events;
 }
 
 /**
