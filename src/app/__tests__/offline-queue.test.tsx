@@ -14,6 +14,10 @@ vi.mock('@/lib/auth/client', () => ({
   fetchLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+// 离线队列测试验证「离线提交不发 structure 请求」；自动同步 mock 为空，
+// 避免 initSync 在账本变化时触发 /api/drive-token 请求污染 fetchMock 断言。
+vi.mock('@/lib/sync/init', () => ({ initSync: () => () => {} }));
+
 beforeEach(async () => {
   localStorage.clear();
   await clearAllEvents();

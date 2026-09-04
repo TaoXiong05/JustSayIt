@@ -10,6 +10,7 @@ import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
+import { initSync } from '@/lib/sync/init';
 import { useSession, fetchLogout } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 
@@ -26,6 +27,10 @@ export default function Home() {
 
   useEffect(() => {
     return initOfflineQueueAutoRetry();
+  }, []);
+
+  useEffect(() => {
+    return initSync();
   }, []);
 
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时

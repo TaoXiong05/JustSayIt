@@ -12,6 +12,9 @@ vi.mock('@/lib/auth/client', () => ({
   fetchLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+// 页面测试聚焦登录态渲染；自动同步 mock 为空隔离网络副作用。
+vi.mock('@/lib/sync/init', () => ({ initSync: () => () => {} }));
+
 beforeEach(async () => {
   localStorage.clear();
   await clearAllEvents();

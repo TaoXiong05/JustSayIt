@@ -16,6 +16,10 @@ vi.mock('@/lib/auth/client', () => ({
   fetchLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+// 页面测试聚焦提交/归并/失败路径；自动同步（initSync 触发 /api/drive-token）
+// 在此 mock 为空，避免它消费测试准备的 fetch mock 响应。
+vi.mock('@/lib/sync/init', () => ({ initSync: () => () => {} }));
+
 beforeEach(async () => {
   localStorage.clear();
   await clearAllEvents();

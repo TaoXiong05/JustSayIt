@@ -16,6 +16,9 @@ vi.mock('@/lib/auth/client', () => ({
   fetchLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+// 乐观 UI 测试聚焦提交瞬间的占位行为；自动同步 mock 为空避免干扰 fetch。
+vi.mock('@/lib/sync/init', () => ({ initSync: () => () => {} }));
+
 const oneRecord = {
   type: 'EXPENSE',
   amount: 25,
