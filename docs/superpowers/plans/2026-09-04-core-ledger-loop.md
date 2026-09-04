@@ -239,6 +239,7 @@ ALLOW_UNAUTHENTICATED_API=false
 next-env.d.ts
 .next/
 coverage/
+*.tsbuildinfo
 ```
 
 - [ ] **Step 6: 写一个冒烟测试确认测试环境可用**
