@@ -53,7 +53,15 @@ export async function syncNow(): Promise<void> {
     const ownEvents = allLocalEvents.filter((e) => e.deviceId === deviceId);
 
     await upsertOwnFile(accessToken, deviceId, serializeEvents(ownEvents));
-    markSynced(ownEvents.map((e) => e.eventId));
+    // markSynced 清的是 status.ts 里的 unsyncedIds 集合，那个集合存的是
+    // transaction id（payload.id，见 sync/init.ts 的 markUnsynced 调用），
+    // 不是 event 自身的 eventId——两者是不同的 UUID 空间，传错了会导致
+    // markSynced 永远清不掉任何 id：sync 状态点/圆点会显示"永远未同步"，
+    // 即使上传其实已经成功。
+    const ownTxIds = ownEvents
+      .filter((e) => e.kind === 'transaction_created' || e.kind === 'transaction_amended')
+      .map((e) => e.payload.id);
+    markSynced(ownTxIds);
 
     const files = await listOwnAppFiles(accessToken);
     const ownFileName = `events-${deviceId}.jsonl`;

@@ -30,7 +30,12 @@ import { markSynced, markAuthError } from '@/lib/sync/status';
 import { readAllEvents, appendEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
-const ownEvent = { eventId: 'e1', deviceId: 'device-1', kind: 'transaction_created' };
+const ownEvent = {
+  eventId: 'e1',
+  deviceId: 'device-1',
+  kind: 'transaction_created',
+  payload: { id: 'tx1' },
+};
 const otherDeviceEvent = { eventId: 'e2', deviceId: 'device-2', kind: 'transaction_created' };
 
 beforeEach(() => {
@@ -51,7 +56,10 @@ describe('syncNow', () => {
   it('上传本设备事件、标记已同步，没有其它设备文件时不下载', async () => {
     await syncNow();
     expect(upsertOwnFile).toHaveBeenCalledWith('at-1', 'device-1', expect.any(String));
-    expect(markSynced).toHaveBeenCalledWith(['e1']);
+    // markSynced 清的是 transaction id（payload.id），不是 event 自身的 eventId
+    // ——两者是不同的 UUID 空间（回归：曾经传错成 eventId，导致 unsyncedIds
+    // 永远清不掉）。
+    expect(markSynced).toHaveBeenCalledWith(['tx1']);
     expect(downloadFile).not.toHaveBeenCalled();
     expect(appendEvents).not.toHaveBeenCalled();
   });
