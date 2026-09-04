@@ -22,3 +22,7 @@ Thumbs.db
 
 # SDD 工作区（本地脚手架，不入库）
 .superpowers/
+
+# Next.js
+next-env.d.ts
+coverage/
