@@ -102,17 +102,21 @@ describe('乐观 UI', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ records: [oneRecord] }) });
     vi.stubGlobal('fetch', fetchMock);
 
+    const dismissCalls = () =>
+      setTimeoutSpy.mock.calls.filter(([, delay]) => delay === AUTO_DISMISS_MS);
+
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: '提交' }));
     await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeDefined());
+    // useEffect 的挂载是被动效果，在提交后额外 paint 一拍才真正执行——
+    // 因此除了等按钮出现，还要单独等 setTimeout 调用本身落地，
+    // 否则在并行跑测试时偶发读到"按钮已渲染但 effect 还没跑"的中间态。
+    await waitFor(() => expect(dismissCalls()).toHaveLength(1));
 
-    const dismissCallsAfterFirst = setTimeoutSpy.mock.calls.filter(
-      ([, delay]) => delay === AUTO_DISMISS_MS,
-    );
-    expect(dismissCallsAfterFirst).toHaveLength(1);
-    const firstTimerId = setTimeoutSpy.mock.results[setTimeoutSpy.mock.calls.indexOf(dismissCallsAfterFirst[0])].value;
+    const firstCallIndex = setTimeoutSpy.mock.calls.indexOf(dismissCalls()[0]);
+    const firstTimerId = setTimeoutSpy.mock.results[firstCallIndex].value;
     expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(false);
 
     // 第一批的 toast 还显示着时，提交第二批
@@ -122,12 +126,12 @@ describe('乐观 UI', () => {
 
     // 修复后：UndoToast 因 key 改变而卸载重挂——旧 effect 的清理函数必须
     // clearTimeout 掉第一批的计时器，新 effect 必须重新 setTimeout 一个
-    //全新的 6s 计时器，而不是复用/延续第一批那个
-    expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(true);
-    const dismissCallsAfterSecond = setTimeoutSpy.mock.calls.filter(
-      ([, delay]) => delay === AUTO_DISMISS_MS,
+    // 全新的 6s 计时器，而不是复用/延续第一批那个。两者都是被动效果，
+    // 同样要用 waitFor 等它们真正执行完，而不是在 DOM 更新的那一拍立刻断言。
+    await waitFor(() =>
+      expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(true),
     );
-    expect(dismissCallsAfterSecond).toHaveLength(2);
+    await waitFor(() => expect(dismissCalls()).toHaveLength(2));
   });
 
   it('失败时占位行消失且输入内容保留', async () => {
