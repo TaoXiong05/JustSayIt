@@ -5,6 +5,16 @@ import Home from '@/app/page';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
+// Mock 认证：默认已登录，保证 Plan 1 的既有用例（提交/归并/失败路径）聚焦
+// 且不触发 /api/auth/session 的 fetch。未登录分支在单独用例中断言。
+vi.mock('@/lib/auth/client', () => ({
+  useSession: () => ({
+    user: { googleSub: 's1', email: 'u@example.com', name: 'U', picture: null },
+    loading: false,
+  }),
+  fetchLogout: vi.fn().mockResolvedValue(undefined),
+}));
+
 beforeEach(async () => {
   localStorage.clear();
   await clearAllEvents();

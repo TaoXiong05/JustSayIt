@@ -9,12 +9,16 @@ import { useLedger } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, knownMerchants } from '@/lib/ledger/store';
 import { normalizeMerchant } from '@/lib/ledger/normalize';
 import { toTransaction, AiResponseSchema } from '@/lib/ai/schema';
+import { useSession, fetchLogout } from '@/lib/auth/client';
 
 const DEFAULT_CURRENCY = 'AUD';
 
 export default function Home() {
   const ledger = useLedger();
   const transactions = ledger.transactions;   // 稳定引用，无需 memo（见 Task 14）
+  // §11.4 local-first：账本不因登录状态而隐藏；登录仅用于调用 AI / 语音
+  const { user, loading } = useSession();
+  const authed = !loading && user != null;
 
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
   // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
@@ -67,7 +71,21 @@ export default function Home() {
 
   return (
     <main>
-      <h1>JustSayIt</h1>
+      <header>
+        <h1>JustSayIt</h1>
+        {user && (
+          <div>
+            <span>{user.email ?? user.googleSub}</span>
+            <button
+              type="button"
+              onClick={() => void fetchLogout()}
+              disabled={loading}
+            >
+              退出
+            </button>
+          </div>
+        )}
+      </header>
       {pending.length > 0 && (
         <ul>
           {pending.map((entry) => (
@@ -87,7 +105,13 @@ export default function Home() {
           onDismiss={clearToast}
         />
       )}
-      <Composer onSubmit={handleSubmit} />
+      {authed ? (
+        <Composer onSubmit={handleSubmit} />
+      ) : (
+        <p>
+          <a href="/login">登录后开始记账</a>
+        </p>
+      )}
     </main>
   );
 }
