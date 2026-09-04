@@ -6,12 +6,10 @@ import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
 import { UndoToast } from '@/components/UndoToast';
 import { useLedger } from '@/lib/ledger/useLedger';
-import { addTransactions, removeTransaction, knownMerchants } from '@/lib/ledger/store';
-import { normalizeMerchant } from '@/lib/ledger/normalize';
-import { toTransaction, AiResponseSchema } from '@/lib/ai/schema';
+import { addTransactions, removeTransaction } from '@/lib/ledger/store';
+import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { useSession, fetchLogout } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
-import { throwApiError } from '@/lib/apiError';
 
 const DEFAULT_CURRENCY = 'AUD';
 
@@ -41,30 +39,12 @@ export default function Home() {
     // 乐观插入：提交瞬间就出现占位行，用户不面对 spinner（spec §9、§16.5）
     setPending((p) => [...p, { id: pendingId, text }]);
     try {
-      const res = await fetch('/api/structure', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          localTime: new Date().toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          defaultCurrency: DEFAULT_CURRENCY,
-        }),
-      });
-      if (!res.ok) await throwApiError(res, '结构化失败');
-
-      // 运行时校验，而非类型断言：这是数据流里唯一会写入不可变事件日志的
-      // 客户端边界，其它 provider 相关边界（providers/ 内）都已用同一 schema 校验过。
-      // 校验失败会抛出 ZodError，走下面既有的 handleSubmit 失败路径
-      // （占位行清除、Composer 显示失败提示、输入内容保留）。
-      const { records } = AiResponseSchema.parse(await res.json());
-      const known = knownMerchants();
-      const txs = records.map((r) =>
-        toTransaction(
-          { ...r, merchant: normalizeMerchant(r.merchant, known) },
-          { id: crypto.randomUUID(), defaultCurrency: DEFAULT_CURRENCY },
-        ),
-      );
+      const ctx = {
+        localTime: new Date().toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        defaultCurrency: DEFAULT_CURRENCY,
+      };
+      const txs = await structureTextToTransactions(text, ctx);
       await addTransactions(txs);
       if (txs.length > 0) setLastAdded(txs.map((tx) => tx.id));
     } finally {
