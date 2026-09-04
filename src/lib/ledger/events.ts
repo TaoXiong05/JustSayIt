@@ -26,13 +26,35 @@ type BaseEvent = {
 };
 
 /** 判别字段用 kind 而非 type——Transaction 已经占用了 type 表示收支方向 */
+export type RawInputQueuedPayload = {
+  id: string;
+  text: string;
+  localTime: string;
+  timeZone: string;
+  defaultCurrency: string;
+};
+
+export type RawInputResolvedPayload = { queuedId: string };
+
+type RawInputQueuedEvent = BaseEvent & {
+  kind: 'raw_input_queued';
+  payload: RawInputQueuedPayload;
+};
+type RawInputResolvedEvent = BaseEvent & {
+  kind: 'raw_input_resolved';
+  payload: RawInputResolvedPayload;
+};
+
+/** 判别字段用 kind 而非 type——Transaction 已经占用了 type 表示收支方向 */
 export type LedgerEvent =
   | (BaseEvent & { kind: 'transaction_created'; payload: Transaction })
   | (BaseEvent & {
       kind: 'transaction_amended';
       payload: { id: string; changes: Partial<Omit<Transaction, 'id'>> };
     })
-  | (BaseEvent & { kind: 'transaction_deleted'; payload: { id: string } });
+  | (BaseEvent & { kind: 'transaction_deleted'; payload: { id: string } })
+  | RawInputQueuedEvent
+  | RawInputResolvedEvent;
 
 function base(): BaseEvent {
   return {
@@ -60,4 +82,20 @@ export function createTransactionAmended(
 
 export function createTransactionDeleted(id: string): LedgerEvent {
   return { ...base(), kind: 'transaction_deleted', payload: { id } };
+}
+
+/** 离线时的原始输入（spec §5.1、§9）：先落盘排队，联网后由 lib/ledger/offlineQueue.ts 补跑。 */
+export function createRawInputQueued(
+  input: Omit<RawInputQueuedPayload, 'id'>,
+): RawInputQueuedEvent {
+  return {
+    ...base(),
+    kind: 'raw_input_queued',
+    payload: { id: crypto.randomUUID(), ...input },
+  };
+}
+
+/** 标记某条排队输入已结构化完成（对应的 transaction_created 事件单独追加）。 */
+export function createRawInputResolved(queuedId: string): RawInputResolvedEvent {
+  return { ...base(), kind: 'raw_input_resolved', payload: { queuedId } };
 }

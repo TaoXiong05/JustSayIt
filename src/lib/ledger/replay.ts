@@ -33,6 +33,12 @@ export function replay(events: LedgerEvent[]): Ledger {
         byId.delete(e.payload.id);
         break;
       }
+      case 'raw_input_queued':
+      case 'raw_input_resolved':
+        // 不产生/修改任何 Transaction——这两种事件由 lib/ledger/store.ts 的
+        // pendingRawInputsFrom() 单独从原始事件流里读取，不进入 replay 的
+        // byId 累积逻辑（它们本来就不是 Transaction）。
+        break;
     }
   }
 

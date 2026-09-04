@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { replay } from '@/lib/ledger/replay';
-import type { LedgerEvent } from '@/lib/ledger/events';
+import {
+  createTransactionCreated,
+  createRawInputQueued,
+  createRawInputResolved,
+  type LedgerEvent,
+} from '@/lib/ledger/events';
 import type { Transaction } from '@/lib/ai/schema';
 
 let seq = 0;
@@ -85,5 +90,19 @@ describe('replay', () => {
     expect(l.transactions).toHaveLength(1);
     expect(l.transactions[0].date).toBe('2026-09-03');
     expect(l.transactions[0].description).toBe('第二次创建');
+  });
+
+  it('raw_input_queued / raw_input_resolved 不影响 transactions（不是 Transaction 事件）', () => {
+    const created = createTransactionCreated(tx('a'));
+    const queued = createRawInputQueued({
+      text: 'x',
+      localTime: '2026-09-05T10:00:00+10:00',
+      timeZone: 'Australia/Sydney',
+      defaultCurrency: 'AUD',
+    });
+    const resolved = createRawInputResolved('some-queued-id');
+    const withExtra = replay([created, queued, resolved]);
+    const without = replay([created]);
+    expect(withExtra).toEqual(without);
   });
 });

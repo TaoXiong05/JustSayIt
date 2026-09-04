@@ -5,6 +5,8 @@ import {
   createTransactionCreated,
   createTransactionAmended,
   createTransactionDeleted,
+  createRawInputQueued,
+  createRawInputResolved,
 } from '@/lib/ledger/events';
 import type { Transaction } from '@/lib/ai/schema';
 
@@ -79,5 +81,47 @@ describe('事件构造', () => {
     expect(amended.payload.changes.description).not.toBe(
       'mutated-after-construction',
     );
+  });
+});
+
+describe('createRawInputQueued / createRawInputResolved', () => {
+  it('createRawInputQueued 生成含唯一 id 的排队事件', () => {
+    const e = createRawInputQueued({
+      text: '买菜50块',
+      localTime: '2026-09-05T10:00:00+10:00',
+      timeZone: 'Australia/Sydney',
+      defaultCurrency: 'AUD',
+    });
+    expect(e.kind).toBe('raw_input_queued');
+    if (e.kind !== 'raw_input_queued') throw new Error('unreachable');
+    expect(e.payload.text).toBe('买菜50块');
+    expect(e.payload.id).toBeTruthy();
+    expect(e.deviceId).toBe(getDeviceId());
+  });
+
+  it('两次调用生成不同的 payload.id（每条排队输入独立标识）', () => {
+    const a = createRawInputQueued({
+      text: 'x',
+      localTime: '2026-09-05T10:00:00+10:00',
+      timeZone: 'Australia/Sydney',
+      defaultCurrency: 'AUD',
+    });
+    const b = createRawInputQueued({
+      text: 'x',
+      localTime: '2026-09-05T10:00:00+10:00',
+      timeZone: 'Australia/Sydney',
+      defaultCurrency: 'AUD',
+    });
+    if (a.kind !== 'raw_input_queued' || b.kind !== 'raw_input_queued') {
+      throw new Error('unreachable');
+    }
+    expect(a.payload.id).not.toBe(b.payload.id);
+  });
+
+  it('createRawInputResolved 携带对应的 queuedId', () => {
+    const e = createRawInputResolved('queued-1');
+    expect(e.kind).toBe('raw_input_resolved');
+    if (e.kind !== 'raw_input_resolved') throw new Error('unreachable');
+    expect(e.payload.queuedId).toBe('queued-1');
   });
 });
