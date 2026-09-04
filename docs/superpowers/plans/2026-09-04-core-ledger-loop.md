@@ -24,7 +24,7 @@
 - **Groq 调用参数固定**：`model=qwen/qwen3.8-27b`、`temperature=0`、`reasoning_effort='none'`、`response_format` 为 strict json_schema（§10.2）。
 - **Groq strict 模式 schema 要求**（§10.2b）：所有字段必须列入 `required`、所有对象 `additionalProperties: false`、可空字段用 `{"type":["string","null"]}` 而非 `nullable`。
 - **`getSnapshot` 只返回整个 ledger**，任何派生用 `useMemo`（§6.6）。在 `getSnapshot` 里做筛选会导致无限重渲染。
-- **核心版本锁定**：Node 24（目标运行时；开发机为 v25，通过 `package.json` 的 `engines` 声明约束，生产以 `node:24-alpine` 为准）、Next 16、React 19、Tailwind v4。包管理器 npm。安装后必须核对实际 major 版本（Task 1 Step 1），不接受 `@latest` 解析出的其他 major。
+- **核心版本锁定**：Node 24、Next 16、React 19、Tailwind v4、TypeScript 5。包管理器 npm。开发机与生产（`node:24-alpine`）同为 Node 24，约束由 `package.json` 的 `engines` 配合 `.npmrc` 的 `engine-strict=true` 强制执行。安装后必须核对实际 major 版本（Task 1 Step 1），不接受未固定版本解析出的其他 major——`tsc --noEmit` 是后续每个任务的必过关卡，版本漂移的代价是整条链返工。
 - **本 Plan 不做视觉设计。** 组件只写语义化 HTML 结构，不写 `className` 样式。Tailwind v4 在 Task 1 接好管线即可，具体样式由用户后续自行编写。
 
 ---
@@ -64,10 +64,10 @@
 - [ ] **Step 1: 初始化项目并安装依赖**
 
 ```bash
-node -v    # 记录实际版本；本机为 v25 属已知情况，见下方说明
+node -v    # 必须是 v24.x
 npm init -y
 npm install next@^16 react@^19 react-dom@^19 zod idb
-npm install -D typescript @types/node@^24 @types/react@^19 @types/react-dom@^19 \
+npm install -D typescript@^5 @types/node@^24 @types/react@^19 @types/react-dom@^19 \
   tailwindcss@^4 @tailwindcss/postcss \
   vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/user-event \
   fake-indexeddb
@@ -75,10 +75,12 @@ npm install -D typescript @types/node@^24 @types/react@^19 @types/react-dom@^19 
 
 装完立刻核对 major 版本，**不符必须停下修正**（`@latest` 会随时间漂移到别的 major，事后再发现要重做后续所有任务）：
 
-Run: `npm ls next react react-dom tailwindcss --depth=0`
-Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`
+Run: `npm ls next react react-dom tailwindcss typescript --depth=0`
+Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`、`typescript@5.x`
 
-**Node 版本说明**：目标运行时是 **Node 24 LTS**（生产 Docker 镜像与 CI 以此为准），但当前开发机跑的是 v25。v25 能正常跑 Next 16，开发时不必强行降级；风险在于**误用只有 v25 才有的 API，到 Node 24 的生产环境才炸**。把约束写进 `package.json` 让它成为可检查的事实，而不是一句口头约定：
+**TypeScript 必须留在 5.x**：7.x 是 Go 重写的新编译器，与生态的 `@types` 和工具链不同源。不写 `@^5` 就会静默装上 7.x——这正是本步骤存在的理由。
+
+**Node 版本锁定**：开发机与生产（Plan 4 的 `node:24-alpine`）同为 Node 24 LTS。把它写成可执行的约束，而不是一句口头约定——`package.json`：
 
 ```json
 {
@@ -86,7 +88,13 @@ Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`
 }
 ```
 
-并在 `.npmrc` 中写入 `engine-strict=false`——本地不因版本不符而拒绝安装，但 Plan 4 的 Docker 构建将以 `node:24-alpine` 为基础镜像，届时不兼容会立刻暴露。
+根目录 `.npmrc`：
+
+```
+engine-strict=true
+```
+
+`engine-strict=true` 让 npm 在 Node 版本不符时**直接拒绝安装**。npm 的默认值是 false，也就是默认只警告不拦截；既然开发机已经在 24 上，就没有理由留着这个逃生口——它唯一的作用是让版本漂移悄悄发生。
 
 - [ ] **Step 2: 写配置文件**
 
