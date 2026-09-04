@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
 import Home from '@/app/page';
 import { clearAllEvents } from '@/lib/ledger/db';
@@ -44,7 +45,7 @@ describe('乐观 UI', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     // 接口尚未返回，占位行已经在了
     // 注：受控 textarea 在无 defaultValue 时，React 每次更新都会同步
@@ -55,11 +56,11 @@ describe('乐观 UI', () => {
     expect(
       await screen.findByText('早餐麦当劳25', { selector: 'li[aria-live="polite"] span' }),
     ).toBeDefined();
-    expect(screen.getByText(/处理中/)).toBeDefined();
+    expect(screen.getByText(/Processing/)).toBeDefined();
 
     release({ ok: true, json: async () => ({ records: [oneRecord] }) });
     await waitFor(() => expect(screen.getByText('麦当劳')).toBeDefined());
-    expect(screen.queryByText(/处理中/)).toBeNull();
+    expect(screen.queryByText(/Processing/)).toBeNull();
   });
 
   it('结果落地后显示已记录 N 笔与撤销按钮', async () => {
@@ -70,10 +71,10 @@ describe('乐观 UI', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    expect(await screen.findByText(/已记录 1 笔/)).toBeDefined();
-    expect(screen.getByRole('button', { name: '撤销' })).toBeDefined();
+    expect(await screen.findByText(/Recorded 1 item/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
   });
 
   it('点击撤销移除刚记的账目', async () => {
@@ -84,13 +85,13 @@ describe('乐观 UI', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await screen.findByText('麦当劳');
-    await user.click(screen.getByRole('button', { name: '撤销' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
 
     await waitFor(() => expect(screen.queryByText('麦当劳')).toBeNull());
-    expect(screen.getByText(/还没有记录/)).toBeDefined();
+    expect(screen.getByText(/No records yet/)).toBeDefined();
   });
 
   it('连续两次提交时，UndoToast 随新一批重新挂载，旧计时器被清理、新计时器独立起算（回归：Finding 2）', async () => {
@@ -118,8 +119,8 @@ describe('乐观 UI', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeDefined());
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined());
     // useEffect 的挂载是被动效果，在提交后额外 paint 一拍才真正执行——
     // 因此除了等按钮出现，还要单独等 setTimeout 调用本身落地，
     // 否则在并行跑测试时偶发读到"按钮已渲染但 effect 还没跑"的中间态。
@@ -131,8 +132,8 @@ describe('乐观 UI', () => {
 
     // 第一批的 toast 还显示着时，提交第二批
     await user.type(screen.getByRole('textbox'), '午餐麦当劳30');
-    await user.click(screen.getByRole('button', { name: '提交' }));
-    await waitFor(() => expect(screen.getByText(/已记录 1 笔/)).toBeDefined());
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(screen.getByText(/Recorded 1 item/)).toBeDefined());
 
     // 修复后：UndoToast 因 key 改变而卸载重挂——旧 effect 的清理函数必须
     // clearTimeout 掉第一批的计时器，新 effect 必须重新 setTimeout 一个
@@ -150,9 +151,9 @@ describe('乐观 UI', () => {
     render(<Home />);
     const box = screen.getByRole('textbox');
     await user.type(box, '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() => expect(screen.queryByText(/处理中/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Processing/)).toBeNull());
     expect((box as HTMLTextAreaElement).value).toBe('早餐麦当劳25');
   });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { render } from '@/test/renderWithLocale';
 import Home from '@/app/page';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
@@ -27,11 +28,11 @@ describe('主屏（未登录）', () => {
     );
     render(<Home />);
     await waitFor(() =>
-      expect(screen.getByText('登录后开始记账')).toBeDefined(),
+      expect(screen.getByText('Log in to start tracking')).toBeDefined(),
     );
     expect(screen.queryByRole('textbox')).toBeNull();
-    expect(screen.queryByRole('button', { name: '退出' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Log out' })).toBeNull();
     // 本地账本区仍渲染（空态文案）
-    expect(screen.getByText(/还没有记录/)).toBeDefined();
+    expect(screen.getByText(/No records yet/)).toBeDefined();
   });
 });

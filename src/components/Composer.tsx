@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 import { VoiceButton } from '@/components/VoiceButton';
+import { useLocale } from '@/lib/i18n/context';
+import { ApiError } from '@/lib/apiError';
+import { errorCodeToKey } from '@/lib/i18n/dictionary';
 
 export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<void> }) {
+  const { t } = useLocale();
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +32,10 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
     setError(null);
     try {
       await onSubmit(submittedText);
-    } catch {
+    } catch (err) {
       setText(submittedText); // 失败时把本次提交的原文还回去，供重试/编辑
-      setError('记账失败，请重试');
+      const code = err instanceof ApiError ? err.code : undefined;
+      setError(t(errorCodeToKey(code, 'errorStructureFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -41,11 +46,11 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="说点什么…"
+        placeholder={t('composerPlaceholder')}
         rows={2}
       />
       <button type="button" onClick={handleSubmit} disabled={!canSubmit}>
-        {submitting ? '提交中…' : '提交'}
+        {submitting ? t('submitting') : t('submit')}
       </button>
       <VoiceButton onTranscribed={appendText} />
       {error && <p role="alert">{error}</p>}

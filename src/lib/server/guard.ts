@@ -17,8 +17,14 @@ export async function authenticate(req: Request): Promise<AuthResult> {
     return { bypass: true };
   }
   const token = parseSessionCookie(req);
-  if (!token) return { error: { status: 401, body: { error: '未登录' } } };
+  if (!token) {
+    return { error: { status: 401, body: { error: '未登录', code: 'UNAUTHENTICATED' } } };
+  }
   const user = await verifySession(token);
-  if (!user) return { error: { status: 401, body: { error: '会话无效或已过期' } } };
+  if (!user) {
+    return {
+      error: { status: 401, body: { error: '会话无效或已过期', code: 'UNAUTHENTICATED' } },
+    };
+  }
   return user;
 }

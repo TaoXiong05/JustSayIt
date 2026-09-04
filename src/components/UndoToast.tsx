@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useLocale } from '@/lib/i18n/context';
 
 const AUTO_DISMISS_MS = 6000;
 
@@ -13,6 +14,7 @@ export function UndoToast({
   onUndo: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useLocale();
   useEffect(() => {
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
@@ -20,9 +22,9 @@ export function UndoToast({
 
   return (
     <div role="status">
-      <span>{`已记录 ${count} 笔`}</span>
+      <span>{t('undoneCount', { count })}</span>
       <button type="button" onClick={onUndo}>
-        撤销
+        {t('undo')}
       </button>
     </div>
   );

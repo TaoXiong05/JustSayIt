@@ -58,7 +58,7 @@ describe('POST /api/stt', () => {
     expect(transcribe).not.toHaveBeenCalled();
   });
 
-  it('超配额 → 429，不调 AI', async () => {
+  it('超配额 → 429，不调 AI，带 QUOTA_EXCEEDED code', async () => {
     vi.mocked(quotaService.consume).mockResolvedValue({
       ok: false,
       message: '今日已达上限',
@@ -66,22 +66,27 @@ describe('POST /api/stt', () => {
     const res = await POST(audioReq());
     expect(res.status).toBe(429);
     expect(transcribe).not.toHaveBeenCalled();
+    expect((await res.json()).code).toBe('QUOTA_EXCEEDED');
   });
 
-  it('非音频 content-type → 400', async () => {
+  it('非音频 content-type → 400，带 INVALID_REQUEST code', async () => {
     const res = await POST(audioReq({ contentType: 'text/plain' }));
     expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('INVALID_REQUEST');
   });
 
-  it('音频超过 25MB → 400', async () => {
+  it('音频超过 25MB → 400，带 INVALID_REQUEST code', async () => {
     const res = await POST(audioReq({ size: 26 * 1024 * 1024 }));
     expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('INVALID_REQUEST');
   });
 
-  it('转写失败 → 502 且不泄露内容', async () => {
+  it('转写失败 → 502 且不泄露内容，带 UPSTREAM_FAILED code', async () => {
     vi.mocked(transcribe).mockRejectedValue(new Error('Groq 转写失败：HTTP 500'));
     const res = await POST(audioReq());
     expect(res.status).toBe(502);
-    expect(JSON.stringify(await res.json())).not.toContain('Woolworths');
+    const json = await res.json();
+    expect(JSON.stringify(json)).not.toContain('Woolworths');
+    expect(json.code).toBe('UPSTREAM_FAILED');
   });
 });

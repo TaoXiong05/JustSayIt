@@ -30,18 +30,20 @@ describe('authenticate', () => {
     expect(await authenticate(req)).toEqual(USER);
   });
 
-  it('无 cookie → 401', async () => {
+  it('无 cookie → 401，带 UNAUTHENTICATED code（供客户端本地化文案）', async () => {
     const r = await authenticate(new Request('http://x/'));
     expect('error' in r && r.error.status === 401).toBe(true);
+    expect('error' in r && (r.error.body as { code?: string }).code).toBe('UNAUTHENTICATED');
   });
 
-  it('无效 session → 401', async () => {
+  it('无效 session → 401，同样带 UNAUTHENTICATED code', async () => {
     vi.mocked(verifySession).mockResolvedValue(null);
     const req = new Request('http://x/', {
       headers: { cookie: `${SESSION_COOKIE}=bad` },
     });
     const r = await authenticate(req);
     expect('error' in r && r.error.status === 401).toBe(true);
+    expect('error' in r && (r.error.body as { code?: string }).code).toBe('UNAUTHENTICATED');
   });
 
   it('ALLOW_UNAUTHENTICATED_API=true → 放行（bypass）', async () => {

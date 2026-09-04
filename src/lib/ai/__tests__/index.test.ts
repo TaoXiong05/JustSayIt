@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@/lib/ai/providers/groq', () => ({
-  groqStructure: vi.fn().mockResolvedValue([
+vi.mock('@/lib/ai/providers/cerebras', () => ({
+  cerebrasStructure: vi.fn().mockResolvedValue([
     {
       type: 'EXPENSE',
       amount: 25,
@@ -15,7 +15,7 @@ vi.mock('@/lib/ai/providers/groq', () => ({
 }));
 
 import { structure } from '@/lib/ai';
-import { groqStructure } from '@/lib/ai/providers/groq';
+import { cerebrasStructure } from '@/lib/ai/providers/cerebras';
 
 describe('structure', () => {
   it('把调用转交给 provider 并原样返回记录', async () => {
@@ -25,7 +25,7 @@ describe('structure', () => {
       defaultCurrency: 'AUD',
     };
     const out = await structure('早餐25', ctx);
-    expect(groqStructure).toHaveBeenCalledWith('早餐25', ctx);
+    expect(cerebrasStructure).toHaveBeenCalledWith('早餐25', ctx);
     expect(out[0].amount).toBe(25);
   });
 });

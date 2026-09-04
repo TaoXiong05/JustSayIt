@@ -21,15 +21,18 @@ export async function POST(request: Request): Promise<Response> {
 
   const contentType = request.headers.get('content-type') ?? '';
   if (!contentType.startsWith('audio/')) {
-    return Response.json({ error: '仅接受音频（audio/*）' }, { status: 400 });
+    return Response.json(
+      { error: '仅接受音频（audio/*）', code: 'INVALID_REQUEST' },
+      { status: 400 },
+    );
   }
 
   const blob = await request.blob();
   if (blob.size === 0) {
-    return Response.json({ error: '音频为空' }, { status: 400 });
+    return Response.json({ error: '音频为空', code: 'INVALID_REQUEST' }, { status: 400 });
   }
   if (blob.size > MAX_AUDIO_BYTES) {
-    return Response.json({ error: '音频过大' }, { status: 400 });
+    return Response.json({ error: '音频过大', code: 'INVALID_REQUEST' }, { status: 400 });
   }
 
   // 词表偏置（§16.3）：来自前端 knownMerchants()
@@ -56,7 +59,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     const q = await quotaService.consume(profile.id);
     if (!q.ok) {
-      return Response.json({ error: q.message }, { status: 429 });
+      return Response.json({ error: q.message, code: 'QUOTA_EXCEEDED' }, { status: 429 });
     }
   }
 
@@ -82,6 +85,9 @@ export async function POST(request: Request): Promise<Response> {
         error: err instanceof Error ? err.message : 'unknown',
       }),
     );
-    return Response.json({ error: '转写失败，请重试' }, { status: 502 });
+    return Response.json(
+      { error: '转写失败，请重试', code: 'UPSTREAM_FAILED' },
+      { status: 502 },
+    );
   }
 }

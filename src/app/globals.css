@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+/* 仅为方便本地测试撑开容器宽度，非设计——组件本身仍不带 className/style */
+body {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+}

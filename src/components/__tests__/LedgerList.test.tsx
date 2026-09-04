@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '@/test/renderWithLocale';
 import { LedgerList } from '@/components/LedgerList';
 import { formatAmount } from '@/components/TransactionRow';
 import type { Transaction } from '@/lib/ai/schema';
@@ -27,13 +28,18 @@ describe('formatAmount', () => {
 describe('LedgerList', () => {
   it('空列表给出提示而非空白', () => {
     render(<LedgerList transactions={[]} />);
-    expect(screen.getByText(/还没有记录/)).toBeDefined();
+    expect(screen.getByText(/No records yet/)).toBeDefined();
   });
 
   it('渲染商户与描述', () => {
     render(<LedgerList transactions={[tx('a', { merchant: 'Woolworths', description: '买菜' })]} />);
     expect(screen.getByText('Woolworths')).toBeDefined();
     expect(screen.getByText('买菜')).toBeDefined();
+  });
+
+  it('category 显示为本地化 label（默认 en），底层仍是稳定英文 key', () => {
+    render(<LedgerList transactions={[tx('a', { category: 'TRANSPORT' })]} />);
+    expect(screen.getByText('Transport')).toBeDefined();
   });
 
   it('支出显示负号，收入显示正号', () => {

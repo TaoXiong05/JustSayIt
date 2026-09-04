@@ -916,6 +916,9 @@ src/
 - 自定义分类（动态注入 enum，路径已预留）
 - AI provider 按成本智能路由——需先有真实成本与质量数据
 - 付费/订阅系统
+- **用户可配置默认币种**——`defaultCurrency` 目前是 `page.tsx` 里硬编码的 `'AUD'`，没有用户初始化/设置流程可以改它（讨论见 2026-09-05）。做的话要先决定这份设置存哪儿（新 IndexedDB store？现在完全没有"用户档案"这个概念）。同属此类：金额展示目前是裸数字（`formatAmount` 只 `toFixed(2)`），没有货币符号、没有按 locale 走 `Intl.NumberFormat`。
+- **AI 抽取正确性的双语场景没有自动化集成测试**——§12（中英文支持要求文档）Case 1-5 要求验证「UI/输入语言」四种组合下 AI 都能正确生成 ledger，这依赖真实调用 AI，测试套件里 `structure()`/`transcribe()` 全部走 mock（跟本项目一贯"AI 调用靠人工过一遍，不自动化"的测试哲学一致）。接手的人测完这几个组合前不要假设它天然成立。
+- **STT 相关的 400 错误码粒度太粗**——`/api/stt` 的"音频过大""音频为空""content-type 不对"三种情况目前共用同一个 `INVALID_REQUEST` code（`src/app/api/stt/route.ts`），客户端拿到的都是同一句"请求参数不合法"。如果要给用户更精确的提示（比如专门提示"录音太长了，请重新录制"），需要再拆分 code。
 
 **不属于本项目但已记录：**
 
@@ -1188,6 +1191,6 @@ Woolworths →  Gemini:   「我」        信息湮灭，不可恢复
 
 4. **Prisma 稳定版中 Rust-free 客户端的启用方式与最低版本号**——GA 后配置已简化，实现时以官方文档为准。
 
-5. **分类枚举的中文显示文案**——17 个 key 的界面文案（存储值为英文 key，见 §5.2）。
+5. ~~**分类枚举的中文显示文案**~~——已完成（2026-09-05 中英文支持任务）。`CATEGORY_LABELS: Record<Locale, Record<CategoryKey, string>>`（`src/lib/i18n/dictionary.ts`），存储值仍为英文 key（见 §5.2），展示层按 UI locale 映射。
 
 6. **隐私政策与主页文案**——brand verification 的前置条件（§11.1）。隐私政策须包含 §11.3 那句关于后端持有 refresh token 的如实表述。

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
 import Home from '@/app/page';
 import { clearAllEvents } from '@/lib/ledger/db';
@@ -48,7 +49,7 @@ describe('主屏', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getByText('麦当劳')).toBeDefined());
     expect(screen.getByText('-25.00')).toBeDefined();
@@ -79,7 +80,7 @@ describe('主屏', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '第一笔10');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() => expect(screen.getByText('Woolworths')).toBeDefined());
 
     // 第二笔：AI 返回的是近似拼写 'Woolworth'（缺尾部 s），
@@ -101,7 +102,7 @@ describe('主屏', () => {
       }),
     });
     await user.type(screen.getByRole('textbox'), '第二笔20');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getAllByText('Woolworths')).toHaveLength(2));
     expect(screen.queryByText('Woolworth')).toBeNull();
@@ -133,12 +134,12 @@ describe('主屏', () => {
     render(<Home />);
     const box = screen.getByRole('textbox');
     await user.type(box, '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     // 与网络失败同一条路径：占位行消失、Composer 显示失败提示、
     // 原文还回输入框——账本里绝不能出现这条形状不合法的记录
     await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
-    expect(screen.getByText(/还没有记录/)).toBeDefined();
+    expect(screen.getByText(/No records yet/)).toBeDefined();
     expect(screen.queryByText('麦当劳')).toBeNull();
     expect((box as HTMLTextAreaElement).value).toBe('早餐麦当劳25');
   });
@@ -151,8 +152,48 @@ describe('主屏', () => {
     const user = userEvent.setup();
     render(<Home />);
     await user.type(screen.getByRole('textbox'), '今天天气不错');
-    await user.click(screen.getByRole('button', { name: '提交' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() => expect(screen.getByText(/还没有记录/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/No records yet/)).toBeDefined());
+  });
+
+  it('切换 UI 语言只改变展示文案，不改变已保存的账本数据（中英文支持 §7、§12 Case 6）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          records: [
+            {
+              type: 'EXPENSE',
+              amount: 25,
+              currency: null,
+              date: '2026-09-04',
+              category: 'TRANSPORT',
+              merchant: 'Uber',
+              description: 'ride',
+            },
+          ],
+        }),
+      }),
+    );
+    const user = userEvent.setup();
+    render(<Home />);
+    await user.type(screen.getByRole('textbox'), 'Uber ride $25');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(screen.getByText('Uber')).toBeDefined());
+    expect(screen.getByText('Transport')).toBeDefined();
+
+    // 切到中文：category label 变了，但商户/金额这些底层数据原样还在
+    await user.click(screen.getByRole('button', { name: '中文' }));
+    expect(screen.getByText('交通')).toBeDefined();
+    expect(screen.queryByText('Transport')).toBeNull();
+    expect(screen.getByText('Uber')).toBeDefined();
+    expect(screen.getByText('-25.00')).toBeDefined();
+
+    // 切回英文：反向验证同样成立，且切换是可逆的展示层操作
+    await user.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByText('Transport')).toBeDefined();
+    expect(screen.getByText('Uber')).toBeDefined();
   });
 });

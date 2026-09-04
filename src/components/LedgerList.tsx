@@ -1,5 +1,6 @@
 import { TransactionRow } from '@/components/TransactionRow';
 import type { Transaction } from '@/lib/ai/schema';
+import { useLocale } from '@/lib/i18n/context';
 
 function groupByDate(transactions: Transaction[]): [string, Transaction[]][] {
   const groups = new Map<string, Transaction[]>();
@@ -12,8 +13,9 @@ function groupByDate(transactions: Transaction[]): [string, Transaction[]][] {
 }
 
 export function LedgerList({ transactions }: { transactions: Transaction[] }) {
+  const { t } = useLocale();
   if (transactions.length === 0) {
-    return <p>还没有记录，说点什么试试。</p>;
+    return <p>{t('emptyLedger')}</p>;
   }
   return (
     <div>

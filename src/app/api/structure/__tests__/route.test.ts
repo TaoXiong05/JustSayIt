@@ -65,7 +65,7 @@ describe('POST /api/structure 已认证', () => {
     expect(structure).not.toHaveBeenCalled();
   });
 
-  it('超配额 → 429 且不调 AI', async () => {
+  it('超配额 → 429 且不调 AI，带 QUOTA_EXCEEDED code（供客户端本地化文案，中英文支持 §8）', async () => {
     vi.mocked(quotaService.consume).mockResolvedValue({
       ok: false,
       message: '今日已达上限',
@@ -73,9 +73,10 @@ describe('POST /api/structure 已认证', () => {
     const res = await POST(req(body));
     expect(res.status).toBe(429);
     expect(structure).not.toHaveBeenCalled();
+    expect((await res.json()).code).toBe('QUOTA_EXCEEDED');
   });
 
-  it('请求体不是合法 JSON → 400', async () => {
+  it('请求体不是合法 JSON → 400，带 INVALID_REQUEST code', async () => {
     const bad = new Request('http://localhost/api/structure', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -83,6 +84,7 @@ describe('POST /api/structure 已认证', () => {
     });
     const res = await POST(bad);
     expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('INVALID_REQUEST');
   });
 
   it('text 为空/超长仍返回 400', async () => {
@@ -90,11 +92,13 @@ describe('POST /api/structure 已认证', () => {
     expect((await POST(req({ ...body, text: 'x'.repeat(2001) }))).status).toBe(400);
   });
 
-  it('上游失败返回 502 且响应不含用户输入', async () => {
+  it('上游失败返回 502 且响应不含用户输入，带 UPSTREAM_FAILED code', async () => {
     vi.mocked(structure).mockRejectedValue(new Error('Groq 请求失败：HTTP 429'));
     const res = await POST(req(body));
     expect(res.status).toBe(502);
-    expect(JSON.stringify(await res.json())).not.toContain('早餐麦当劳');
+    const json = await res.json();
+    expect(JSON.stringify(json)).not.toContain('早餐麦当劳');
+    expect(json.code).toBe('UPSTREAM_FAILED');
   });
 
   it('bypass 逃生舱放行（不再查配额）', async () => {

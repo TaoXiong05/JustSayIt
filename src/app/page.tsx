@@ -10,6 +10,8 @@ import { addTransactions, removeTransaction, knownMerchants } from '@/lib/ledger
 import { normalizeMerchant } from '@/lib/ledger/normalize';
 import { toTransaction, AiResponseSchema } from '@/lib/ai/schema';
 import { useSession, fetchLogout } from '@/lib/auth/client';
+import { useLocale } from '@/lib/i18n/context';
+import { throwApiError } from '@/lib/apiError';
 
 const DEFAULT_CURRENCY = 'AUD';
 
@@ -19,6 +21,7 @@ export default function Home() {
   // §11.4 local-first：账本不因登录状态而隐藏；登录仅用于调用 AI / 语音
   const { user, loading } = useSession();
   const authed = !loading && user != null;
+  const { locale, setLocale, t } = useLocale();
 
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
   // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
@@ -48,7 +51,7 @@ export default function Home() {
           defaultCurrency: DEFAULT_CURRENCY,
         }),
       });
-      if (!res.ok) throw new Error('结构化失败');
+      if (!res.ok) await throwApiError(res, '结构化失败');
 
       // 运行时校验，而非类型断言：这是数据流里唯一会写入不可变事件日志的
       // 客户端边界，其它 provider 相关边界（providers/ 内）都已用同一 schema 校验过。
@@ -63,7 +66,7 @@ export default function Home() {
         ),
       );
       await addTransactions(txs);
-      if (txs.length > 0) setLastAdded(txs.map((t) => t.id));
+      if (txs.length > 0) setLastAdded(txs.map((tx) => tx.id));
     } finally {
       setPending((p) => p.filter((entry) => entry.id !== pendingId));
     }
@@ -72,7 +75,10 @@ export default function Home() {
   return (
     <main>
       <header>
-        <h1>JustSayIt</h1>
+        <h1>{t('appTitle')}</h1>
+        <button type="button" onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}>
+          {t('localeToggleLabel')}
+        </button>
         {user && (
           <div>
             <span>{user.email ?? user.googleSub}</span>
@@ -81,7 +87,7 @@ export default function Home() {
               onClick={() => void fetchLogout()}
               disabled={loading}
             >
-              退出
+              {t('logOut')}
             </button>
           </div>
         )}
@@ -109,7 +115,7 @@ export default function Home() {
         <Composer onSubmit={handleSubmit} />
       ) : (
         <p>
-          <a href="/login">登录后开始记账</a>
+          <a href="/login">{t('logInPrompt')}</a>
         </p>
       )}
     </main>

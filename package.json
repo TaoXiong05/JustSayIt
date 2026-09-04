@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@cerebras/cerebras_cloud_sdk": "^1.91.0",
     "@prisma/client": "^7.10.0",
     "idb": "^8.0.3",
     "jose": "^6.2.11",

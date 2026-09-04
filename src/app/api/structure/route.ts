@@ -27,12 +27,18 @@ export async function POST(request: Request): Promise<Response> {
   try {
     payload = await request.json();
   } catch {
-    return Response.json({ error: '请求体不是合法 JSON' }, { status: 400 });
+    return Response.json(
+      { error: '请求体不是合法 JSON', code: 'INVALID_REQUEST' },
+      { status: 400 },
+    );
   }
 
   const parsed = RequestSchema.safeParse(payload);
   if (!parsed.success) {
-    return Response.json({ error: '请求参数不合法' }, { status: 400 });
+    return Response.json(
+      { error: '请求参数不合法', code: 'INVALID_REQUEST' },
+      { status: 400 },
+    );
   }
 
   // server-side 配额：每次 AI 调用（structure 或 stt）从用户配额扣一次（§10.3a）
@@ -45,7 +51,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     const q = await quotaService.consume(profile.id);
     if (!q.ok) {
-      return Response.json({ error: q.message }, { status: 429 });
+      return Response.json({ error: q.message, code: 'QUOTA_EXCEEDED' }, { status: 429 });
     }
   }
 
@@ -72,6 +78,9 @@ export async function POST(request: Request): Promise<Response> {
         error: err instanceof Error ? err.message : 'unknown',
       }),
     );
-    return Response.json({ error: '结构化失败，请重试' }, { status: 502 });
+    return Response.json(
+      { error: '结构化失败，请重试', code: 'UPSTREAM_FAILED' },
+      { status: 502 },
+    );
   }
 }
