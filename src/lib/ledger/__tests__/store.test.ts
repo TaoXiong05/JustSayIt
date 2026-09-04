@@ -76,4 +76,10 @@ describe('store', () => {
     ]);
     expect(knownMerchants().sort()).toEqual(['Coles', 'Woolworths']);
   });
+
+  it('删除账目后 knownMerchants 仍保留其商户名（历史写法不因删除而丢失）', async () => {
+    await addTransactions([tx('a', { merchant: 'Woolworths' })]);
+    await removeTransaction('a');
+    expect(knownMerchants()).toEqual(['Woolworths']);
+  });
 });
