@@ -15,8 +15,8 @@ export type StructureContext = {
  * 「Woolworths 买菜」被归入 GIFT 的错误。
  *
  * 键集合直接来自 `ALL_CATEGORIES`（`@/lib/ai/schema` 的单一事实来源）。
- * 这里用 `satisfies Record<CategoryKey, string>` 做穷尽性检查：
- * 未来 schema 新增第 18 个分类而这里未同步补释义时，TypeScript 编译会报错，
+ * 类型标注为 `Record<CategoryKey, string>` 做穷尽性检查：未来 schema 新增
+ * 第 18 个分类而这里未同步补释义时，缺键会导致 TypeScript 编译报错，
  * 不会静默漏释义。
  */
 const CATEGORY_GLOSS: Record<(typeof ALL_CATEGORIES)[number], string> = {
