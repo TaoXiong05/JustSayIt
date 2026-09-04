@@ -49,7 +49,16 @@ export type DictKey =
   | 'syncWarningBannerIOS'
   | 'syncWarningModalTitle'
   | 'syncRetry'
-  | 'exportBackup';
+  | 'exportBackup'
+  | 'editSave'
+  | 'editCancel'
+  | 'editDelete'
+  | 'editCategoryLabel'
+  | 'editAmountLabel'
+  | 'editDateLabel'
+  | 'editMerchantLabel'
+  | 'editDescriptionLabel'
+  | 'editAmountInvalid';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -81,6 +90,15 @@ const en: Record<DictKey, DictValue> = {
   syncWarningModalTitle: 'Some entries have been unsynced for a while.',
   syncRetry: 'Retry sync',
   exportBackup: 'Export backup',
+  editSave: 'Save',
+  editCancel: 'Cancel',
+  editDelete: 'Delete',
+  editCategoryLabel: 'Category',
+  editAmountLabel: 'Amount',
+  editDateLabel: 'Date',
+  editMerchantLabel: 'Merchant',
+  editDescriptionLabel: 'Description',
+  editAmountInvalid: 'Enter a positive amount with at most 2 decimals',
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
@@ -119,6 +137,15 @@ const zh: Record<DictKey, DictValue> = {
   syncWarningModalTitle: '有些账目已经很久没同步了。',
   syncRetry: '重试同步',
   exportBackup: '导出备份',
+  editSave: '保存',
+  editCancel: '取消',
+  editDelete: '删除',
+  editCategoryLabel: '分类',
+  editAmountLabel: '金额',
+  editDateLabel: '日期',
+  editMerchantLabel: '商户',
+  editDescriptionLabel: '描述',
+  editAmountInvalid: '请输入正数金额，最多两位小数',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',
