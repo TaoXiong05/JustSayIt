@@ -1586,7 +1586,13 @@ export async function appendEvents(events: LedgerEvent[]): Promise<void> {
   const tx = d.transaction(STORE, 'readwrite');
   // 重复写入同一 eventId 时跳过而非覆盖——事件不可变，两次写入的内容
   // 本就该相同；这也顺带处理了同一批次内出现重复 id 的情况。
-  const seen = new Set(await tx.store.index(EVENT_ID_INDEX).getAllKeys());
+  // 注意：IDBIndex.getAllKeys() 返回的是匹配记录的主键（这里是自增数字），
+  // 不是索引键本身（eventId 字符串）——用它构造 seen 集合永远不会命中，
+  // 起不到判重作用。要拿到已存在的 eventId 集合，需读出索引上的完整记录
+  // 再取其 eventId 字段（已用 fake-indexeddb 实测确认 getAllKeys() 的行为）。
+  const seen = new Set(
+    (await tx.store.index(EVENT_ID_INDEX).getAll()).map((e) => e.eventId),
+  );
   for (const e of events) {
     if (!seen.has(e.eventId)) {
       tx.store.add(e);
