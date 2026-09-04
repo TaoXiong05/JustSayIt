@@ -2,6 +2,7 @@ import { appendEvents, readAllEvents } from '@/lib/ledger/db';
 import { replay, type Ledger } from '@/lib/ledger/replay';
 import {
   createTransactionCreated,
+  createTransactionAmended,
   createTransactionDeleted,
   createRawInputQueued,
   createRawInputResolved,
@@ -54,6 +55,13 @@ export async function addTransactions(txs: Transaction[]): Promise<void> {
 
 export async function removeTransaction(id: string): Promise<void> {
   await push([createTransactionDeleted(id)]);
+}
+
+export async function amendTransaction(
+  id: string,
+  changes: Partial<Omit<Transaction, 'id'>>,
+): Promise<void> {
+  await push([createTransactionAmended(id, changes)]);
 }
 
 export async function queueRawInput(

@@ -6,6 +6,7 @@ import {
   hydrate,
   addTransactions,
   removeTransaction,
+  amendTransaction,
   knownMerchants,
   queueRawInput,
   resolveRawInput,
@@ -141,5 +142,43 @@ describe('离线队列', () => {
     const before = getEventsSnapshot();
     await queueRawInput(ctx);
     expect(getEventsSnapshot()).not.toBe(before);
+  });
+});
+
+describe('amendTransaction', () => {
+  it('追加 transaction_amended 事件，账本里对应账目的字段被更新', async () => {
+    const txData: Transaction = {
+      id: 'tx-amend-1',
+      type: 'EXPENSE',
+      amountCents: 2500,
+      currency: 'AUD',
+      date: '2026-09-05',
+      category: 'FOOD',
+      merchant: null,
+      description: '早餐',
+    };
+    await addTransactions([txData]);
+    await amendTransaction('tx-amend-1', { category: 'TRANSPORT', amountCents: 3000 });
+
+    const updated = getSnapshot().transactions.find((t) => t.id === 'tx-amend-1');
+    expect(updated?.category).toBe('TRANSPORT');
+    expect(updated?.amountCents).toBe(3000);
+    expect(updated?.description).toBe('早餐'); // 没改的字段原样保留
+  });
+
+  it('修改 merchant 后，该写法进入 knownMerchants（回归：既有逻辑，验证未被破坏）', async () => {
+    const txData: Transaction = {
+      id: 'tx-amend-2',
+      type: 'EXPENSE',
+      amountCents: 1000,
+      currency: 'AUD',
+      date: '2026-09-05',
+      category: 'FOOD',
+      merchant: null,
+      description: 'x',
+    };
+    await addTransactions([txData]);
+    await amendTransaction('tx-amend-2', { merchant: 'Costco' });
+    expect(knownMerchants()).toContain('Costco');
   });
 });
