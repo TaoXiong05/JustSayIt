@@ -41,7 +41,8 @@ export type DictKey =
   | 'errorInvalidRequest'
   | 'errorStructureFailed'
   | 'errorTranscribeFailed'
-  | 'errorGeneric';
+  | 'errorGeneric'
+  | 'queuedOffline';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -70,6 +71,7 @@ const en: Record<DictKey, DictValue> = {
   errorStructureFailed: 'Failed to save, please retry',
   errorTranscribeFailed: 'Transcription failed, please retry',
   errorGeneric: 'Something went wrong, please retry',
+  queuedOffline: 'Queued offline — will record once back online',
 };
 
 const zh: Record<DictKey, DictValue> = {
@@ -99,6 +101,7 @@ const zh: Record<DictKey, DictValue> = {
   errorStructureFailed: '记账失败，请重试',
   errorTranscribeFailed: '转写失败，请重试',
   errorGeneric: '出了点问题，请重试',
+  queuedOffline: '离线待处理，联网后自动记账',
 };
 
 export const dictionaries: Record<Locale, Record<DictKey, DictValue>> = { en, zh };

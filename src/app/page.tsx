@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
+import { QueuedRow } from '@/components/QueuedRow';
 import { UndoToast } from '@/components/UndoToast';
-import { useLedger } from '@/lib/ledger/useLedger';
-import { addTransactions, removeTransaction } from '@/lib/ledger/store';
+import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
+import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
+import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
 import { useSession, fetchLogout } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 
@@ -20,6 +22,11 @@ export default function Home() {
   const { user, loading } = useSession();
   const authed = !loading && user != null;
   const { locale, setLocale, t } = useLocale();
+  const pendingRawInputs = usePendingRawInputs();
+
+  useEffect(() => {
+    return initOfflineQueueAutoRetry();
+  }, []);
 
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
   // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
@@ -44,6 +51,10 @@ export default function Home() {
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         defaultCurrency: DEFAULT_CURRENCY,
       };
+      if (!navigator.onLine) {
+        await queueRawInput({ text, ...ctx });
+        return; // 离线：不乐观插入账目，只排队等待联网后补跑（spec §9、§11.4）
+      }
       const txs = await structureTextToTransactions(text, ctx);
       await addTransactions(txs);
       if (txs.length > 0) setLastAdded(txs.map((tx) => tx.id));
@@ -76,6 +87,13 @@ export default function Home() {
         <ul>
           {pending.map((entry) => (
             <PendingRow key={entry.id} text={entry.text} />
+          ))}
+        </ul>
+      )}
+      {pendingRawInputs.length > 0 && (
+        <ul>
+          {pendingRawInputs.map((item) => (
+            <QueuedRow key={item.id} text={item.text} />
           ))}
         </ul>
       )}
