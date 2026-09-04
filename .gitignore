@@ -1,0 +1,21 @@
+# 密钥 —— 绝不提交
+.env
+.env.*
+!.env.example
+
+# 依赖与构建产物
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
