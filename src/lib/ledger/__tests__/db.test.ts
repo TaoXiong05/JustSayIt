@@ -36,10 +36,12 @@ describe('事件存储', () => {
     expect(all[0].eventId).toBe('a');
   });
 
-  it('保持写入顺序', async () => {
-    await appendEvents([evt('a'), evt('b')]);
-    await appendEvents([evt('c')]);
-    expect((await readAllEvents()).map((e) => e.eventId)).toEqual(['a', 'b', 'c']);
+  it('保持写入顺序（不依赖 eventId 的字典序——真实场景是随机 UUID）', async () => {
+    // 故意让插入顺序与 eventId 字典序相反：若实现按主键（eventId）排序返回，
+    // 这里会读出 ['a','b','c']（字典序）而非 ['c','a','b']（写入序），测试即失败。
+    await appendEvents([evt('c'), evt('a')]);
+    await appendEvents([evt('b')]);
+    expect((await readAllEvents()).map((e) => e.eventId)).toEqual(['c', 'a', 'b']);
   });
 
   it('同一 eventId 重复写入不产生重复记录（同步去重的基础）', async () => {
