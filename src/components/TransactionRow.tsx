@@ -1,6 +1,15 @@
 import type { Transaction } from '@/lib/ai/schema';
 import { useLocale } from '@/lib/i18n/context';
 import { CATEGORY_LABELS } from '@/lib/i18n/dictionary';
+import { useSyncExternalStore } from 'react';
+import { subscribe, getSnapshot as getSyncSnapshot, type SyncState } from '@/lib/sync/status';
+
+const EMPTY_SYNC_STATE: SyncState = {
+  unsyncedIds: [],
+  firstUnsyncedAt: null,
+  authError: false,
+  lastSyncedAt: null,
+};
 
 /** 整数分 → 两位小数字符串。展示层唯一的金额格式化入口 */
 export function formatAmount(cents: number, _currency: string): string {
@@ -9,9 +18,13 @@ export function formatAmount(cents: number, _currency: string): string {
 
 export function TransactionRow({ transaction }: { transaction: Transaction }) {
   const { locale } = useLocale();
+  const syncState = useSyncExternalStore(subscribe, getSyncSnapshot, () => EMPTY_SYNC_STATE);
+  const synced = !syncState.unsyncedIds.includes(transaction.id);
   const sign = transaction.type === 'INCOME' ? '+' : '-';
   return (
     <li>
+      {/* 未同步/已同步的持久视觉标记（spec §8.5 第 1 点），零打扰、永久可见 */}
+      <span aria-hidden="true">{synced ? '●' : '○'}</span>
       <span>{transaction.merchant ?? '—'}</span>
       <span>{transaction.description}</span>
       {/* category 存的是稳定英文 key（FOOD/TRANSPORT/…），这里只做展示层的

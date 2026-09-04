@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import { LedgerList } from '@/components/LedgerList';
 import { formatAmount } from '@/components/TransactionRow';
+import { markUnsynced, markSynced, getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import type { Transaction } from '@/lib/ai/schema';
 
 const tx = (id: string, over: Partial<Transaction> = {}): Transaction => ({
@@ -66,5 +67,20 @@ describe('LedgerList', () => {
       />,
     );
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+  });
+});
+
+describe('同步状态圆点', () => {
+  beforeEach(() => markSynced(getSyncSnapshot().unsyncedIds));
+
+  it('未同步的账目显示空心圆点', () => {
+    markUnsynced(['a']);
+    render(<LedgerList transactions={[tx('a')]} />);
+    expect(screen.getByText('○')).toBeDefined();
+  });
+
+  it('已同步的账目显示实心圆点', () => {
+    render(<LedgerList transactions={[tx('a')]} />);
+    expect(screen.getByText('●')).toBeDefined();
   });
 });
