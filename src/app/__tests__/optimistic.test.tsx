@@ -5,6 +5,16 @@ import Home from '@/app/page';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
+// Mock 认证：默认已登录，避免 /api/auth/session 的网络 fetch 干扰乐观 UI 断言，
+// 并让 Composer（提交入口）在测试中渲染。
+vi.mock('@/lib/auth/client', () => ({
+  useSession: () => ({
+    user: { googleSub: 's1', email: 'u@example.com', name: 'U', picture: null },
+    loading: false,
+  }),
+  fetchLogout: vi.fn().mockResolvedValue(undefined),
+}));
+
 const oneRecord = {
   type: 'EXPENSE',
   amount: 25,
