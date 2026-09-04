@@ -34,7 +34,12 @@ type UserRow = {
 };
 
 type DbLike = {
-  user: { upsert(args: UpsertArgs): Promise<UserRow> };
+  user: {
+    upsert(args: UpsertArgs): Promise<UserRow>;
+    findUnique(args: {
+      where: { googleSub: string };
+    }): Promise<{ refreshTokenEnc: string | null } | null>;
+  };
 };
 
 /**
@@ -68,6 +73,11 @@ export function makeUserRepo(db: DbLike) {
         picture: row.picture,
       };
     },
+
+    async getRefreshTokenEnc(googleSub: string): Promise<string | null> {
+      const row = await db.user.findUnique({ where: { googleSub } });
+      return row?.refreshTokenEnc ?? null;
+    },
   };
 }
 
@@ -84,6 +94,11 @@ const defaultDb: DbLike = {
         refreshTokenEnc: row.refreshTokenEnc,
       };
     },
+    findUnique: (args) =>
+      prisma.user.findUnique({
+        where: args.where,
+        select: { refreshTokenEnc: true },
+      }),
   },
 };
 

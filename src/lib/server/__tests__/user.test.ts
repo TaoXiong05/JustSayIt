@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { makeUserRepo } from '@/lib/server/user';
 
 type Row = {
@@ -31,6 +31,10 @@ const fakeDb = {
       const row: Row = { id: `u${rows.length + 1}`, ...create };
       rows.push(row);
       return row;
+    },
+    findUnique: async ({ where }: { where: { googleSub: string } }) => {
+      const r = rows.find((x) => x.googleSub === where.googleSub);
+      return r ? { refreshTokenEnc: r.refreshTokenEnc } : null;
     },
   },
 };
@@ -76,5 +80,30 @@ describe('findOrCreateUser', () => {
     expect(rows[0].refreshTokenEnc).toBe('ENC');
     await repo.findOrCreateUser({ googleSub: 's1', email: 'a@b.c', name: 'A', picture: null });
     expect(rows[0].refreshTokenEnc).toBe('ENC');
+  });
+});
+
+describe('getRefreshTokenEnc', () => {
+  it('返回该用户的加密 refresh token', async () => {
+    const db = {
+      user: {
+        upsert: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue({ refreshTokenEnc: 'enc-blob' }),
+      },
+    };
+    const repo = makeUserRepo(db);
+    expect(await repo.getRefreshTokenEnc('sub-1')).toBe('enc-blob');
+    expect(db.user.findUnique).toHaveBeenCalledWith({ where: { googleSub: 'sub-1' } });
+  });
+
+  it('用户不存在或从未拿到过 refresh token 时返回 null', async () => {
+    const db = {
+      user: {
+        upsert: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const repo = makeUserRepo(db);
+    expect(await repo.getRefreshTokenEnc('sub-none')).toBeNull();
   });
 });
