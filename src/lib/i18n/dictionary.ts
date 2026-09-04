@@ -42,7 +42,9 @@ export type DictKey =
   | 'errorStructureFailed'
   | 'errorTranscribeFailed'
   | 'errorGeneric'
-  | 'queuedOffline';
+  | 'queuedOffline'
+  | 'syncPendingCount'
+  | 'syncedUpToDate';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -63,8 +65,11 @@ const en: Record<DictKey, DictValue> = {
   voiceUnsupported: 'Voice recording is not supported in this browser',
   pendingLabel: 'Processing…',
   emptyLedger: 'No records yet — try saying something.',
-  undoneCount: ({ count }) => `Recorded ${count} item${count === 1 ? '' : 's'}`,
+  undoneCount: ({ count, unsynced }) =>
+    `Recorded ${count} item${count === 1 ? '' : 's'}${Number(unsynced) > 0 ? ' · pending sync' : ''}`,
   undo: 'Undo',
+  syncPendingCount: ({ count }) => `${count} pending sync`,
+  syncedUpToDate: 'Synced',
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
@@ -93,8 +98,11 @@ const zh: Record<DictKey, DictValue> = {
   voiceUnsupported: '当前浏览器不支持录音',
   pendingLabel: '处理中…',
   emptyLedger: '还没有记录，说点什么试试。',
-  undoneCount: ({ count }) => `已记录 ${count} 笔`,
+  undoneCount: ({ count, unsynced }) =>
+    `已记录 ${count} 笔${Number(unsynced) > 0 ? ' · 待同步' : ''}`,
   undo: '撤销',
+  syncPendingCount: ({ count }) => `${count} 笔待同步`,
+  syncedUpToDate: '已同步',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',

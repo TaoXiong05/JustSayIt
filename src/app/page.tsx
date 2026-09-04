@@ -5,12 +5,14 @@ import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
 import { QueuedRow } from '@/components/QueuedRow';
+import { SyncStatusDot } from '@/components/SyncStatusDot';
 import { UndoToast } from '@/components/UndoToast';
 import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
 import { initSync } from '@/lib/sync/init';
+import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession, fetchLogout } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 
@@ -72,6 +74,7 @@ export default function Home() {
     <main>
       <header>
         <h1>{t('appTitle')}</h1>
+        <SyncStatusDot />
         <button type="button" onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}>
           {t('localeToggleLabel')}
         </button>
@@ -110,6 +113,9 @@ export default function Home() {
         <UndoToast
           key={lastAdded.join(',')}
           count={lastAdded.length}
+          unsyncedCount={
+            lastAdded.filter((id) => getSyncSnapshot().unsyncedIds.includes(id)).length
+          }
           onUndo={undo}
           onDismiss={clearToast}
         />
