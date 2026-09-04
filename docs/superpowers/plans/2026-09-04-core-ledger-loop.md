@@ -1726,6 +1726,12 @@ describe('store', () => {
     ]);
     expect(knownMerchants().sort()).toEqual(['Coles', 'Woolworths']);
   });
+
+  it('删除账目后 knownMerchants 仍保留其商户名（历史写法不因删除而丢失）', async () => {
+    await addTransactions([tx('a', { merchant: 'Woolworths' })]);
+    await removeTransaction('a');
+    expect(knownMerchants()).toEqual(['Woolworths']);
+  });
 });
 ```
 
@@ -1794,10 +1800,21 @@ export async function removeTransaction(id: string): Promise<void> {
   await push([createTransactionDeleted(id)]);
 }
 
-/** 该用户历史出现过的商户名，供归一化与（Plan 2）STT 偏置词表使用 */
+/**
+ * 该用户历史出现过的商户名，供归一化与（Plan 2）STT 偏置词表使用。
+ * 从原始事件日志推导，而非当前账本的派生状态——账目被删除后，其商户名
+ * 的写法仍应留在归一化词表里，否则同一商户可能在下次记账时重新分裂成
+ * 另一种写法，恰好违背这个函数存在的目的。
+ */
 export function knownMerchants(): string[] {
   const set = new Set<string>();
-  for (const t of ledger.transactions) if (t.merchant) set.add(t.merchant);
+  for (const e of events) {
+    if (e.kind === 'transaction_created' && e.payload.merchant) {
+      set.add(e.payload.merchant);
+    } else if (e.kind === 'transaction_amended' && e.payload.changes.merchant) {
+      set.add(e.payload.changes.merchant);
+    }
+  }
   return [...set];
 }
 ```
@@ -1805,7 +1822,7 @@ export function knownMerchants(): string[] {
 - [ ] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run src/lib/ledger/__tests__/store.test.ts`
-Expected: PASS，7 个测试全绿
+Expected: PASS，8 个测试全绿
 
 - [ ] **Step 5: Commit**
 
