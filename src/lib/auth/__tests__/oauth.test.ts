@@ -5,6 +5,7 @@ const ORIG = {
   id: process.env.GOOGLE_CLIENT_ID,
   redirect: process.env.GOOGLE_REDIRECT_URI,
   secret: process.env.GOOGLE_CLIENT_SECRET,
+  nodeEnv: process.env.NODE_ENV,
 };
 
 beforeEach(() => {
@@ -16,6 +17,7 @@ afterEach(() => {
   vi.stubEnv('GOOGLE_CLIENT_ID', ORIG.id ?? '');
   vi.stubEnv('GOOGLE_REDIRECT_URI', ORIG.redirect ?? '');
   vi.stubEnv('GOOGLE_CLIENT_SECRET', ORIG.secret ?? '');
+  vi.stubEnv('NODE_ENV', ORIG.nodeEnv ?? 'test');
   vi.unstubAllGlobals();
 });
 
@@ -67,6 +69,35 @@ describe('oauth', () => {
   it('缺少 googlle 配置时抛错', () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', '');
     expect(() => buildAuthorizeUrl('st', 'n1')).toThrow();
+  });
+
+  it('非生产环境且传了 requestOrigin 时，redirect_uri 按请求来源动态推导（方便局域网多设备测试）', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    const url = buildAuthorizeUrl('st', 'n1', 'http://192.168.1.50:3000');
+    expect(decodeURIComponent(url)).toContain(
+      'http://192.168.1.50:3000/api/auth/callback',
+    );
+    expect(decodeURIComponent(url)).not.toContain('localhost:3000');
+  });
+
+  it('生产环境即使传了 requestOrigin 也固定用 GOOGLE_REDIRECT_URI，不依赖请求来源', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const url = buildAuthorizeUrl('st', 'n1', 'http://192.168.1.50:3000');
+    expect(decodeURIComponent(url)).toContain('http://localhost:3000/api/auth/callback');
+    expect(decodeURIComponent(url)).not.toContain('192.168.1.50');
+  });
+
+  it('exchangeCode 同样按 requestOrigin 动态推导 redirect_uri（必须和 buildAuthorizeUrl 那一步一致）', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id_token: 'ID' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await exchangeCode('CODE', 'http://192.168.1.50:3000');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = init.body as URLSearchParams;
+    expect(body.get('redirect_uri')).toBe('http://192.168.1.50:3000/api/auth/callback');
   });
 });
 

@@ -17,9 +17,26 @@ export const SCOPE =
 function clientConfig() {
   const id = process.env.GOOGLE_CLIENT_ID;
   const secret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirect = process.env.GOOGLE_REDIRECT_URI;
-  if (!id || !secret || !redirect) throw new Error('缺少 Google OAuth 配置');
-  return { id, secret, redirect };
+  if (!id || !secret) throw new Error('缺少 Google OAuth 配置');
+  return { id, secret };
+}
+
+/**
+ * 开发环境下按实际请求来源推导 redirect_uri（方便局域网多设备测试——
+ * 手机访问的是 http://<局域网IP>:3000，不是 localhost，不想每次测试
+ * 都手动改 .env）；生产环境固定用 GOOGLE_REDIRECT_URI，不依赖
+ * request.url 的 host——反向代理场景下这个值不一定可靠，生产环境的
+ * 域名也没有"来回切换"这个需求。
+ * 不管走哪条路径，最终值都必须和 Google Cloud Console 里登记的
+ * "Authorized redirect URI" 精确匹配，否则 Google 直接拒绝这次请求。
+ */
+function resolveRedirectUri(requestOrigin?: string): string {
+  if (process.env.NODE_ENV !== 'production' && requestOrigin) {
+    return `${requestOrigin}/api/auth/callback`;
+  }
+  const configured = process.env.GOOGLE_REDIRECT_URI;
+  if (!configured) throw new Error('缺少 GOOGLE_REDIRECT_URI');
+  return configured;
 }
 
 export type GoogleProfile = {
@@ -29,11 +46,11 @@ export type GoogleProfile = {
   picture: string | null;
 };
 
-export function buildAuthorizeUrl(state: string, nonce: string): string {
-  const { id, redirect } = clientConfig();
+export function buildAuthorizeUrl(state: string, nonce: string, requestOrigin?: string): string {
+  const { id } = clientConfig();
   const params = new URLSearchParams({
     client_id: id,
-    redirect_uri: redirect,
+    redirect_uri: resolveRedirectUri(requestOrigin),
     response_type: 'code',
     scope: SCOPE,
     access_type: 'offline',
@@ -71,8 +88,9 @@ export async function verifyIdToken(
 
 export async function exchangeCode(
   code: string,
+  requestOrigin?: string,
 ): Promise<{ idToken: string; refreshToken?: string }> {
-  const { id, secret, redirect } = clientConfig();
+  const { id, secret } = clientConfig();
   const res = await fetch(TOKEN_ENDPOINT, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -80,7 +98,7 @@ export async function exchangeCode(
       code,
       client_id: id,
       client_secret: secret,
-      redirect_uri: redirect,
+      redirect_uri: resolveRedirectUri(requestOrigin),
       grant_type: 'authorization_code',
     }),
   });

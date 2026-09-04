@@ -5,6 +5,7 @@ vi.mock('@/lib/auth/oauth', () => ({
   exchangeCode: vi.fn(),
   verifyIdToken: vi.fn(),
 }));
+
 vi.mock('@/lib/server/user', () => ({
   userRepo: { findOrCreateUser: vi.fn() },
 }));
@@ -26,7 +27,7 @@ import { GET as loginGET } from '@/app/api/auth/login/route';
 import { GET as callbackGET } from '@/app/api/auth/callback/route';
 import { GET as sessionGET } from '@/app/api/auth/session/route';
 import { POST as logoutPOST } from '@/app/api/auth/logout/route';
-import { exchangeCode, verifyIdToken } from '@/lib/auth/oauth';
+import { buildAuthorizeUrl, exchangeCode, verifyIdToken } from '@/lib/auth/oauth';
 import { userRepo } from '@/lib/server/user';
 import { encryptRefreshToken } from '@/lib/server/crypto';
 import { signSession } from '@/lib/server/session';
@@ -44,12 +45,19 @@ afterEach(() => {
 
 describe('login route', () => {
   it('302 重定向 Google 并设置 state cookie', async () => {
-    const res = await loginGET();
+    const req = new Request('http://localhost:3000/api/auth/login');
+    const res = await loginGET(req);
     expect(res.status).toBe(302);
     expect(res.headers.get('Location')).toContain('accounts.google.com');
     const setCookie = res.headers.get('Set-Cookie') ?? '';
     expect(setCookie).toContain('justsayit.oauth_state=');
     expect(setCookie).toContain('HttpOnly');
+  });
+
+  it('把请求自己的 origin 传给 buildAuthorizeUrl（方便局域网多设备测试动态推导 redirect_uri）', async () => {
+    const req = new Request('http://192.168.1.50:3000/api/auth/login');
+    await loginGET(req);
+    expect(vi.mocked(buildAuthorizeUrl).mock.calls[0][2]).toBe('http://192.168.1.50:3000');
   });
 });
 
@@ -71,6 +79,10 @@ describe('callback route', () => {
     expect(signSession).toHaveBeenCalled();
     const setCookie = res.headers.get('Set-Cookie') ?? '';
     expect(setCookie).toContain('justsayit.session=jwt:s1');
+    // exchangeCode 拿到的 origin 必须和 login 那一步 buildAuthorizeUrl 用的一致，
+    // 否则 Google 会因为两步 redirect_uri 不匹配而拒绝——用请求自己的 origin
+    // 天然保证这一点，不用手动传保持同步。
+    expect(exchangeCode).toHaveBeenCalledWith('C', 'http://x');
   });
 
   it('state 不匹配 → 不换 token，重定向登录错误页', async () => {

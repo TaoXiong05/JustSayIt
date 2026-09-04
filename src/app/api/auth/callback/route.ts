@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   const clearState = 'justsayit.oauth_state=; Path=/; Max-Age=0';
 
   try {
-    const { idToken, refreshToken } = await exchangeCode(code);
+    const { idToken, refreshToken } = await exchangeCode(code, url.origin);
     const profile = await verifyIdToken(idToken, expectedNonce);
     const refreshTokenEnc = refreshToken ? encryptRefreshToken(refreshToken) : undefined;
     await userRepo.findOrCreateUser({ ...profile, refreshTokenEnc });
