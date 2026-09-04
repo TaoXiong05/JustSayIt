@@ -5,6 +5,7 @@ import {
   AiResponseSchema,
   toCents,
   toTransaction,
+  isValidYuanAmount,
 } from '@/lib/ai/schema';
 
 const valid = {
@@ -89,5 +90,27 @@ describe('toTransaction', () => {
   it('AI 明确给出币种时不被默认值覆盖', () => {
     const t = toTransaction({ ...valid, currency: 'USD' }, { id: 'tx2', defaultCurrency: 'AUD' });
     expect(t.currency).toBe('USD');
+  });
+});
+
+describe('isValidYuanAmount', () => {
+  it('正数且最多两位小数时合法', () => {
+    expect(isValidYuanAmount(54.3)).toBe(true);
+    expect(isValidYuanAmount(1)).toBe(true);
+    expect(isValidYuanAmount(0.01)).toBe(true);
+  });
+
+  it('超过两位小数时不合法', () => {
+    expect(isValidYuanAmount(1.005)).toBe(false);
+  });
+
+  it('零或负数时不合法', () => {
+    expect(isValidYuanAmount(0)).toBe(false);
+    expect(isValidYuanAmount(-5)).toBe(false);
+  });
+
+  it('NaN/Infinity 时不合法', () => {
+    expect(isValidYuanAmount(NaN)).toBe(false);
+    expect(isValidYuanAmount(Infinity)).toBe(false);
   });
 });

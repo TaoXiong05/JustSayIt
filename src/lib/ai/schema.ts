@@ -26,6 +26,11 @@ export type CategoryKey = (typeof ALL_CATEGORIES)[number];
 /** 金额最多两位小数——规则三的前置校验，越界则 toCents 不再可证明正确 */
 const atMostTwoDecimals = (n: number) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6;
 
+/** 编辑表单校验用户手改的金额——同一条规则（正数、最多两位小数），供 UI 层复用。 */
+export function isValidYuanAmount(n: number): boolean {
+  return Number.isFinite(n) && n > 0 && atMostTwoDecimals(n);
+}
+
 export const AiTransactionSchema = z
   .object({
     type: z.enum(['EXPENSE', 'INCOME']),
