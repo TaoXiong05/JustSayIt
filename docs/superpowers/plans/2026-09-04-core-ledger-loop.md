@@ -6,7 +6,7 @@
 
 **Architecture:** 事件日志是唯一真相来源，存于 IndexedDB，只追加不修改。启动时全量读出、在内存中重放成账本状态，UI 通过 `useSyncExternalStore` 订阅。AI 结构化经后端代理调用 Groq，返回值由 Zod 二次校验后才允许入库。
 
-**Tech Stack:** Next.js 15 (App Router) · TypeScript · Zod · idb · Vitest · fake-indexeddb · Groq (`qwen/qwen3.8-27b`)
+**Tech Stack:** Node 24 · Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Zod · idb · Vitest · fake-indexeddb · Groq (`qwen/qwen3.8-27b`)
 
 **Spec:** `docs/superpowers/specs/2026-09-04-justsayit-design.md`（提交于 `bce590b`）
 
@@ -24,7 +24,8 @@
 - **Groq 调用参数固定**：`model=qwen/qwen3.8-27b`、`temperature=0`、`reasoning_effort='none'`、`response_format` 为 strict json_schema（§10.2）。
 - **Groq strict 模式 schema 要求**（§10.2b）：所有字段必须列入 `required`、所有对象 `additionalProperties: false`、可空字段用 `{"type":["string","null"]}` 而非 `nullable`。
 - **`getSnapshot` 只返回整个 ledger**，任何派生用 `useMemo`（§6.6）。在 `getSnapshot` 里做筛选会导致无限重渲染。
-- Node ≥ 22。包管理器 npm。
+- **核心版本锁定**：Node 24（目标运行时；开发机为 v25，通过 `package.json` 的 `engines` 声明约束，生产以 `node:24-alpine` 为准）、Next 16、React 19、Tailwind v4。包管理器 npm。安装后必须核对实际 major 版本（Task 1 Step 1），不接受 `@latest` 解析出的其他 major。
+- **本 Plan 不做视觉设计。** 组件只写语义化 HTML 结构，不写 `className` 样式。Tailwind v4 在 Task 1 接好管线即可，具体样式由用户后续自行编写。
 
 ---
 
@@ -45,6 +46,7 @@
 | `src/components/Composer.tsx` | 输入区：文本框 + 提交按钮 + submitting 状态 |
 | `src/components/TransactionRow.tsx` | 单条账目行（Plan 4 的统计明细将复用此组件） |
 | `src/components/LedgerList.tsx` | 按日分组的列表 |
+| `src/app/globals.css` | Tailwind v4 入口（`@import "tailwindcss";`），本 Plan 不写具体样式 |
 | `src/app/page.tsx` | 主屏组装 |
 
 ---
@@ -52,22 +54,39 @@
 ## Task 1: 项目脚手架与测试环境
 
 **Files:**
-- Create: `package.json`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `vitest.setup.ts`, `.env.example`, `src/app/layout.tsx`, `src/app/page.tsx`
+- Create: `package.json`, `tsconfig.json`, `next.config.ts`, `postcss.config.mjs`, `vitest.config.ts`, `vitest.setup.ts`, `.env.example`, `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`
 - Modify: `.gitignore`
 
 **Interfaces:**
 - Consumes: 无
-- Produces: 可运行的 `npm test` 与 `npm run dev`；路径别名 `@/*` → `src/*`
+- Produces: 可运行的 `npm test` 与 `npm run dev`；路径别名 `@/*` → `src/*`；Tailwind v4 管线就绪
 
 - [ ] **Step 1: 初始化项目并安装依赖**
 
 ```bash
+node -v    # 记录实际版本；本机为 v25 属已知情况，见下方说明
 npm init -y
-npm install next@latest react@latest react-dom@latest zod idb
-npm install -D typescript @types/node @types/react @types/react-dom \
+npm install next@^16 react@^19 react-dom@^19 zod idb
+npm install -D typescript @types/node@^24 @types/react@^19 @types/react-dom@^19 \
+  tailwindcss@^4 @tailwindcss/postcss \
   vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/user-event \
   fake-indexeddb
 ```
+
+装完立刻核对 major 版本，**不符必须停下修正**（`@latest` 会随时间漂移到别的 major，事后再发现要重做后续所有任务）：
+
+Run: `npm ls next react react-dom tailwindcss --depth=0`
+Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`
+
+**Node 版本说明**：目标运行时是 **Node 24 LTS**（生产 Docker 镜像与 CI 以此为准），但当前开发机跑的是 v25。v25 能正常跑 Next 16，开发时不必强行降级；风险在于**误用只有 v25 才有的 API，到 Node 24 的生产环境才炸**。把约束写进 `package.json` 让它成为可检查的事实，而不是一句口头约定：
+
+```json
+{
+  "engines": { "node": ">=24 <25" }
+}
+```
+
+并在 `.npmrc` 中写入 `engine-strict=false`——本地不因版本不符而拒绝安装，但 Plan 4 的 Docker 构建将以 `node:24-alpine` 为基础镜像，届时不兼容会立刻暴露。
 
 - [ ] **Step 2: 写配置文件**
 
@@ -107,6 +126,18 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+```
+
+`postcss.config.mjs`（Tailwind v4 通过 PostCSS 插件接入；v4 默认没有 `tailwind.config.js`，配置写在 CSS 里）：
+
+```js
+const config = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+};
+
+export default config;
 ```
 
 `vitest.config.ts`：
@@ -152,9 +183,17 @@ import 'fake-indexeddb/auto';
 
 - [ ] **Step 4: 写最小页面骨架**
 
+`src/app/globals.css`（Tailwind v4 是 CSS-first：一行 import 即全部，不再需要 `@tailwind base/components/utilities` 三段式）：
+
+```css
+@import "tailwindcss";
+```
+
 `src/app/layout.tsx`：
 
 ```tsx
+import './globals.css';
+
 export const metadata = { title: 'JustSayIt' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -2376,7 +2415,9 @@ export default function Home() {
 Run: `npm test && npm run typecheck`
 Expected: 全部 PASS，tsc 无错误
 
-- [ ] **Step 5: 手工端到端验收**
+- [ ] **Step 5: 手工端到端验收（由用户执行，执行代理不做）**
+
+> **执行代理注意**：本步骤需要真实 `GROQ_API_KEY`、真实浏览器与人工判读，**不属于代理工作范围**。代理只需确认 `npm test` 与 `npm run typecheck` 通过，然后把下面这份清单原样交给用户，由用户自行验收。不要尝试启动 dev server、不要用浏览器工具代跑、不要因为无法验收而阻塞后续任务。
 
 ```bash
 cp .env.example .env.local   # 填入真实 GROQ_API_KEY
@@ -2679,7 +2720,7 @@ Plan 1 完成时应满足：
 
 - `npm test` 全绿，`npm run typecheck` 无错误
 - `grep -ril "groq" src/ | grep -v __tests__` 只命中一个文件
-- 手工验收 7 项全部通过
+- 手工验收 7 项全部通过（**由用户执行**——视觉、真实 AI 调用、录音与文字输入的实际效果不在代理验证范围内）
 - 金额在整个链路中以整数分存储，展示层才转两位小数
 - 事件日志只追加，刷新后数据完好
 - 提交瞬间出现占位行，用户不面对 spinner；结果落地后可一键撤销
