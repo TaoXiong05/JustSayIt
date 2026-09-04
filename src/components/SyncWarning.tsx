@@ -5,6 +5,7 @@ import { subscribe, getSnapshot, classifyBTier, type SyncState } from '@/lib/syn
 import { syncNow } from '@/lib/sync/engine';
 import { exportBackup } from '@/lib/sync/export';
 import { useLocale } from '@/lib/i18n/context';
+import { isIOS, isStandalone } from '@/lib/platform';
 
 const EMPTY: SyncState = {
   unsyncedIds: [],
@@ -40,9 +41,12 @@ export function SyncWarning() {
   }
 
   if (tier === '24to72h') {
+    // "可能被清除"仅 iOS + 未安装为真（spec §8.6）；已安装的 iOS PWA
+    // 有 ITP 豁免，其它平台用更温和的"尚未备份"，避免制造不必要的焦虑。
+    const iosAtRisk = isIOS() && !isStandalone();
     return (
       <div role="status">
-        <p>{t('syncWarningBanner')}</p>
+        <p>{t(iosAtRisk ? 'syncWarningBannerIOS' : 'syncWarningBanner')}</p>
       </div>
     );
   }

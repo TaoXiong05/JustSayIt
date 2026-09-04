@@ -12,10 +12,15 @@ import {
 
 vi.mock('@/lib/sync/export', () => ({ exportBackup: vi.fn() }));
 vi.mock('@/lib/sync/engine', () => ({ syncNow: vi.fn() }));
+vi.mock('@/lib/platform', () => ({ isIOS: vi.fn(), isStandalone: vi.fn() }));
+
+import { isIOS, isStandalone } from '@/lib/platform';
 
 beforeEach(() => {
   markSynced(getSnapshot().unsyncedIds);
   clearAuthError();
+  vi.mocked(isIOS).mockReturnValue(false);
+  vi.mocked(isStandalone).mockReturnValue(false);
 });
 afterEach(() => vi.useRealTimers());
 
@@ -54,5 +59,38 @@ describe('SyncWarning', () => {
     markAuthError();
     render(<SyncWarning />);
     expect(screen.getByRole('button', { name: 'Retry sync' })).toBeDefined();
+  });
+});
+
+describe('SyncWarning 平台分支文案（spec §8.6）', () => {
+  it('iOS + 未安装时用"可能被清除"文案', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
+    markUnsynced(['tx1']);
+    vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
+    render(<SyncWarning />);
+    expect(screen.getByText(/Safari may clear this data/)).toBeDefined();
+  });
+
+  it('iOS 但已安装时不用"可能被清除"文案（有 ITP 豁免，spec §8.2）', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(true);
+    vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
+    markUnsynced(['tx1']);
+    vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
+    render(<SyncWarning />);
+    expect(screen.getByText(/Not backed up to the cloud yet/)).toBeDefined();
+    expect(screen.queryByText(/Safari may clear/)).toBeNull();
+  });
+
+  it('非 iOS 平台一律用"尚未备份到云端"文案', () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
+    markUnsynced(['tx1']);
+    vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
+    render(<SyncWarning />);
+    expect(screen.getByText(/Not backed up to the cloud yet/)).toBeDefined();
   });
 });

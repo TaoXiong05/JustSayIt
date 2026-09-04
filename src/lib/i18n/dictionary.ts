@@ -46,6 +46,7 @@ export type DictKey =
   | 'syncPendingCount'
   | 'syncedUpToDate'
   | 'syncWarningBanner'
+  | 'syncWarningBannerIOS'
   | 'syncWarningModalTitle'
   | 'syncRetry'
   | 'exportBackup';
@@ -75,6 +76,8 @@ const en: Record<DictKey, DictValue> = {
   syncPendingCount: ({ count }) => `${count} pending sync`,
   syncedUpToDate: 'Synced',
   syncWarningBanner: 'Not backed up to the cloud yet — check your connection.',
+  syncWarningBannerIOS:
+    'Not synced yet — Safari may clear this data after 7 days. Add to Home Screen to keep it safe.',
   syncWarningModalTitle: 'Some entries have been unsynced for a while.',
   syncRetry: 'Retry sync',
   exportBackup: 'Export backup',
@@ -112,6 +115,7 @@ const zh: Record<DictKey, DictValue> = {
   syncPendingCount: ({ count }) => `${count} 笔待同步`,
   syncedUpToDate: '已同步',
   syncWarningBanner: '尚未备份到云端，检查一下网络。',
+  syncWarningBannerIOS: '尚未同步——Safari 可能在 7 天后清除这些数据，添加到主屏幕可以避免。',
   syncWarningModalTitle: '有些账目已经很久没同步了。',
   syncRetry: '重试同步',
   exportBackup: '导出备份',
