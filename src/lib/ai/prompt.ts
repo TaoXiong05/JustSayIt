@@ -1,4 +1,4 @@
-import { ALL_CATEGORIES } from '@/lib/ai/schema';
+import { ALL_CATEGORIES, type CategoryKey } from '@/lib/ai/schema';
 
 export type StructureContext = {
   /** 用户本地时间，ISO 8601 含时区偏移 */
@@ -10,7 +10,7 @@ export type StructureContext = {
 };
 
 /**
- * 每个分类 key 的中文释义，用于组装 CATEGORY_GLOSSARY。
+ * 每个分类 key 的中文释义，用于组装 CATEGORY_GLOSSARY_TEXT。
  * 这不是调优而是正确性要求（spec §10.2a）——缺少释义时实测出现
  * 「Woolworths 买菜」被归入 GIFT 的错误。
  *
@@ -19,7 +19,7 @@ export type StructureContext = {
  * 第 18 个分类而这里未同步补释义时，缺键会导致 TypeScript 编译报错，
  * 不会静默漏释义。
  */
-const CATEGORY_GLOSS: Record<(typeof ALL_CATEGORIES)[number], string> = {
+const CATEGORY_GLOSS_MAP: Record<CategoryKey, string> = {
   FOOD: '餐饮、买菜、外卖、咖啡、零食',
   TRANSPORT: '交通、加油、停车、打车、公共交通',
   SHOPPING: '服饰、电子产品、家居用品等非日常采购',
@@ -40,8 +40,8 @@ const CATEGORY_GLOSS: Record<(typeof ALL_CATEGORIES)[number], string> = {
 };
 
 /** 由 ALL_CATEGORIES 逐一生成释义文本，保证覆盖全部 key 且随 schema 同步。 */
-const CATEGORY_GLOSSARY = ALL_CATEGORIES.map(
-  (key) => `   ${key} ${CATEGORY_GLOSS[key]}`,
+const CATEGORY_GLOSSARY_TEXT = ALL_CATEGORIES.map(
+  (key) => `   ${key} ${CATEGORY_GLOSS_MAP[key]}`,
 ).join('\n');
 
 /**
@@ -68,6 +68,6 @@ export function buildSystemPrompt(ctx: StructureContext): string {
    （McDonald's、Woolworths、Uber Eats），无法识别时填 null。
 7. description 简要描述事由，不要重复 merchant 的内容。
 8. category 从下列释义中选择，无法判断时用 OTHER：
-${CATEGORY_GLOSSARY}
-9. 输入中不包含任何收支信息时，返回空的 records 数组。不要凭空编造记录。`;
+${CATEGORY_GLOSSARY_TEXT}
+9. 输入中不包含任何收支信息时，不要生成任何记录，也不要凭空编造。`;
 }
