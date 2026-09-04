@@ -73,7 +73,15 @@ export default function Home() {
       )}
       <LedgerList transactions={transactions} />
       {lastAdded.length > 0 && (
-        <UndoToast count={lastAdded.length} onUndo={undo} onDismiss={clearToast} />
+        // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
+        // 让其内部的自动关闭计时器真正重新开始，而不是复用上一批还在
+        // 倒计时的那个（同 length 的连续两批单笔提交也会被区分开）。
+        <UndoToast
+          key={lastAdded.join(',')}
+          count={lastAdded.length}
+          onUndo={undo}
+          onDismiss={clearToast}
+        />
       )}
       <Composer onSubmit={handleSubmit} />
     </main>

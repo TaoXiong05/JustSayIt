@@ -83,6 +83,53 @@ describe('乐观 UI', () => {
     expect(screen.getByText(/还没有记录/)).toBeDefined();
   });
 
+  it('连续两次提交时，UndoToast 随新一批重新挂载，旧计时器被清理、新计时器独立起算（回归：Finding 2）', async () => {
+    // 用真实计时器 + 监听 setTimeout/clearTimeout 调用，而不是伪造计时器：
+    // 伪造 setTimeout 会连带影响 React scheduler（它优先用 setImmediate，
+    // 但对已捕获的 localSetTimeout 引用敏感）与 testing-library 的 waitFor
+    // 轮询机制，在这套 jsdom + React 18 组合下会直接挂起测试。
+    // 直接断言"关键效果"更稳妥：旧 batch 的计时器是否在第二次提交时被
+    // clearTimeout 清理，第二批是否拿到一个全新的 6s 计时器——这正是
+    // key={lastAdded.join(',')} 强制重新挂载要保证的两件事，比真的等待
+    // 6 秒观察 DOM 更直接、也更快。
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    const AUTO_DISMISS_MS = 6000; // 与 UndoToast.tsx 内的常量保持一致
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ records: [oneRecord] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ records: [oneRecord] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<Home />);
+    await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
+    await user.click(screen.getByRole('button', { name: '提交' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeDefined());
+
+    const dismissCallsAfterFirst = setTimeoutSpy.mock.calls.filter(
+      ([, delay]) => delay === AUTO_DISMISS_MS,
+    );
+    expect(dismissCallsAfterFirst).toHaveLength(1);
+    const firstTimerId = setTimeoutSpy.mock.results[setTimeoutSpy.mock.calls.indexOf(dismissCallsAfterFirst[0])].value;
+    expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(false);
+
+    // 第一批的 toast 还显示着时，提交第二批
+    await user.type(screen.getByRole('textbox'), '午餐麦当劳30');
+    await user.click(screen.getByRole('button', { name: '提交' }));
+    await waitFor(() => expect(screen.getByText(/已记录 1 笔/)).toBeDefined());
+
+    // 修复后：UndoToast 因 key 改变而卸载重挂——旧 effect 的清理函数必须
+    // clearTimeout 掉第一批的计时器，新 effect 必须重新 setTimeout 一个
+    //全新的 6s 计时器，而不是复用/延续第一批那个
+    expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(true);
+    const dismissCallsAfterSecond = setTimeoutSpy.mock.calls.filter(
+      ([, delay]) => delay === AUTO_DISMISS_MS,
+    );
+    expect(dismissCallsAfterSecond).toHaveLength(2);
+  });
+
   it('失败时占位行消失且输入内容保留', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }));
     const user = userEvent.setup();
