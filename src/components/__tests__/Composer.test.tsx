@@ -17,6 +17,49 @@ describe('Composer', () => {
     await waitFor(() => expect((box as HTMLTextAreaElement).value).toBe(''));
   });
 
+  it('提交瞬间（在 onSubmit resolve 之前）就清空输入框，而非等成功后才清空（回归：Finding 3）', async () => {
+    const user = userEvent.setup();
+    let release: () => void = () => {};
+    const onSubmit = vi.fn(() => new Promise<void>((r) => (release = r)));
+    render(<Composer onSubmit={onSubmit} />);
+
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.type(box, '早餐麦当劳25');
+    await user.click(screen.getByRole('button', { name: '提交' }));
+
+    // 此时 onSubmit 尚未 resolve（仍在"提交中…"），框应已经清空——
+    // 这样用户才能在这次提交仍在途时安心继续输入下一句，
+    // 不会被随后到来的成功回调用 setText('') 误清掉
+    await screen.findByRole('button', { name: '提交中…' });
+    expect(box.value).toBe('');
+
+    release();
+    await waitFor(() => expect(screen.getByRole('button', { name: '提交' })).toBeDefined());
+  });
+
+  it('提交中在框里继续输入下一句，前一次提交成功后不会清掉这句新内容（回归：Finding 3）', async () => {
+    const user = userEvent.setup();
+    let release: () => void = () => {};
+    const onSubmit = vi.fn(() => new Promise<void>((r) => (release = r)));
+    render(<Composer onSubmit={onSubmit} />);
+
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.type(box, '早餐麦当劳25');
+    await user.click(screen.getByRole('button', { name: '提交' }));
+    await screen.findByRole('button', { name: '提交中…' });
+
+    // 第一笔仍在途时，用户已经开始输入第二句
+    await user.type(box, '午餐30');
+    expect(box.value).toBe('午餐30');
+
+    // 第一笔此刻才成功——旧代码里 setText('') 清的是"此刻框里的内容"，
+    // 会把用户刚打的第二句一起清掉；修复后第一笔的清空发生在提交瞬间，
+    // 与此刻框里的新内容无关
+    release();
+    await waitFor(() => expect(screen.getByRole('button', { name: '提交' })).toBeDefined());
+    expect(box.value).toBe('午餐30');
+  });
+
   it('空输入时提交按钮禁用', () => {
     render(<Composer onSubmit={vi.fn()} />);
     expect(screen.getByRole('button', { name: '提交' })).toHaveProperty('disabled', true);
