@@ -1,4 +1,4 @@
-import { groqStructure } from '@/lib/ai/providers/groq';
+import { groqStructure, groqTranscribe } from '@/lib/ai/providers/groq';
 import type { StructureContext } from '@/lib/ai/prompt';
 import type { AiTransaction } from '@/lib/ai/schema';
 
@@ -14,4 +14,12 @@ export function structure(
   ctx: StructureContext,
 ): Promise<AiTransaction[]> {
   return groqStructure(text, ctx);
+}
+
+/** STT 窄接口（spec §9、§10.3）：业务层只见 Audio → Text */
+export function transcribe(
+  audio: Blob,
+  vocab: string[],
+): Promise<{ text: string }> {
+  return groqTranscribe(audio, vocab);
 }
