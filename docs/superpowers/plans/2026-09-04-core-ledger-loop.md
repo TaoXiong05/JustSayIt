@@ -556,7 +556,9 @@ describe('buildSystemPrompt', () => {
 
   it('不含任何输出格式指令（§10.6 提示词纪律）', () => {
     const p = buildSystemPrompt(ctx);
-    expect(p).not.toMatch(/JSON\s*数组|```|markdown|输出格式/i);
+    // 不只禁「JSON」字样——也禁复述 schema 信封与字段形状，
+    // 否则「不讲输出格式」这条断言会被措辞绕过（如「返回空的 records 数组」）。
+    expect(p).not.toMatch(/JSON|```|markdown|输出格式|records|字段/i);
   });
 
   it('明确要求无账目时返回空数组', () => {
@@ -632,7 +634,7 @@ export function buildSystemPrompt(ctx: StructureContext): string {
 7. description 简要描述事由，不要重复 merchant 的内容。
 8. category 从下列释义中选择，无法判断时用 OTHER：
 ${CATEGORY_GLOSSARY}
-9. 输入中不包含任何收支信息时，返回空的 records 数组。不要凭空编造记录。`;
+9. 输入中不包含任何收支信息时，不要生成任何记录，也不要凭空编造。`;
 }
 ```
 
