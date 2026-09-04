@@ -9,9 +9,14 @@ import {
   pendingRawInputsFrom,
 } from '@/lib/ledger/store';
 import type { Ledger } from '@/lib/ledger/replay';
-import type { RawInputQueuedPayload } from '@/lib/ledger/events';
+import type { LedgerEvent, RawInputQueuedPayload } from '@/lib/ledger/events';
 
 const EMPTY: Ledger = { transactions: [] };
+/**
+ * 稳定引用：SSR/hydration 期间 React 会反复调用 getServerSnapshot，
+ * 每次必须返回同一个数组，否则被判定为"每次渲染快照都变了"进而无限循环。
+ */
+const EMPTY_EVENTS: LedgerEvent[] = [];
 
 export function useLedger(): Ledger {
   useEffect(() => {
@@ -27,6 +32,6 @@ export function useLedger(): Ledger {
  * React 判定状态持续变化，无限重渲染（spec §6.6 的既定规则）。
  */
 export function usePendingRawInputs(): RawInputQueuedPayload[] {
-  const events = useSyncExternalStore(subscribe, getEventsSnapshot, () => []);
+  const events = useSyncExternalStore(subscribe, getEventsSnapshot, () => EMPTY_EVENTS);
   return useMemo(() => pendingRawInputsFrom(events), [events]);
 }
