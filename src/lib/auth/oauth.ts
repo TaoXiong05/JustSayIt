@@ -4,8 +4,15 @@ const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const JWKS_URI = 'https://www.googleapis.com/oauth2/v3/certs';
 
-/** §11.2：一次性请求全部 scope，不使用增量授权 */
-export const SCOPE = 'openid email profile drive.appdata';
+/**
+ * §11.2：一次性请求全部 scope，不使用增量授权。
+ * openid/email/profile 是 Google 识别的内置短别名会被自动展开；
+ * drive.appdata 不是短别名，必须写完整 scope URI，否则 Google 返回
+ * invalid_scope（实测：短别名报错时 Google 只把 email/profile 展开进
+ * valid 列表，drive.appdata 会原样出现在 invalid 里）。
+ */
+export const SCOPE =
+  'openid email profile https://www.googleapis.com/auth/drive.appdata';
 
 function clientConfig() {
   const id = process.env.GOOGLE_CLIENT_ID;

@@ -23,7 +23,11 @@ describe('oauth', () => {
   it('authorize url 包含全部 scope 与 access_type=offline', () => {
     const url = buildAuthorizeUrl('st', 'n1');
     expect(url).toContain('openid');
-    expect(url).toContain('drive.appdata');
+    // scope 经 URLSearchParams 编码，用 decodeURIComponent 断言完整 scope URI
+    // （不能只断言子串 'drive.appdata'：短别名和完整 URI 都会命中，测不出 §11.2 要求的格式）
+    expect(decodeURIComponent(url)).toContain(
+      'https://www.googleapis.com/auth/drive.appdata',
+    );
     expect(url).toContain('access_type=offline');
     expect(url).toContain('state=st');
     expect(url).toContain('nonce=n1');
@@ -32,7 +36,9 @@ describe('oauth', () => {
   });
 
   it('SCOPE 一次性请求全部 scope（§11.2）', () => {
-    expect(SCOPE).toBe('openid email profile drive.appdata');
+    expect(SCOPE).toBe(
+      'openid email profile https://www.googleapis.com/auth/drive.appdata',
+    );
   });
 
   it('exchangeCode 请求 token endpoint 并解析 id_token / refresh_token', async () => {

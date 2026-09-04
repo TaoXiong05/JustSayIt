@@ -13,6 +13,10 @@ type Listener = () => void;
 let cached: SessionState = { user: null, loading: true };
 const listeners = new Set<Listener>();
 
+// 稳定引用：SSR/hydration 期间 React 会反复调用 getServerSnapshot，
+// 每次都必须返回同一个对象，否则被判定为"每次渲染快照都变了"进而死循环。
+const SERVER_SNAPSHOT: SessionState = { user: null, loading: true };
+
 function emit(): void {
   for (const l of listeners) l();
 }
@@ -61,7 +65,7 @@ export function useSession(): SessionState {
       };
     },
     getSession,
-    () => ({ user: null, loading: true }),
+    () => SERVER_SNAPSHOT,
   );
 }
 
