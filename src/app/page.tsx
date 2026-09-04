@@ -16,6 +16,7 @@ import { initSync } from '@/lib/sync/init';
 import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession, fetchLogout } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
+import { randomUUID } from '@/lib/platform';
 
 const DEFAULT_CURRENCY = 'AUD';
 
@@ -50,7 +51,7 @@ export default function Home() {
   }, [lastAdded]);
 
   async function handleSubmit(text: string) {
-    const pendingId = crypto.randomUUID();
+    const pendingId = randomUUID();
     // 乐观插入：提交瞬间就出现占位行，用户不面对 spinner（spec §9、§16.5）
     setPending((p) => [...p, { id: pendingId, text }]);
     try {

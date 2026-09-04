@@ -12,3 +12,19 @@ export function isStandalone(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
   return window.matchMedia('(display-mode: standalone)').matches;
 }
+
+/**
+ * `crypto.randomUUID()` 要求 secure context（HTTPS 或 localhost），
+ * 局域网设备用 http://<ip 或域名>:port 访问时该方法不存在（会是
+ * undefined），但 `crypto.getRandomValues()` 没有这个限制，故在此兜底。
+ */
+export function randomUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10, 16).join('')}`;
+}

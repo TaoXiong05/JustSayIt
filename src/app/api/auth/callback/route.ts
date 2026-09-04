@@ -8,6 +8,9 @@ const secure = process.env.NODE_ENV === 'production';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  const proto = req.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '');
+  const origin = host ? `${proto}://${host}` : url.origin;
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
@@ -28,7 +31,7 @@ export async function GET(req: Request) {
   const clearState = 'justsayit.oauth_state=; Path=/; Max-Age=0';
 
   try {
-    const { idToken, refreshToken } = await exchangeCode(code, url.origin);
+    const { idToken, refreshToken } = await exchangeCode(code, origin);
     const profile = await verifyIdToken(idToken, expectedNonce);
     const refreshTokenEnc = refreshToken ? encryptRefreshToken(refreshToken) : undefined;
     await userRepo.findOrCreateUser({ ...profile, refreshTokenEnc });

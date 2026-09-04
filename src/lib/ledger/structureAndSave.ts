@@ -2,6 +2,7 @@ import { toTransaction, AiResponseSchema, type Transaction } from '@/lib/ai/sche
 import { normalizeMerchant } from '@/lib/ledger/normalize';
 import { knownMerchants } from '@/lib/ledger/store';
 import { throwApiError } from '@/lib/apiError';
+import { randomUUID } from '@/lib/platform';
 
 export type StructureRequestContext = {
   localTime: string;
@@ -33,7 +34,7 @@ export async function structureTextToTransactions(
   return records.map((r) =>
     toTransaction(
       { ...r, merchant: normalizeMerchant(r.merchant, known) },
-      { id: crypto.randomUUID(), defaultCurrency: ctx.defaultCurrency },
+      { id: randomUUID(), defaultCurrency: ctx.defaultCurrency },
     ),
   );
 }

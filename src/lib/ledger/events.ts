@@ -1,4 +1,5 @@
 import type { Transaction } from '@/lib/ai/schema';
+import { randomUUID } from '@/lib/platform';
 
 export const SCHEMA_VERSION = 1 as const;
 
@@ -11,7 +12,7 @@ const DEVICE_ID_KEY = 'justsayit.deviceId';
 export function getDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = randomUUID();
     localStorage.setItem(DEVICE_ID_KEY, id);
   }
   return id;
@@ -58,7 +59,7 @@ export type LedgerEvent =
 
 function base(): BaseEvent {
   return {
-    eventId: crypto.randomUUID(),
+    eventId: randomUUID(),
     deviceId: getDeviceId(),
     createdAt: new Date().toISOString(),
     schemaVersion: SCHEMA_VERSION,
@@ -91,7 +92,7 @@ export function createRawInputQueued(
   return {
     ...base(),
     kind: 'raw_input_queued',
-    payload: { id: crypto.randomUUID(), ...input },
+    payload: { id: randomUUID(), ...input },
   };
 }
 
