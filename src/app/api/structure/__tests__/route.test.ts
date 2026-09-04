@@ -59,6 +59,18 @@ describe('POST /api/structure', () => {
     expect(res.status).toBe(400);
   });
 
+  it('text 超出最大长度返回 400（回归：Finding 5）', async () => {
+    const res = await POST(req({ ...body, text: 'x'.repeat(2001) }));
+    expect(res.status).toBe(400);
+    expect(structure).not.toHaveBeenCalled();
+  });
+
+  it('text 恰好在最大长度内时正常放行', async () => {
+    vi.mocked(structure).mockResolvedValue([]);
+    const res = await POST(req({ ...body, text: 'x'.repeat(2000) }));
+    expect(res.status).toBe(200);
+  });
+
   it('非 development 且未显式放行时返回 403', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('ALLOW_UNAUTHENTICATED_API', 'false');

@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { structure } from '@/lib/ai';
 
 const RequestSchema = z.object({
-  text: z.string().trim().min(1),
+  // .max(2000) 是防御性上限，非用户可及的真实场景（一句记账口述远不到这个
+  // 长度）——防止在 ALLOW_UNAUTHENTICATED_API=true 的未鉴权部署下，
+  // 单个请求把任意长的正文原样转发给 Groq，不成比例地消耗运营者的配额。
+  text: z.string().trim().min(1).max(2000),
   localTime: z.string().min(1),
   timeZone: z.string().min(1),
   defaultCurrency: z.string().length(3),
