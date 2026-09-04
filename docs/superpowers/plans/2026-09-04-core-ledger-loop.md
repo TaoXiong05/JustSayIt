@@ -1521,10 +1521,12 @@ describe('事件存储', () => {
     expect(all[0].eventId).toBe('a');
   });
 
-  it('保持写入顺序', async () => {
-    await appendEvents([evt('a'), evt('b')]);
-    await appendEvents([evt('c')]);
-    expect((await readAllEvents()).map((e) => e.eventId)).toEqual(['a', 'b', 'c']);
+  it('保持写入顺序（不依赖 eventId 的字典序——真实场景是随机 UUID）', async () => {
+    // 故意让插入顺序与 eventId 字典序相反：若实现按主键（eventId）排序返回，
+    // 这里会读出 ['a','b','c']（字典序）而非 ['c','a','b']（写入序），测试即失败。
+    await appendEvents([evt('c'), evt('a')]);
+    await appendEvents([evt('b')]);
+    expect((await readAllEvents()).map((e) => e.eventId)).toEqual(['c', 'a', 'b']);
   });
 
   it('同一 eventId 重复写入不产生重复记录（同步去重的基础）', async () => {
@@ -1558,14 +1560,19 @@ const STORE = 'events';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
+const EVENT_ID_INDEX = 'by-eventId';
+
 function db(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(database) {
         if (!database.objectStoreNames.contains(STORE)) {
-          // eventId 作为主键 —— 重复写入同一事件时自动覆盖，
-          // 这正是多设备日志合并去重所需要的语义（§7）
-          database.createObjectStore(STORE, { keyPath: 'eventId' });
+          // out-of-line 自增主键（不写进对象本身，getAll 按此键顺序返回，
+          // 即写入顺序——eventId 是随机 UUID，若拿它当主键，getAll 会按
+          // 字典序而非写入序返回，破坏 replay 依赖的因果顺序）。
+          // eventId 建唯一索引，用于写入时判重。
+          const store = database.createObjectStore(STORE, { autoIncrement: true });
+          store.createIndex(EVENT_ID_INDEX, 'eventId', { unique: true });
         }
       },
     });
@@ -1577,7 +1584,15 @@ export async function appendEvents(events: LedgerEvent[]): Promise<void> {
   if (events.length === 0) return;
   const d = await db();
   const tx = d.transaction(STORE, 'readwrite');
-  for (const e of events) tx.store.put(e);
+  // 重复写入同一 eventId 时跳过而非覆盖——事件不可变，两次写入的内容
+  // 本就该相同；这也顺带处理了同一批次内出现重复 id 的情况。
+  const seen = new Set(await tx.store.index(EVENT_ID_INDEX).getAllKeys());
+  for (const e of events) {
+    if (!seen.has(e.eventId)) {
+      tx.store.add(e);
+      seen.add(e.eventId);
+    }
+  }
   await tx.done;
 }
 
@@ -1596,8 +1611,6 @@ export async function clearAllEvents(): Promise<void> {
 
 Run: `npx vitest run src/lib/ledger/__tests__/db.test.ts`
 Expected: PASS，5 个测试全绿
-
-> 若"保持写入顺序"一项失败：`getAll` 按主键顺序返回，而 `eventId` 是随机 UUID。此时改为在 store 上使用自增序号作为主键、`eventId` 建唯一索引。测试已覆盖该行为，按测试为准调整实现。
 
 - [ ] **Step 5: Commit**
 
