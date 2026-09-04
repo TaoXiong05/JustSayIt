@@ -19,12 +19,12 @@
 - **分类必须是 17 个枚举之一，且在 structured output 的 schema 层强制**（§5.3 规则一），不靠提示词请求。
 - **事件不可变。** 修改与删除表达为追加新事件，永不改写已有事件（§5.1）。
 - **零内容日志**（§10.5）：后端日志只记 `userId`、模型名、token 数、耗时、成功/失败、错误类型，**永不记录 prompt 与 response 内容**。
-- **provider 隔离**（§10.3）：`grep -ri "groq" src/` 只应命中 `src/lib/ai/providers/groq.ts` 一个文件。模型 ID、`language=zh`、`strict: true`、`reasoning_effort` 等参数全部封在该文件内。
+- **provider 隔离**（§10.3）：provider 的**具体取值**——模型 ID（`qwen/...`）、端点 `api.groq.com`、`reasoning_effort`、`json_schema`/`strict` 等私有参数——只允许出现在 `src/lib/ai/providers/groq.ts` 一个文件。`src/lib/ai/index.ts` 按名字 import 该 provider 属于接缝本身，不算泄漏。可执行判据见 Task 4 Step 5 与 Task 14 Step 6。
 - **提示词只讲抽取规则，不讲输出格式**（§10.6），且**必须包含全部 17 个分类的中文释义**（§10.2a）——这是正确性要求，不是调优。
 - **Groq 调用参数固定**：`model=qwen/qwen3.8-27b`、`temperature=0`、`reasoning_effort='none'`、`response_format` 为 strict json_schema（§10.2）。
 - **Groq strict 模式 schema 要求**（§10.2b）：所有字段必须列入 `required`、所有对象 `additionalProperties: false`、可空字段用 `{"type":["string","null"]}` 而非 `nullable`。
 - **`getSnapshot` 只返回整个 ledger**，任何派生用 `useMemo`（§6.6）。在 `getSnapshot` 里做筛选会导致无限重渲染。
-- **核心版本锁定**：Node 24（目标运行时；开发机为 v25，通过 `package.json` 的 `engines` 声明约束，生产以 `node:24-alpine` 为准）、Next 16、React 19、Tailwind v4。包管理器 npm。安装后必须核对实际 major 版本（Task 1 Step 1），不接受 `@latest` 解析出的其他 major。
+- **核心版本锁定**：Node 24、Next 16、React 19、Tailwind v4、TypeScript 5。包管理器 npm。开发机与生产（`node:24-alpine`）同为 Node 24，约束由 `package.json` 的 `engines` 配合 `.npmrc` 的 `engine-strict=true` 强制执行。安装后必须核对实际 major 版本（Task 1 Step 1），不接受未固定版本解析出的其他 major——`tsc --noEmit` 是后续每个任务的必过关卡，版本漂移的代价是整条链返工。
 - **本 Plan 不做视觉设计。** 组件只写语义化 HTML 结构，不写 `className` 样式。Tailwind v4 在 Task 1 接好管线即可，具体样式由用户后续自行编写。
 
 ---
@@ -64,10 +64,10 @@
 - [ ] **Step 1: 初始化项目并安装依赖**
 
 ```bash
-node -v    # 记录实际版本；本机为 v25 属已知情况，见下方说明
+node -v    # 必须是 v24.x
 npm init -y
 npm install next@^16 react@^19 react-dom@^19 zod idb
-npm install -D typescript @types/node@^24 @types/react@^19 @types/react-dom@^19 \
+npm install -D typescript@^5 @types/node@^24 @types/react@^19 @types/react-dom@^19 \
   tailwindcss@^4 @tailwindcss/postcss \
   vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/user-event \
   fake-indexeddb
@@ -75,10 +75,12 @@ npm install -D typescript @types/node@^24 @types/react@^19 @types/react-dom@^19 
 
 装完立刻核对 major 版本，**不符必须停下修正**（`@latest` 会随时间漂移到别的 major，事后再发现要重做后续所有任务）：
 
-Run: `npm ls next react react-dom tailwindcss --depth=0`
-Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`
+Run: `npm ls next react react-dom tailwindcss typescript --depth=0`
+Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`、`typescript@5.x`
 
-**Node 版本说明**：目标运行时是 **Node 24 LTS**（生产 Docker 镜像与 CI 以此为准），但当前开发机跑的是 v25。v25 能正常跑 Next 16，开发时不必强行降级；风险在于**误用只有 v25 才有的 API，到 Node 24 的生产环境才炸**。把约束写进 `package.json` 让它成为可检查的事实，而不是一句口头约定：
+**TypeScript 必须留在 5.x**：7.x 是 Go 重写的新编译器，与生态的 `@types` 和工具链不同源。不写 `@^5` 就会静默装上 7.x——这正是本步骤存在的理由。
+
+**Node 版本锁定**：开发机与生产（Plan 4 的 `node:24-alpine`）同为 Node 24 LTS。把它写成可执行的约束，而不是一句口头约定——`package.json`：
 
 ```json
 {
@@ -86,7 +88,13 @@ Expected: `next@16.x`、`react@19.x`、`react-dom@19.x`、`tailwindcss@4.x`
 }
 ```
 
-并在 `.npmrc` 中写入 `engine-strict=false`——本地不因版本不符而拒绝安装，但 Plan 4 的 Docker 构建将以 `node:24-alpine` 为基础镜像，届时不兼容会立刻暴露。
+根目录 `.npmrc`：
+
+```
+engine-strict=true
+```
+
+`engine-strict=true` 让 npm 在 Node 版本不符时**直接拒绝安装**。npm 的默认值是 false，也就是默认只警告不拦截；既然开发机已经在 24 上，就没有理由留着这个逃生口——它唯一的作用是让版本漂移悄悄发生。
 
 - [ ] **Step 2: 写配置文件**
 
@@ -231,6 +239,7 @@ ALLOW_UNAUTHENTICATED_API=false
 next-env.d.ts
 .next/
 coverage/
+*.tsbuildinfo
 ```
 
 - [ ] **Step 6: 写一个冒烟测试确认测试环境可用**
@@ -548,7 +557,9 @@ describe('buildSystemPrompt', () => {
 
   it('不含任何输出格式指令（§10.6 提示词纪律）', () => {
     const p = buildSystemPrompt(ctx);
-    expect(p).not.toMatch(/JSON\s*数组|```|markdown|输出格式/i);
+    // 不只禁「JSON」字样——也禁复述 schema 信封与字段形状，
+    // 否则「不讲输出格式」这条断言会被措辞绕过（如「返回空的 records 数组」）。
+    expect(p).not.toMatch(/JSON|```|markdown|输出格式|records|字段/i);
   });
 
   it('明确要求无账目时返回空数组', () => {
@@ -624,7 +635,7 @@ export function buildSystemPrompt(ctx: StructureContext): string {
 7. description 简要描述事由，不要重复 merchant 的内容。
 8. category 从下列释义中选择，无法判断时用 OTHER：
 ${CATEGORY_GLOSSARY}
-9. 输入中不包含任何收支信息时，返回空的 records 数组。不要凭空编造记录。`;
+9. 输入中不包含任何收支信息时，不要生成任何记录，也不要凭空编造。`;
 }
 ```
 
@@ -880,8 +891,11 @@ Expected: PASS，5 个测试全绿
 
 - [ ] **Step 5: 验证 provider 隔离判据**
 
-Run: `grep -ril "groq" src/ | grep -v __tests__`
-Expected: 只输出 `src/lib/ai/providers/groq.ts`
+Run: `grep -rl "groq" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 至多两个文件——`src/lib/ai/index.ts`（**仅** import 语句提及）与 `src/lib/ai/providers/groq.ts`。Task 5 之前只有后者。
+
+Run: `grep -rlE "qwen|api\.groq\.com|reasoning_effort|json_schema" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 只输出 `src/lib/ai/providers/groq.ts`。**这一条才是真正的隔离判据**——provider 的具体取值（模型 ID、端点、私有参数）只能存在于一个文件；窄接口按名字引用 provider 是接缝本身，不是泄漏。
 
 - [ ] **Step 6: Commit**
 
@@ -1265,13 +1279,15 @@ export type Ledger = {
  * 事件顺序不保证与因果一致（§7），抛错会让整个重放失败。
  */
 export function replay(events: LedgerEvent[]): Ledger {
+  // 用 Map 自身的插入顺序语义代替手动维护的 order 数组：
+  // 对已存在的 key 调用 set 不会改变其位置；先 delete 再 set 则视为全新插入、
+  // 排到末尾——这正是「先删除、同 id 再新建」时应有的语义，且不会产生重复条目
+  // （手动维护 order 数组曾在此处漏删已删除 id，导致重建后账目重复出现两次）。
   const byId = new Map<string, Transaction>();
-  const order: string[] = [];
 
   for (const e of events) {
     switch (e.kind) {
       case 'transaction_created': {
-        if (!byId.has(e.payload.id)) order.push(e.payload.id);
         byId.set(e.payload.id, e.payload);
         break;
       }
@@ -1287,9 +1303,7 @@ export function replay(events: LedgerEvent[]): Ledger {
     }
   }
 
-  const transactions = order
-    .map((id) => byId.get(id))
-    .filter((t): t is Transaction => t !== undefined)
+  const transactions = [...byId.values()]
     // 日期降序；同日保持事件写入顺序，使刚记的账出现在当日组内靠后位置
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
@@ -1380,11 +1394,18 @@ function canon(s: string): string {
   return s.replace(/\s+/g, '').toLowerCase();
 }
 
-/** Levenshtein 编辑距离 */
+/**
+ * 编辑距离（Damerau-Levenshtein 的受限变体，即 optimal string alignment）：
+ * 在插入/删除/替换之外，把相邻两字符互换算作一次操作。
+ * STT 与打字最常见的错拼正是相邻换位（如 Colse/Coles），
+ * 用普通 Levenshtein 距离会把它算成 2（两次替换），导致漏并——
+ * 加这一项操作正是为了让这类典型错拼落在阈值内。
+ */
 function distance(a: string, b: string): number {
   if (a === b) return 0;
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  const cur = new Array<number>(b.length + 1);
+  let prevPrev = new Array<number>(b.length + 1).fill(0);
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  let cur = new Array<number>(b.length + 1);
   for (let i = 1; i <= a.length; i++) {
     cur[0] = i;
     for (let j = 1; j <= b.length; j++) {
@@ -1393,8 +1414,13 @@ function distance(a: string, b: string): number {
         cur[j - 1] + 1,
         prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
       );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        cur[j] = Math.min(cur[j], prevPrev[j - 2] + 1);
+      }
     }
-    for (let j = 0; j <= b.length; j++) prev[j] = cur[j];
+    prevPrev = prev;
+    prev = cur;
+    cur = new Array<number>(b.length + 1);
   }
   return prev[b.length];
 }
@@ -1495,10 +1521,12 @@ describe('事件存储', () => {
     expect(all[0].eventId).toBe('a');
   });
 
-  it('保持写入顺序', async () => {
-    await appendEvents([evt('a'), evt('b')]);
-    await appendEvents([evt('c')]);
-    expect((await readAllEvents()).map((e) => e.eventId)).toEqual(['a', 'b', 'c']);
+  it('保持写入顺序（不依赖 eventId 的字典序——真实场景是随机 UUID）', async () => {
+    // 故意让插入顺序与 eventId 字典序相反：若实现按主键（eventId）排序返回，
+    // 这里会读出 ['a','b','c']（字典序）而非 ['c','a','b']（写入序），测试即失败。
+    await appendEvents([evt('c'), evt('a')]);
+    await appendEvents([evt('b')]);
+    expect((await readAllEvents()).map((e) => e.eventId)).toEqual(['c', 'a', 'b']);
   });
 
   it('同一 eventId 重复写入不产生重复记录（同步去重的基础）', async () => {
@@ -1532,14 +1560,19 @@ const STORE = 'events';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
+const EVENT_ID_INDEX = 'by-eventId';
+
 function db(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(database) {
         if (!database.objectStoreNames.contains(STORE)) {
-          // eventId 作为主键 —— 重复写入同一事件时自动覆盖，
-          // 这正是多设备日志合并去重所需要的语义（§7）
-          database.createObjectStore(STORE, { keyPath: 'eventId' });
+          // out-of-line 自增主键（不写进对象本身，getAll 按此键顺序返回，
+          // 即写入顺序——eventId 是随机 UUID，若拿它当主键，getAll 会按
+          // 字典序而非写入序返回，破坏 replay 依赖的因果顺序）。
+          // eventId 建唯一索引，用于写入时判重。
+          const store = database.createObjectStore(STORE, { autoIncrement: true });
+          store.createIndex(EVENT_ID_INDEX, 'eventId', { unique: true });
         }
       },
     });
@@ -1551,7 +1584,21 @@ export async function appendEvents(events: LedgerEvent[]): Promise<void> {
   if (events.length === 0) return;
   const d = await db();
   const tx = d.transaction(STORE, 'readwrite');
-  for (const e of events) tx.store.put(e);
+  // 重复写入同一 eventId 时跳过而非覆盖——事件不可变，两次写入的内容
+  // 本就该相同；这也顺带处理了同一批次内出现重复 id 的情况。
+  // 注意：IDBIndex.getAllKeys() 返回的是匹配记录的主键（这里是自增数字），
+  // 不是索引键本身（eventId 字符串）——用它构造 seen 集合永远不会命中，
+  // 起不到判重作用。要拿到已存在的 eventId 集合，需读出索引上的完整记录
+  // 再取其 eventId 字段（已用 fake-indexeddb 实测确认 getAllKeys() 的行为）。
+  const seen = new Set(
+    (await tx.store.index(EVENT_ID_INDEX).getAll()).map((e) => e.eventId),
+  );
+  for (const e of events) {
+    if (!seen.has(e.eventId)) {
+      tx.store.add(e);
+      seen.add(e.eventId);
+    }
+  }
   await tx.done;
 }
 
@@ -1570,8 +1617,6 @@ export async function clearAllEvents(): Promise<void> {
 
 Run: `npx vitest run src/lib/ledger/__tests__/db.test.ts`
 Expected: PASS，5 个测试全绿
-
-> 若"保持写入顺序"一项失败：`getAll` 按主键顺序返回，而 `eventId` 是随机 UUID。此时改为在 store 上使用自增序号作为主键、`eventId` 建唯一索引。测试已覆盖该行为，按测试为准调整实现。
 
 - [ ] **Step 5: Commit**
 
@@ -1681,6 +1726,12 @@ describe('store', () => {
     ]);
     expect(knownMerchants().sort()).toEqual(['Coles', 'Woolworths']);
   });
+
+  it('删除账目后 knownMerchants 仍保留其商户名（历史写法不因删除而丢失）', async () => {
+    await addTransactions([tx('a', { merchant: 'Woolworths' })]);
+    await removeTransaction('a');
+    expect(knownMerchants()).toEqual(['Woolworths']);
+  });
 });
 ```
 
@@ -1749,10 +1800,21 @@ export async function removeTransaction(id: string): Promise<void> {
   await push([createTransactionDeleted(id)]);
 }
 
-/** 该用户历史出现过的商户名，供归一化与（Plan 2）STT 偏置词表使用 */
+/**
+ * 该用户历史出现过的商户名，供归一化与（Plan 2）STT 偏置词表使用。
+ * 从原始事件日志推导，而非当前账本的派生状态——账目被删除后，其商户名
+ * 的写法仍应留在归一化词表里，否则同一商户可能在下次记账时重新分裂成
+ * 另一种写法，恰好违背这个函数存在的目的。
+ */
 export function knownMerchants(): string[] {
   const set = new Set<string>();
-  for (const t of ledger.transactions) if (t.merchant) set.add(t.merchant);
+  for (const e of events) {
+    if (e.kind === 'transaction_created' && e.payload.merchant) {
+      set.add(e.payload.merchant);
+    } else if (e.kind === 'transaction_amended' && e.payload.changes.merchant) {
+      set.add(e.payload.changes.merchant);
+    }
+  }
   return [...set];
 }
 ```
@@ -1760,7 +1822,7 @@ export function knownMerchants(): string[] {
 - [ ] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run src/lib/ledger/__tests__/store.test.ts`
-Expected: PASS，7 个测试全绿
+Expected: PASS，8 个测试全绿
 
 - [ ] **Step 5: Commit**
 
@@ -2361,7 +2423,6 @@ export function useLedger(): Ledger {
 ```tsx
 'use client';
 
-import { useMemo } from 'react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { useLedger } from '@/lib/ledger/useLedger';
@@ -2373,8 +2434,9 @@ const DEFAULT_CURRENCY = 'AUD';
 
 export default function Home() {
   const ledger = useLedger();
-  // 派生一律在组件里 memo —— getSnapshot 必须返回稳定引用（§6.6）
-  const transactions = useMemo(() => ledger.transactions, [ledger]);
+  // getSnapshot 返回缓存引用，ledger.transactions 本身即稳定，直接读即可。
+  // §6.6 的 useMemo 规则针对的是真正的派生（筛选/排序/分组），Plan 1 尚无此类。
+  const transactions = ledger.transactions;
 
   async function handleSubmit(text: string) {
     const res = await fetch('/api/structure', {
@@ -2438,8 +2500,11 @@ npm run dev
 
 - [ ] **Step 6: 验证 provider 隔离判据**
 
-Run: `grep -ril "groq" src/ | grep -v __tests__`
-Expected: 只输出 `src/lib/ai/providers/groq.ts`
+Run: `grep -rl "groq" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 至多两个文件——`src/lib/ai/index.ts`（**仅** import 语句提及）与 `src/lib/ai/providers/groq.ts`。Task 5 之前只有后者。
+
+Run: `grep -rlE "qwen|api\.groq\.com|reasoning_effort|json_schema" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__`
+Expected: 只输出 `src/lib/ai/providers/groq.ts`。**这一条才是真正的隔离判据**——provider 的具体取值（模型 ID、端点、私有参数）只能存在于一个文件；窄接口按名字引用 provider 是接缝本身，不是泄漏。
 
 - [ ] **Step 7: Commit**
 
@@ -2621,7 +2686,7 @@ export function UndoToast({
 ```tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
@@ -2635,9 +2700,12 @@ const DEFAULT_CURRENCY = 'AUD';
 
 export default function Home() {
   const ledger = useLedger();
-  const transactions = useMemo(() => ledger.transactions, [ledger]);
+  const transactions = ledger.transactions;   // 稳定引用，无需 memo（见 Task 14）
 
-  const [pending, setPending] = useState<string[]>([]);
+  // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
+  // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
+  // 占位行一起清掉，导致仍在等待中的那条提前消失。
+  const [pending, setPending] = useState<{ id: string; text: string }[]>([]);
   const [lastAdded, setLastAdded] = useState<string[]>([]);
 
   const clearToast = useCallback(() => setLastAdded([]), []);
@@ -2648,8 +2716,9 @@ export default function Home() {
   }, [lastAdded]);
 
   async function handleSubmit(text: string) {
+    const pendingId = crypto.randomUUID();
     // 乐观插入：提交瞬间就出现占位行，用户不面对 spinner（spec §9、§16.5）
-    setPending((p) => [...p, text]);
+    setPending((p) => [...p, { id: pendingId, text }]);
     try {
       const res = await fetch('/api/structure', {
         method: 'POST',
@@ -2674,7 +2743,7 @@ export default function Home() {
       await addTransactions(txs);
       if (txs.length > 0) setLastAdded(txs.map((t) => t.id));
     } finally {
-      setPending((p) => p.filter((t) => t !== text));
+      setPending((p) => p.filter((entry) => entry.id !== pendingId));
     }
   }
 
@@ -2683,8 +2752,8 @@ export default function Home() {
       <h1>JustSayIt</h1>
       {pending.length > 0 && (
         <ul>
-          {pending.map((t, i) => (
-            <PendingRow key={`${t}-${i}`} text={t} />
+          {pending.map((entry) => (
+            <PendingRow key={entry.id} text={entry.text} />
           ))}
         </ul>
       )}
@@ -2719,7 +2788,7 @@ git commit -m "feat(ui): 乐观插入占位行与撤销"
 Plan 1 完成时应满足：
 
 - `npm test` 全绿，`npm run typecheck` 无错误
-- `grep -ril "groq" src/ | grep -v __tests__` 只命中一个文件
+- provider 取值隔离判据通过：`grep -rlE "qwen|api\.groq\.com|reasoning_effort|json_schema" src/ --include='*.ts' --include='*.tsx' | grep -v __tests__` 只命中 `src/lib/ai/providers/groq.ts`
 - 手工验收 7 项全部通过（**由用户执行**——视觉、真实 AI 调用、录音与文字输入的实际效果不在代理验证范围内）
 - 金额在整个链路中以整数分存储，展示层才转两位小数
 - 事件日志只追加，刷新后数据完好
