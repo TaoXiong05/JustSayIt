@@ -16,7 +16,10 @@ export default function Home() {
   const ledger = useLedger();
   const transactions = ledger.transactions;   // 稳定引用，无需 memo（见 Task 14）
 
-  const [pending, setPending] = useState<string[]>([]);
+  // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
+  // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
+  // 占位行一起清掉，导致仍在等待中的那条提前消失。
+  const [pending, setPending] = useState<{ id: string; text: string }[]>([]);
   const [lastAdded, setLastAdded] = useState<string[]>([]);
 
   const clearToast = useCallback(() => setLastAdded([]), []);
@@ -27,8 +30,9 @@ export default function Home() {
   }, [lastAdded]);
 
   async function handleSubmit(text: string) {
+    const pendingId = crypto.randomUUID();
     // 乐观插入：提交瞬间就出现占位行，用户不面对 spinner（spec §9、§16.5）
-    setPending((p) => [...p, text]);
+    setPending((p) => [...p, { id: pendingId, text }]);
     try {
       const res = await fetch('/api/structure', {
         method: 'POST',
@@ -53,7 +57,7 @@ export default function Home() {
       await addTransactions(txs);
       if (txs.length > 0) setLastAdded(txs.map((t) => t.id));
     } finally {
-      setPending((p) => p.filter((t) => t !== text));
+      setPending((p) => p.filter((entry) => entry.id !== pendingId));
     }
   }
 
@@ -62,8 +66,8 @@ export default function Home() {
       <h1>JustSayIt</h1>
       {pending.length > 0 && (
         <ul>
-          {pending.map((t, i) => (
-            <PendingRow key={`${t}-${i}`} text={t} />
+          {pending.map((entry) => (
+            <PendingRow key={entry.id} text={entry.text} />
           ))}
         </ul>
       )}
