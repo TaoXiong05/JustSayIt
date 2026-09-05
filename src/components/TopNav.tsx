@@ -6,6 +6,7 @@ import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 import { NAV_TABS } from '@/lib/navTabs';
 import { SyncStatusDot } from '@/components/SyncStatusDot';
+import { Logo } from '@/components/Logo';
 
 /**
  * 桌面端全局顶部导航——替代原来的侧边栏（用户明确要求：去掉侧边栏，
@@ -26,8 +27,8 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-40 hidden border-b border-border bg-surface/90 backdrop-blur lg:block">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
-        <Link href="/" className="shrink-0 font-display text-base font-bold text-ink">
-          JustSayIt
+        <Link href="/" className="shrink-0">
+          <Logo />
         </Link>
 
         <nav className="flex flex-1 justify-center" aria-label="主导航">

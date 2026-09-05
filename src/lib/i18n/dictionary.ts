@@ -16,7 +16,6 @@ type DictValue = string | Interpolate;
  * 本身就是稳定的、不随 UI locale 变化（见任务文档 §5-§7）。
  */
 export type DictKey =
-  | 'appTitle'
   | 'logOut'
   | 'logInPrompt'
   | 'logInDescription'
@@ -114,7 +113,6 @@ export type DictKey =
   | 'featurePrivacyDesc';
 
 const en: Record<DictKey, DictValue> = {
-  appTitle: 'JustSayIt',
   logOut: 'Log out',
   logInPrompt: 'Log in to start tracking',
   logInDescription: 'Log in to use AI expense tracking and voice input.',
@@ -218,7 +216,6 @@ const en: Record<DictKey, DictValue> = {
 };
 
 const zh: Record<DictKey, DictValue> = {
-  appTitle: 'JustSayIt',
   logOut: '退出',
   logInPrompt: '登录后开始记账',
   logInDescription: '登录后即可使用 AI 记账与语音输入。',

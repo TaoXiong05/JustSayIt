@@ -8,6 +8,7 @@ import { QueuedRow } from '@/components/QueuedRow';
 import { SyncStatusDot } from '@/components/SyncStatusDot';
 import { SyncWarning } from '@/components/SyncWarning';
 import { UndoToast } from '@/components/UndoToast';
+import { Logo } from '@/components/Logo';
 import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
@@ -78,7 +79,12 @@ export default function Home() {
       {/* 桌面端隐藏：品牌名/同步点/语言切换/头像现在由全局 TopNav 提供，
           这里重复渲染会跟顶栏打架。移动端没有等价的全局 header，保留不变。 */}
       <header className="mb-5 flex items-center gap-3 lg:hidden">
-        <h1 className="font-display text-2xl font-bold text-ink">{t('appTitle')}</h1>
+        {/* Logo 本身是个纯展示的品牌标，不含语义级别——这里用 h1 包一层，
+            不然移动端这个页面就没有 h1 了（之前的纯文字版本本身就是 h1）。
+            TopNav 里的 Logo 不需要这层，那边是导航链接，不是页面标题。 */}
+        <h1>
+          <Logo />
+        </h1>
         <div className="ml-auto flex items-center gap-2">
           <SyncStatusDot />
           <button
