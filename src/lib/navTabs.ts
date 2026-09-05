@@ -7,7 +7,7 @@ import { BarChart3, History, ReceiptText, type LucideIcon } from 'lucide-react';
  * 的要求同样适用于这里：共用逻辑只写一份）。
  */
 export const NAV_TABS: { href: string; key: 'navLedger' | 'navHistory' | 'navStats'; icon: LucideIcon }[] = [
-  { href: '/', key: 'navLedger', icon: ReceiptText },
+  { href: '/ledger', key: 'navLedger', icon: ReceiptText },
   { href: '/history', key: 'navHistory', icon: History },
   { href: '/stats', key: 'navStats', icon: BarChart3 },
 ];

@@ -70,7 +70,7 @@ describe('callback route', () => {
     });
     const res = await callbackGET(req);
     expect(res.status).toBe(302);
-    expect(res.headers.get('Location')).toBe('/');
+    expect(res.headers.get('Location')).toBe('/ledger');
     expect(encryptRefreshToken).toHaveBeenCalledWith('REF');
     expect(userRepo.findOrCreateUser).toHaveBeenCalledWith({
       ...PROFILE,

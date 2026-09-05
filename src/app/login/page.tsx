@@ -11,8 +11,9 @@ export default function LoginPage() {
   const { t } = useLocale();
 
   if (!loading && user) {
-    // 已登录：直接回主屏
-    if (typeof window !== 'undefined') window.location.href = '/';
+    // 已登录：直接去 /ledger（根路径 / 现在是按登录态分流的路由页，
+    // 直接跳终点省一次多余的中转）
+    if (typeof window !== 'undefined') window.location.href = '/ledger';
   }
 
   return (
@@ -22,7 +23,7 @@ export default function LoginPage() {
       <FeatureGrid />
       <footer className="px-6 pb-10 pt-2 text-center">
         <a
-          href="/"
+          href="/ledger"
           className="text-sm font-medium text-muted transition-colors hover:text-ink"
         >
           {t('backToLedger')}

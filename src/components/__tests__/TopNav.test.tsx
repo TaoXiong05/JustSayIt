@@ -14,7 +14,7 @@ vi.mock('@/lib/auth/client', () => ({
 }));
 
 beforeEach(() => {
-  usePathname.mockReturnValue('/');
+  usePathname.mockReturnValue('/ledger');
 });
 
 describe('TopNav（桌面端全局顶部导航，替代原侧边栏）', () => {
@@ -22,11 +22,11 @@ describe('TopNav（桌面端全局顶部导航，替代原侧边栏）', () => {
     render(<TopNav />);
     expect(screen.getByRole('link', { name: 'JustSayIt' })).toHaveProperty(
       'href',
-      'http://localhost:3000/',
+      'http://localhost:3000/ledger',
     );
     expect(screen.getByRole('link', { name: 'Ledger' })).toHaveProperty(
       'href',
-      'http://localhost:3000/',
+      'http://localhost:3000/ledger',
     );
     expect(screen.getByRole('link', { name: 'History' })).toHaveProperty(
       'href',

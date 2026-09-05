@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
-import Home from '@/app/page';
+import Home from '@/app/ledger/page';
 import { Toaster } from '@/components/Toaster';
 import { resetToastStoreForTests, getSnapshot } from '@/lib/toast';
 import { clearAllEvents } from '@/lib/ledger/db';

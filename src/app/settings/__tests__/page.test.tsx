@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
+import { stubLocation } from '@/test/mockLocation';
 import SettingsPage from '@/app/settings/page';
 
 vi.mock('@/lib/auth/client', () => ({
@@ -31,12 +32,12 @@ describe('设置页', () => {
 
   it('点登出调用 fetchLogout 并跳回主屏（不是留在原地无反馈）', async () => {
     const { fetchLogout } = await import('@/lib/auth/client');
-    const originalHref = window.location.href;
+    const location = stubLocation();
     render(<SettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
     expect(fetchLogout).toHaveBeenCalled();
-    await waitFor(() => expect(window.location.href).toBe('http://localhost:3000/'));
-    window.history.pushState({}, '', originalHref);
+    await waitFor(() => expect(window.location.href).toBe('/ledger'));
+    location.restore();
   });
 
   it('点导出备份调用 exportBackup', async () => {

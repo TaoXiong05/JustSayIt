@@ -38,8 +38,10 @@ export async function GET(req: Request) {
     const token = await signSession(profile);
     return new Response(null, {
       status: 302,
+      // 直接送到 /ledger，不经过根路径 /（那是个按登录态分流的路由页——
+      // 这里已经确定刚登录成功，跳 / 只会多一次毫无必要的中转再弹回来）。
       headers: {
-        Location: '/',
+        Location: '/ledger',
         'Set-Cookie': [buildSetCookie(token, secure), clearState].join(', '),
       },
     });

@@ -23,7 +23,7 @@ export function MobileHeader() {
 
   return (
     <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
-      <Link href="/" className="shrink-0">
+      <Link href="/ledger" className="shrink-0">
         <Logo />
       </Link>
       <div className="ml-auto flex items-center gap-2">

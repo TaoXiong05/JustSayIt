@@ -7,13 +7,13 @@ const { usePathname } = vi.hoisted(() => ({ usePathname: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname }));
 
 beforeEach(() => {
-  usePathname.mockReturnValue('/');
+  usePathname.mockReturnValue('/ledger');
 });
 
 describe('BottomNav', () => {
   it('渲染记账/历史/统计三个入口', () => {
     render(<BottomNav />);
-    expect(screen.getByRole('link', { name: 'Ledger' })).toHaveProperty('href', 'http://localhost:3000/');
+    expect(screen.getByRole('link', { name: 'Ledger' })).toHaveProperty('href', 'http://localhost:3000/ledger');
     expect(screen.getByRole('link', { name: 'History' })).toHaveProperty('href', 'http://localhost:3000/history');
     expect(screen.getByRole('link', { name: 'Stats' })).toHaveProperty('href', 'http://localhost:3000/stats');
   });
