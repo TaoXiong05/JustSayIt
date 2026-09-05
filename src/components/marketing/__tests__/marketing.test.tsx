@@ -24,8 +24,10 @@ describe('营销段 · 独立渲染', () => {
     expect(screen.getByText(/“Coles 28\.45”/)).toBeDefined();
     expect(screen.getByText('Coles')).toBeDefined();
     expect(screen.getByText('Uber')).toBeDefined();
-    // 整段对无障碍树隐藏——营销装饰不该影响 AT
-    expect(screen.getByText('Coles').closest('section')?.getAttribute('aria-hidden')).toBe('true');
+    // 整段对无障碍树隐藏——营销装饰不该影响 AT。方向 #4 把 CaptureDemo
+    // 并入 Hero 之后，它自己不再是独立的 <section>（外层交给 Hero 统一
+    // 布局），aria-hidden 直接标在它自己的最外层容器上。
+    expect(screen.getByText('Coles').closest('[aria-hidden="true"]')).not.toBeNull();
   });
 
   it('StatStrip 独立渲染：三组数字 + 标签', () => {
