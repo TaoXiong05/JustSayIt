@@ -3,11 +3,19 @@
 import { Mic } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { knownMerchants } from '@/lib/ledger/store';
-import { initializeRecorder } from '@/lib/voice/recorder';
+import { initializeRecorder, RecorderError } from '@/lib/voice/recorder';
 import type { RecorderHandle } from '@/lib/voice/recorder';
 import { useLocale } from '@/lib/i18n/context';
-import { errorCodeToKey } from '@/lib/i18n/dictionary';
+import { errorCodeToKey, type DictKey } from '@/lib/i18n/dictionary';
 import { ApiError, throwApiError } from '@/lib/apiError';
+
+/** RecorderError.code → 文案 key。'unknown' 落到通用的 voiceUnsupported。 */
+const RECORDER_ERROR_KEY: Record<RecorderError['code'], DictKey> = {
+  'insecure-context': 'voiceInsecureContext',
+  'permission-denied': 'voicePermissionDenied',
+  unsupported: 'voiceUnsupported',
+  unknown: 'voiceUnsupported',
+};
 
 /**
  * 走 /api/stt 而非直接 import provider（如 groqTranscribe）：
@@ -50,9 +58,10 @@ export function VoiceButton({
       const recorder = initializeRecorder();
       recorderRef.current = await recorder.start();
       setStatus('recording');
-    } catch {
+    } catch (err) {
       setStatus('unsupported');
-      setError(t('voiceUnsupported'));
+      const key = err instanceof RecorderError ? RECORDER_ERROR_KEY[err.code] : 'voiceUnsupported';
+      setError(t(key));
     }
   }
 

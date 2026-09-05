@@ -5,7 +5,13 @@ import { VoiceButton } from '@/components/VoiceButton';
 import { initializeRecorder } from '@/lib/voice/recorder';
 
 vi.mock('@/lib/ledger/store', () => ({ knownMerchants: vi.fn(() => ['Woolworths']) }));
-vi.mock('@/lib/voice/recorder', () => ({ initializeRecorder: vi.fn() }));
+vi.mock('@/lib/voice/recorder', async (importOriginal) => {
+  // 只替身 initializeRecorder；RecorderError 保留真实类，VoiceButton 里的
+  // `err instanceof RecorderError` 判断才对得上（否则永远走不进对应分支，
+  // 静默退化成通用的 voiceUnsupported 文案，这类用例还是会碰巧通过）。
+  const actual = await importOriginal<typeof import('@/lib/voice/recorder')>();
+  return { ...actual, initializeRecorder: vi.fn() };
+});
 
 type Rec = { stop(): Promise<Blob>; cancel(): void };
 let currentRec: Rec | null;
@@ -86,12 +92,41 @@ describe('VoiceButton', () => {
     expect(onTranscribed).not.toHaveBeenCalled();
   });
 
-  it('启动失败（不支持录音）→ 显示错误', async () => {
+  it('启动失败（非 RecorderError 的普通异常）→ 显示通用的不支持文案', async () => {
     vi.mocked(initializeRecorder).mockReturnValue({
       start: vi.fn().mockRejectedValue(new Error('no mic')),
     });
     render(<VoiceButton onTranscribed={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Record/ }));
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Voice recording is not supported in this browser',
+    );
+  });
+
+  it('启动失败（非安全上下文，如局域网 http 访问）→ 显示专门的 HTTPS 提示，不是笼统的"不支持"', async () => {
+    const { RecorderError } = await import('@/lib/voice/recorder');
+    vi.mocked(initializeRecorder).mockReturnValue({
+      start: vi.fn().mockRejectedValue(new RecorderError('insecure-context', 'x')),
+    });
+    render(<VoiceButton onTranscribed={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Record/ }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Voice recording needs a secure connection (HTTPS). This page was opened over plain HTTP.',
+    );
+  });
+
+  it('启动失败（麦克风权限被拒绝）→ 显示权限提示', async () => {
+    const { RecorderError } = await import('@/lib/voice/recorder');
+    vi.mocked(initializeRecorder).mockReturnValue({
+      start: vi.fn().mockRejectedValue(new RecorderError('permission-denied', 'x')),
+    });
+    render(<VoiceButton onTranscribed={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Record/ }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Microphone access was denied. Allow it in your browser settings and try again.',
+    );
   });
 });

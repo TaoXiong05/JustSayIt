@@ -32,6 +32,8 @@ export type DictKey =
   | 'voiceRecording'
   | 'voiceTranscribing'
   | 'voiceUnsupported'
+  | 'voiceInsecureContext'
+  | 'voicePermissionDenied'
   | 'pendingLabel'
   | 'emptyLedger'
   | 'undoneCount'
@@ -124,6 +126,10 @@ const en: Record<DictKey, DictValue> = {
   voiceRecording: 'Recording…',
   voiceTranscribing: 'Transcribing…',
   voiceUnsupported: 'Voice recording is not supported in this browser',
+  voiceInsecureContext:
+    'Voice recording needs a secure connection (HTTPS). This page was opened over plain HTTP.',
+  voicePermissionDenied:
+    'Microphone access was denied. Allow it in your browser settings and try again.',
   pendingLabel: 'Processing…',
   emptyLedger: 'No records yet — try saying something.',
   undoneCount: ({ count, unsynced }) =>
@@ -220,6 +226,8 @@ const zh: Record<DictKey, DictValue> = {
   voiceRecording: '录音中…',
   voiceTranscribing: '转写中…',
   voiceUnsupported: '当前浏览器不支持录音',
+  voiceInsecureContext: '语音录制需要安全连接（HTTPS）——当前页面是通过普通 HTTP 打开的。',
+  voicePermissionDenied: '麦克风权限被拒绝，请在浏览器设置里允许后重试。',
   pendingLabel: '处理中…',
   emptyLedger: '还没有记录，说点什么试试。',
   undoneCount: ({ count, unsynced }) =>

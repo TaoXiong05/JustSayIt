@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { startRecording, initializeRecorder } from '@/lib/voice/recorder';
+import { startRecording, initializeRecorder, RecorderError } from '@/lib/voice/recorder';
 
 class FakeMediaRecorder {
   state = 'inactive';
@@ -28,6 +28,11 @@ const getUserMedia = vi.fn().mockResolvedValue({
 beforeEach(() => {
   vi.stubGlobal('MediaRecorder', mediaRecorderCtor);
   vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia } });
+  // jsdom 的默认测试 origin 不是安全上下文（isSecureContext 默认 false），
+  // 这里显式钉成 true——这组用例测的是"MediaRecorder 存在与否""getUserMedia
+  // 成功/失败"，不是安全上下文本身，钉死它才能把两件事分开测，不然所有用例
+  // 都会在真正想测的检查之前就被 insecure-context 分支拦下。
+  Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -47,9 +52,28 @@ describe('startRecording', () => {
     expect(blob.size).toBeGreaterThan(0);
   });
 
-  it('不支持 MediaRecorder 时抛错', async () => {
+  it('不支持 MediaRecorder 时抛 RecorderError(unsupported)', async () => {
     vi.stubGlobal('MediaRecorder', undefined);
-    await expect(startRecording()).rejects.toThrow(/不支持/);
+    const err = await startRecording().catch((e) => e);
+    expect(err).toBeInstanceOf(RecorderError);
+    expect((err as RecorderError).code).toBe('unsupported');
+    expect((err as RecorderError).message).toMatch(/不支持/);
+  });
+
+  it('非安全上下文（HTTP 局域网访问等）时抛 RecorderError(insecure-context)，且不会碰 getUserMedia', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    const err = await startRecording().catch((e) => e);
+    expect(err).toBeInstanceOf(RecorderError);
+    expect((err as RecorderError).code).toBe('insecure-context');
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it('用户拒绝麦克风权限时抛 RecorderError(permission-denied)', async () => {
+    const denied = Object.assign(new Error('denied'), { name: 'NotAllowedError' });
+    getUserMedia.mockRejectedValueOnce(denied);
+    const err = await startRecording().catch((e) => e);
+    expect(err).toBeInstanceOf(RecorderError);
+    expect((err as RecorderError).code).toBe('permission-denied');
   });
 
   it('initializeRecorder 返回可 start 的工厂', async () => {
