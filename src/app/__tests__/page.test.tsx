@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
 import Home from '@/app/page';
+import { MobileHeader } from '@/components/MobileHeader';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { addTransactions, hydrate } from '@/lib/ledger/store';
 import type { Transaction } from '@/lib/ai/schema';
@@ -229,7 +230,15 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
       }),
     );
     const user = userEvent.setup();
-    render(<Home />);
+    // 语言切换按钮现在是全局页眉（MobileHeader）的一部分，不再是 Home
+    // 自己渲染的东西——跟真实布局一样，把两者作为同一个 LocaleProvider
+    // 下的兄弟节点渲染，语言状态才是共享的。
+    render(
+      <>
+        <MobileHeader />
+        <Home />
+      </>,
+    );
     await user.type(screen.getByRole('textbox'), 'Uber ride $25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() => expect(screen.getByText('Uber')).toBeDefined());

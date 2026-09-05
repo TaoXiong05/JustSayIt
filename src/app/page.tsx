@@ -5,10 +5,8 @@ import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
 import { QueuedRow } from '@/components/QueuedRow';
-import { SyncStatusDot } from '@/components/SyncStatusDot';
 import { SyncWarning } from '@/components/SyncWarning';
 import { UndoToast } from '@/components/UndoToast';
-import { Logo } from '@/components/Logo';
 import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
@@ -28,7 +26,7 @@ export default function Home() {
   // §11.4 local-first：账本不因登录状态而隐藏；登录仅用于调用 AI / 语音
   const { user, loading } = useSession();
   const authed = !loading && user != null;
-  const { locale, setLocale, t } = useLocale();
+  const { t } = useLocale();
   const pendingRawInputs = usePendingRawInputs();
 
   useEffect(() => {
@@ -76,38 +74,13 @@ export default function Home() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">
-      {/* 桌面端隐藏：品牌名/同步点/语言切换/头像现在由全局 TopNav 提供，
-          这里重复渲染会跟顶栏打架。移动端没有等价的全局 header，保留不变。 */}
-      <header className="mb-5 flex items-center gap-3 lg:hidden">
-        {/* Logo 本身是个纯展示的品牌标，不含语义级别——这里用 h1 包一层，
-            不然移动端这个页面就没有 h1 了（之前的纯文字版本本身就是 h1）。
-            TopNav 里的 Logo 不需要这层，那边是导航链接，不是页面标题。 */}
-        <h1>
-          <Logo />
-        </h1>
-        <div className="ml-auto flex items-center gap-2">
-          <SyncStatusDot />
-          <button
-            type="button"
-            onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
-            className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-surface-2"
-          >
-            {t('localeToggleLabel')}
-          </button>
-          {user && (
-            <a
-              href="/settings"
-              aria-label={t('settingsAvatarLabel')}
-              className="flex size-8 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
-            >
-              {user.picture ? (
-                <img src={user.picture} alt="" width={32} height={32} className="rounded-full" />
-              ) : (
-                (user.email ?? user.googleSub).slice(0, 1).toUpperCase()
-              )}
-            </a>
-          )}
-        </div>
+      {/* 品牌 logo/同步点/语言切换/头像现在是全局页眉（桌面 TopNav、移动
+          MobileHeader）提供的，不再是这个页面自己的东西——这里只留一个跟
+          History/Stats 同样规格的页面标题，不然这个页面就没有属于自己的
+          <h1> 了（之前是 logo 顶替，但 logo 现在每个页面都长一样，不该
+          再兼任某一个页面专属的标题）。 */}
+      <header className="mb-4">
+        <h1 className="font-display text-xl font-bold text-ink">{t('navLedger')}</h1>
       </header>
       {pending.length > 0 && (
         <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
