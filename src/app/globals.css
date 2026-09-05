@@ -108,8 +108,13 @@
   --radius-lg: var(--radius-lg);
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
-  --font-display: var(--font-outfit), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  /* 中文字形交给 --font-noto-sc（Noto Sans SC）——Outfit/IBM Plex Sans 都不带
+     CJK 字形，按字符找字形时会跳过它们，之前一路 fallback 到系统默认无衬线，
+     等于中文用户完全看不到这套字体的个性。放在拉丁字体后面，不影响拉丁
+     字符的渲染。 */
+  --font-display: var(--font-outfit), var(--font-noto-sc), var(--font-plex-sans), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-body: var(--font-plex-sans), var(--font-noto-sc), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", "Cascadia Mono", monospace;
 }
 
@@ -118,7 +123,7 @@ body {
      （Global Constraint 10：桌面端是真实的布局，不是靠更宽的间距冒充）。 */
   background-color: var(--bg);
   color: var(--ink);
-  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

@@ -119,7 +119,12 @@ describe('设计 token（globals.css）', () => {
   it('映射进 @theme 的每个 token 都引用了真实存在的变量', () => {
     const theme = blockOf(css, '@theme {');
     // next/font 的 variable 选项在 <html> 上运行时注入，不属于 :root 令牌集
-    const fontVars = new Set(['--font-outfit', '--font-plex-sans', '--font-plex-mono']);
+    const fontVars = new Set([
+      '--font-outfit',
+      '--font-plex-sans',
+      '--font-plex-mono',
+      '--font-noto-sc',
+    ]);
     for (const m of theme.matchAll(/var\((--[\w-]+)\)/g)) {
       const ok = light.has(m[1]) || fontVars.has(m[1]);
       expect(ok, `${m[1]} 应已在 :root 定义或由 next/font 注入`).toBe(true);
