@@ -41,22 +41,31 @@ export default function StatsPage() {
       ) : (
         stats.map((currencyStats) => (
           <section key={currencyStats.currency}>
+            {/* 多币种时每段各自汇总，不做任何汇率换算——必须标出这一段是哪个
+                币种，否则两段裸数字无从区分（金额本身不带货币符号，见
+                TransactionRow.formatAmount）。 */}
+            <h2>{currencyStats.currency}</h2>
             <ul>
-              {currencyStats.expenseByCategory.map((cat) => (
-                <li key={cat.category}>
-                  <button type="button" onClick={() => setExpanded(expanded === cat.category ? null : cat.category)}>
-                    {CATEGORY_LABELS[locale][cat.category]}
-                  </button>
-                  <span key={`amount-${cat.category}`}>{formatAmount(cat.totalCents, currencyStats.currency)}</span>
-                  {expanded === cat.category && (
-                    <ul>
-                      {cat.transactions.map((transaction) => (
-                        <TransactionRow key={transaction.id} transaction={transaction} />
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
+              {currencyStats.expenseByCategory.map((cat) => {
+                // 展开状态按「币种 + 分类」联合键存：同一个分类名（如 FOOD）
+                // 可能同时出现在 AUD 段和 USD 段里，只按分类名存会让两段一起展开。
+                const key = `${currencyStats.currency}:${cat.category}`;
+                return (
+                  <li key={key}>
+                    <button type="button" onClick={() => setExpanded(expanded === key ? null : key)}>
+                      {CATEGORY_LABELS[locale][cat.category]}
+                    </button>
+                    <span>{formatAmount(cat.totalCents, currencyStats.currency)}</span>
+                    {expanded === key && (
+                      <ul>
+                        {cat.transactions.map((transaction) => (
+                          <TransactionRow key={transaction.id} transaction={transaction} />
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <p>
               {t('statsTotalExpense')}: <span>{formatAmount(currencyStats.totalExpenseCents, currencyStats.currency)}</span>

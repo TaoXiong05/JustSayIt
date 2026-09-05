@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import StatsPage from '@/app/stats/page';
 import { clearAllEvents } from '@/lib/ledger/db';
@@ -62,5 +62,39 @@ describe('统计页', () => {
   it('没有记录时显示空态文案', async () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText(/Nothing recorded/)).toBeDefined());
+  });
+});
+
+describe('统计页 · 多币种', () => {
+  /** 找到某个币种那一段的 <section>（金额本身不带货币符号，只能靠段落标题区分） */
+  function sectionFor(currency: string): HTMLElement {
+    const heading = screen.getByText(currency);
+    const section = heading.closest('section');
+    if (!section) throw new Error(`没找到 ${currency} 对应的 section`);
+    return section;
+  }
+
+  it('每个币种分段都标出自己的币种，用户能分辨两段裸数字（不做汇率换算）', async () => {
+    await addTransactions([
+      tx({ currency: 'AUD', category: 'FOOD', amountCents: 1000, description: '买菜' }),
+      tx({ currency: 'USD', category: 'TRANSPORT', amountCents: 500, description: 'taxi' }),
+    ]);
+    render(<StatsPage />);
+    await waitFor(() => expect(screen.getByText('AUD')).toBeDefined());
+    expect(screen.getByText('USD')).toBeDefined();
+  });
+
+  it('同名分类出现在两个币种里时，展开一个不会连带展开另一个', async () => {
+    await addTransactions([
+      tx({ currency: 'AUD', category: 'FOOD', amountCents: 1000, description: '澳元买菜' }),
+      tx({ currency: 'USD', category: 'FOOD', amountCents: 500, description: '美元买菜' }),
+    ]);
+    render(<StatsPage />);
+    await waitFor(() => expect(screen.getByText('AUD')).toBeDefined());
+
+    fireEvent.click(within(sectionFor('AUD')).getByRole('button', { name: 'Food' }));
+
+    expect(within(sectionFor('AUD')).getByText('澳元买菜')).toBeDefined();
+    expect(within(sectionFor('USD')).queryByText('美元买菜')).toBeNull();
   });
 });
