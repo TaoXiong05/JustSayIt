@@ -24,11 +24,14 @@ describe('设置页', () => {
     await waitFor(() => expect(screen.getByText('Local storage: 1.00 MB / 100.00 MB')).toBeDefined());
   });
 
-  it('点登出调用 fetchLogout', async () => {
+  it('点登出调用 fetchLogout 并跳回主屏（不是留在原地无反馈）', async () => {
     const { fetchLogout } = await import('@/lib/auth/client');
+    const originalHref = window.location.href;
     render(<SettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
     expect(fetchLogout).toHaveBeenCalled();
+    await waitFor(() => expect(window.location.href).toBe('http://localhost:3000/'));
+    window.history.pushState({}, '', originalHref);
   });
 
   it('点导出备份调用 exportBackup', async () => {

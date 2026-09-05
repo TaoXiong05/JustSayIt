@@ -12,6 +12,18 @@ export default function SettingsPage() {
   const { t } = useLocale();
   const [usage, setUsage] = useState<{ usageBytes: number; quotaBytes: number } | null>(null);
 
+  // 点击后没有任何可见反馈——账号那行邮箱悄悄消失很容易被忽略，用户会以为
+  // 按钮没反应。退回主屏而不是 /login：本地账本按 §11.4 登出后仍可见，
+  // 主屏本身已经有"未登录"态（输入区替换成登录引导），比把人送到营销首页
+  // 更符合"退出后还能看自己本地数据"的既有设计。用 window.location 而不是
+  // next/navigation 的 useRouter——后者需要 App Router context，组件测试里
+  // 没有挂载真实路由树会直接抛 invariant；login/page.tsx 的既有跳转就是
+  // 这个写法，这里保持一致。
+  async function handleLogout(): Promise<void> {
+    await fetchLogout();
+    if (typeof window !== 'undefined') window.location.href = '/';
+  }
+
   useEffect(() => {
     void getStorageEstimate().then(setUsage);
   }, []);
@@ -26,7 +38,7 @@ export default function SettingsPage() {
         {user && <p className="mt-1 text-sm text-muted">{user.email ?? user.googleSub}</p>}
         <button
           type="button"
-          onClick={() => void fetchLogout()}
+          onClick={() => void handleLogout()}
           disabled={loading}
           className="mt-3 rounded border border-danger-soft bg-danger-soft px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:opacity-80 disabled:opacity-50"
         >
