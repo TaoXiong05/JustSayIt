@@ -8,7 +8,7 @@ import { CATEGORY_ICONS } from '@/lib/i18n/categoryIcons';
 import { useSyncExternalStore } from 'react';
 import { subscribe, getSnapshot as getSyncSnapshot, type SyncState } from '@/lib/sync/status';
 import { amendTransaction, removeTransaction } from '@/lib/ledger/store';
-import { EditForm } from '@/components/EditForm';
+import { EditDialog } from '@/components/EditDialog';
 
 const EMPTY_SYNC_STATE: SyncState = {
   unsyncedIds: [],
@@ -29,24 +29,6 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
   const isIncome = transaction.type === 'INCOME';
   const sign = isIncome ? '+' : '-';
   const [editing, setEditing] = useState(false);
-
-  if (editing) {
-    return (
-      <EditForm
-        transaction={transaction}
-        onSave={(changes) => {
-          void amendTransaction(transaction.id, changes);
-          setEditing(false);
-        }}
-        onDelete={() => {
-          void removeTransaction(transaction.id);
-          setEditing(false);
-        }}
-        onCancel={() => setEditing(false)}
-      />
-    );
-  }
-
   const CategoryIcon = CATEGORY_ICONS[transaction.category];
 
   return (
@@ -86,6 +68,13 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
           {`${sign}${formatAmount(transaction.amountCents, transaction.currency)}`}
         </span>
       </button>
+      <EditDialog
+        open={editing}
+        onOpenChange={setEditing}
+        transaction={transaction}
+        onSave={(changes) => void amendTransaction(transaction.id, changes)}
+        onDelete={() => void removeTransaction(transaction.id)}
+      />
     </li>
   );
 }

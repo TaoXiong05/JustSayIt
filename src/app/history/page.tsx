@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { useLedger } from '@/lib/ledger/useLedger';
 import { filterHistory, groupByDay, type HistoryFilter } from '@/lib/ledger/history';
 import { MonthSwitcher, useMonthNav } from '@/components/MonthSwitcher';
@@ -9,6 +9,15 @@ import { TransactionRow, formatAmount } from '@/components/TransactionRow';
 import { useLocale } from '@/lib/i18n/context';
 
 const EMPTY_FILTER: HistoryFilter = { dateFrom: '', dateTo: '', keyword: '' };
+
+/** 今天的日历日字符串（YYYY-MM-DD，按用户本地时区）——跟 Transaction.date
+ * 同一种格式，用来判断"今天"这组默认展开。en-CA 的日期格式恰好就是
+ * ISO 顺序（年-月-日），借用它省去自己拼 pad2 的麻烦。 */
+function todayDateKey(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  }).format(new Date());
+}
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -40,10 +49,32 @@ export default function HistoryPage() {
   const { t, locale } = useLocale();
   const nav = useMonthNav(transactions);
 
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [filter, setFilter] = useState<HistoryFilter>(EMPTY_FILTER);
+  // 按天折叠：默认只有"今天"展开，其余天默认收起（brief 的默认态要求）。
+  // 用户手动展开过的天记在这个 Set 里，跟 filterActive 是两回事——见下面
+  // isDayOpen 的合并逻辑。
+  const [manuallyOpenedDays, setManuallyOpenedDays] = useState<Set<string>>(
+    () => new Set([todayDateKey()]),
+  );
 
   const filterActive = Boolean(filter.dateFrom || filter.dateTo || filter.keyword?.trim());
+
+  function toggleDay(date: string): void {
+    setManuallyOpenedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  }
+
+  // 筛选/搜索命中的结果强制展开——用户搜东西是为了立刻看到它，折叠起来
+  // 反而要求"搜到了再点开"，跟搜索本身的意图矛盾。只有正常按月浏览、
+  // 没有筛选生效时，才用手动展开集合 + "今天默认展开"的规则。
+  function isDayOpen(date: string): boolean {
+    return filterActive || manuallyOpenedDays.has(date);
+  }
 
   // 数据源两条路径互斥（方案明确：筛选激活态**替换**月份浏览，不叠加）：
   // 1) 无筛选 → 只看 MonthSwitcher 当前月；
@@ -81,28 +112,61 @@ export default function HistoryPage() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-6 pb-24 md:pb-6 lg:max-w-6xl">
-      <header className="mb-4 flex items-center justify-between gap-3">
+      <header className="mb-4">
         <h1 className="font-display text-xl font-bold text-ink">{t('navHistory')}</h1>
-        <button
-          type="button"
-          onClick={() => setSearchOpen((v) => !v)}
-          aria-expanded={searchOpen}
-          aria-label={t('historySearchLabel')}
-          className="flex items-center gap-2 rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
-        >
-          {searchOpen ? (
-            <X aria-hidden="true" className="size-4" />
-          ) : (
-            <Search aria-hidden="true" className="size-4" />
-          )}
-          <span className="hidden sm:inline">{t('historySearchLabel')}</span>
-        </button>
       </header>
 
-      {/* 筛选面板：纯 Tailwind disclosure（Global Constraint 4：不用 Radix） */}
-      {searchOpen && (
+      {/* 搜索框挪到标题正下方、常驻可见（brief 明确要求：不再是右上角一个
+          图标按钮点开才看到）。日期范围筛选留作次要的"更多筛选"折叠面板——
+          既满足"搜索框要显眼"，又不丢"日期+关键词组合搜索"这个已有能力。 */}
+      <div className="mb-4 flex items-center gap-2">
+        <label className="relative flex-1">
+          <span className="sr-only">{t('historyKeywordPlaceholder')}</span>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+          />
+          <input
+            type="search"
+            placeholder={t('historyKeywordPlaceholder')}
+            value={filter.keyword}
+            onChange={(e) => setFilter((f) => ({ ...f, keyword: e.target.value }))}
+            className="w-full rounded-lg border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => setMoreFiltersOpen((v) => !v)}
+          aria-expanded={moreFiltersOpen}
+          aria-label={t('historyMoreFilters')}
+          title={t('historyMoreFilters')}
+          className={`flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+            moreFiltersOpen || filter.dateFrom || filter.dateTo
+              ? 'border-brand bg-brand-soft text-brand'
+              : 'border-border bg-surface text-muted hover:bg-surface-2 hover:text-ink'
+          }`}
+        >
+          <SlidersHorizontal aria-hidden="true" className="size-4" />
+        </button>
+        {/* 只要有筛选生效就露出清除入口——不是只有打开"更多筛选"面板才能
+            清空：单纯打了关键词、没碰日期范围的最常见情况，不该逼用户先
+            展开另一个面板才能清掉搜索。 */}
+        {filterActive && (
+          <button
+            type="button"
+            onClick={clearFilter}
+            className="shrink-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
+          >
+            {t('historyClearFilter')}
+          </button>
+        )}
+      </div>
+
+      {/* 次要的日期范围面板：纯 Tailwind disclosure（Global Constraint 4：
+          不用 Radix——这里不是"真正棘手的交互"，用不上 Dialog/Popover）。 */}
+      {moreFiltersOpen && (
         <section
-          aria-label={t('historySearchLabel')}
+          aria-label={t('historyMoreFilters')}
           className="mb-4 rounded-lg border border-border bg-surface p-3 shadow-card"
         >
           <div className="flex flex-wrap items-end gap-3">
@@ -124,24 +188,6 @@ export default function HistoryPage() {
                 className="rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
               />
             </label>
-            <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-medium text-muted">
-              <span className="sr-only">{t('historyKeywordPlaceholder')}</span>
-              <input
-                type="search"
-                placeholder={t('historyKeywordPlaceholder')}
-                value={filter.keyword}
-                onChange={(e) => setFilter((f) => ({ ...f, keyword: e.target.value }))}
-                className="rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={clearFilter}
-              className="flex items-center gap-1.5 rounded border border-border bg-surface px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
-            >
-              <SlidersHorizontal aria-hidden="true" className="size-3.5" />
-              {t('historyClearFilter')}
-            </button>
           </div>
         </section>
       )}
@@ -164,32 +210,60 @@ export default function HistoryPage() {
             </p>
           ) : (
             <div>
-              {groups.map((day) => (
-                <section key={day.date} className="mb-4">
-                  <header className="mb-1.5 flex flex-wrap items-center gap-2">
-                    <h2 className="font-display text-sm font-semibold text-muted">
-                      {formatDayHeader(day.date, locale)}
-                    </h2>
-                    {day.subtotalsByCurrency.map((s) => (
-                      <span
-                        key={s.currency}
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          s.netCents >= 0
-                            ? 'bg-income-soft text-income'
-                            : 'bg-expense-soft text-expense'
+              {groups.map((day) => {
+                const open = isDayOpen(day.date);
+                return (
+                  <section key={day.date} className="mb-3">
+                    {/* 折叠态是天头本身的按钮，不是天头旁边另一个按钮——整行
+                        都可点，触摸目标够大，符合 brief 的 mobile-friendly 要求。 */}
+                    <button
+                      type="button"
+                      onClick={() => toggleDay(day.date)}
+                      aria-expanded={open}
+                      className="mb-1.5 flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-surface-2"
+                    >
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={`size-4 shrink-0 text-muted transition-transform duration-200 ${
+                          open ? '' : '-rotate-90'
                         }`}
-                      >
-                        {formatAmount(s.netCents, s.currency)} {s.currency}
+                      />
+                      <h2 className="font-display text-sm font-semibold text-muted">
+                        {formatDayHeader(day.date, locale)}
+                      </h2>
+                      <span className="ml-auto flex gap-2">
+                        {day.subtotalsByCurrency.map((s) => (
+                          <span
+                            key={s.currency}
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              s.netCents >= 0
+                                ? 'bg-income-soft text-income'
+                                : 'bg-expense-soft text-expense'
+                            }`}
+                          >
+                            {formatAmount(s.netCents, s.currency)} {s.currency}
+                          </span>
+                        ))}
                       </span>
-                    ))}
-                  </header>
-                  <ul className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-                    {day.items.map((transaction) => (
-                      <TransactionRow key={transaction.id} transaction={transaction} />
-                    ))}
-                  </ul>
-                </section>
-              ))}
+                    </button>
+                    {/* grid-template-rows 0fr/1fr 的经典技巧：纯 CSS 就能把
+                        任意高度的内容平滑收起/展开，不需要量高度的 JS。 */}
+                    <div
+                      className={`grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out ${
+                        open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                      }`}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <ul className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
+                          {day.items.map((transaction) => (
+                            <TransactionRow key={transaction.id} transaction={transaction} />
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           )}
         </div>

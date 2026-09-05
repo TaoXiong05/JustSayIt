@@ -17,6 +17,7 @@
   "dependencies": {
     "@cerebras/cerebras_cloud_sdk": "^1.91.0",
     "@prisma/client": "^7.10.0",
+    "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-toast": "^1.2.23",
     "@serwist/next": "^9.5.12",
     "idb": "^8.0.3",

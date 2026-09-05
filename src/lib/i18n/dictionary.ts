@@ -55,6 +55,7 @@ export type DictKey =
   | 'editSave'
   | 'editCancel'
   | 'editDelete'
+  | 'editDialogTitle'
   | 'editCategoryLabel'
   | 'editAmountLabel'
   | 'editDateLabel'
@@ -86,6 +87,7 @@ export type DictKey =
   | 'monthNext'
   | 'navHistory'
   | 'historySearchLabel'
+  | 'historyMoreFilters'
   | 'historyDateFrom'
   | 'historyDateTo'
   | 'historyKeywordPlaceholder'
@@ -148,6 +150,7 @@ const en: Record<DictKey, DictValue> = {
   editSave: 'Save',
   editCancel: 'Cancel',
   editDelete: 'Delete',
+  editDialogTitle: 'Edit transaction',
   editCategoryLabel: 'Category',
   editAmountLabel: 'Amount',
   editDateLabel: 'Date',
@@ -186,9 +189,10 @@ const en: Record<DictKey, DictValue> = {
   monthNext: 'Next month',
   navHistory: 'History',
   historySearchLabel: 'Search',
+  historyMoreFilters: 'More filters (date range)',
   historyDateFrom: 'From',
   historyDateTo: 'To',
-  historyKeywordPlaceholder: 'Merchant or description…',
+  historyKeywordPlaceholder: 'Search transactions, merchant, or notes…',
   historyClearFilter: 'Clear filter',
   historyNoResults: 'No matching records — try a different date range or keyword.',
   historySummaryTitle: 'Net by currency',
@@ -247,6 +251,7 @@ const zh: Record<DictKey, DictValue> = {
   editSave: '保存',
   editCancel: '取消',
   editDelete: '删除',
+  editDialogTitle: '编辑账目',
   editCategoryLabel: '分类',
   editAmountLabel: '金额',
   editDateLabel: '日期',
@@ -285,9 +290,10 @@ const zh: Record<DictKey, DictValue> = {
   monthNext: '下月',
   navHistory: '历史',
   historySearchLabel: '搜索',
+  historyMoreFilters: '更多筛选（日期范围）',
   historyDateFrom: '从',
   historyDateTo: '至',
-  historyKeywordPlaceholder: '商户或描述…',
+  historyKeywordPlaceholder: '搜索交易、商户或备注…',
   historyClearFilter: '清除筛选',
   historyNoResults: '没有匹配的记录，试试换个日期范围或关键词。',
   historySummaryTitle: '按币种净额',

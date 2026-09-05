@@ -62,7 +62,6 @@ describe('历史页', () => {
     await waitFor(() => expect(screen.getByText('本地咖啡')).toBeDefined());
     expect(screen.queryByText('TokyoTrip')).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Search' }));
     const box = screen.getByRole('searchbox');
     await user.type(box, 'tokyotrip');
     await waitFor(() => expect(screen.getByText('TokyoTrip')).toBeDefined());
@@ -83,7 +82,6 @@ describe('历史页', () => {
     await waitFor(() => expect(screen.getByText('上月机票')).toBeDefined());
 
     // 应用一个命不中的筛选，进入筛选空态
-    await user.click(screen.getByRole('button', { name: 'Search' }));
     await user.type(screen.getByRole('searchbox'), '不存在的关键词');
     await waitFor(() =>
       expect(screen.getByText(/No matching records/)).toBeDefined(),
@@ -109,7 +107,6 @@ describe('历史页', () => {
     await waitFor(() => expect(screen.getByText(/No records yet/)).toBeDefined());
 
     // 打开搜索、输入命不中的词 → historyNoResults（与 emptyLedger 文案不同）
-    await user.click(screen.getByRole('button', { name: 'Search' }));
     await user.type(screen.getByRole('searchbox'), 'zzz');
     await waitFor(() => expect(screen.getByText(/No matching records/)).toBeDefined());
   });
@@ -123,5 +120,50 @@ describe('历史页', () => {
     await waitFor(() => expect(screen.getByText('澳元')).toBeDefined());
     expect(screen.getByText('-10.00 AUD')).toBeDefined();
     expect(screen.getByText('-20.00 USD')).toBeDefined();
+  });
+});
+
+describe('按天折叠（UX brief 要求：今天默认展开，其余天默认收起）', () => {
+  it('今天这组默认展开，更早的一天默认收起', async () => {
+    // 系统时间钉在 2026-09-05，"今天"就是这一天
+    await addTransactions([
+      tx({ date: '2026-09-05', merchant: '今天买菜' }),
+      tx({ date: '2026-09-01', merchant: '月初买菜' }),
+    ]);
+    render(<HistoryPage />);
+    await waitFor(() => expect(screen.getByText('今天买菜')).toBeDefined());
+    const todayHeader = screen.getAllByRole('button', { name: /Sep 5/ })[0];
+    const earlierHeader = screen.getAllByRole('button', { name: /Sep 1/ })[0];
+    expect(todayHeader.getAttribute('aria-expanded')).toBe('true');
+    // 更早一天默认收起：账目行还在 DOM 里（不是没渲染），但被折叠容器
+    // 收起——用 grid-rows-[0fr] 的高度折叠，不是 display:none。
+    expect(earlierHeader.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByText('月初买菜')).toBeDefined();
+  });
+
+  it('点天头可以展开/收起对应的那一天', async () => {
+    await addTransactions([tx({ date: '2026-09-01', merchant: '月初买菜' })]);
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+    await waitFor(() => expect(screen.getByText('月初买菜')).toBeDefined());
+    const dayHeaderButtons = screen.getAllByRole('button', { name: /Sep 1/ });
+    expect(dayHeaderButtons).toHaveLength(1);
+    expect(dayHeaderButtons[0].getAttribute('aria-expanded')).toBe('false');
+    await user.click(dayHeaderButtons[0]);
+    expect(dayHeaderButtons[0].getAttribute('aria-expanded')).toBe('true');
+    await user.click(dayHeaderButtons[0]);
+    expect(dayHeaderButtons[0].getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('搜索命中的天强制展开，即便不是今天也没被手动点开过', async () => {
+    await addTransactions([
+      tx({ date: '2026-08-01', merchant: 'Woolworths', description: '很久以前' }),
+    ]);
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+    await user.type(screen.getByRole('searchbox'), 'woolworths');
+    await waitFor(() => expect(screen.getByText('Woolworths')).toBeDefined());
+    const dayHeaderButtons = screen.getAllByRole('button', { name: /Aug 1/ });
+    expect(dayHeaderButtons[0].getAttribute('aria-expanded')).toBe('true');
   });
 });

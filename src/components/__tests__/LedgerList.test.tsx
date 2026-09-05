@@ -93,8 +93,8 @@ describe('同步状态圆点', () => {
   });
 });
 
-describe('点击展开编辑', () => {
-  it('点击一行展开编辑表单，显示当前字段值', () => {
+describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹窗，见 EditDialog.tsx）', () => {
+  it('点击一行弹出编辑弹窗，显示当前字段值', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
     fireEvent.click(screen.getByText('买菜'));
     expect(screen.getByLabelText('Description')).toHaveProperty('value', '买菜');
@@ -115,12 +115,39 @@ describe('点击展开编辑', () => {
     await waitFor(() => expect(removeTransaction).toHaveBeenCalledWith('a'));
   });
 
-  it('点取消收起表单，不调用任何保存/删除', () => {
+  it('点取消关闭弹窗，不调用任何保存/删除', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
     fireEvent.click(screen.getByText('买菜'));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByLabelText('Description')).toBeNull();
     expect(amendTransaction).not.toHaveBeenCalled();
     expect(removeTransaction).not.toHaveBeenCalled();
+  });
+
+  it('改了字段但按 Escape 关闭 —— 丢弃改动，不调用保存（brief 的"安全取消"要求）', () => {
+    render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
+    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: '改过的描述' } });
+    fireEvent.keyDown(screen.getByLabelText('Description'), { key: 'Escape', code: 'Escape' });
+    expect(screen.queryByLabelText('Description')).toBeNull();
+    expect(amendTransaction).not.toHaveBeenCalled();
+  });
+
+  // 背景遮罩点击关闭没有写成自动化用例：Radix 的 DismissableLayer 靠一套
+  // 真实的原生 PointerEvent 序列判断"点在 Content 外面"，jsdom 对 Pointer
+  // Events 的模拟跟真实浏览器有出入，多次尝试（fireEvent.click、
+  // fireEvent.pointerDown、手动派发原生 PointerEvent）在这个环境下都没能
+  // 触发 Radix 的判定逻辑。这条路径走的是跟 Escape 完全相同的
+  // onOpenChange(false) → 不调用 onSave 的代码，且没有覆写 Radix 默认的
+  // onPointerDownOutside，所以逻辑上由上面的 Escape 用例間接覆盖；背景点击
+  // 本身是否真的关闭，留给手动/浏览器验证。
+
+  it('重新打开同一笔账，表单是全新挂载——不会带着上次没保存的改动', () => {
+    render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
+    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: '改过但没保存' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByText('买菜'));
+    expect(screen.getByLabelText('Description')).toHaveProperty('value', '买菜');
   });
 });

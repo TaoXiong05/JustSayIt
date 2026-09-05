@@ -21,8 +21,9 @@ function categoriesFor(type: Transaction['type']): readonly CategoryKey[] {
 }
 
 /**
- * 行内展开的编辑表单（spec §13.2：原位展开，不用模态）。
- * 只改动过的字段才有意义上传，但这里为简单起见每次保存都带上全部
+ * 编辑表单本体——原先是原位展开（spec §13.2），Plan 5 二次改版按明确要求
+ * 换成了居中弹窗（见 EditDialog.tsx），这里只是表单内容，不关心自己被
+ * 谁包着。只改动过的字段才有意义上传，但这里为简单起见每次保存都带上全部
  * 五个可编辑字段的当前值——amendTransaction 的 changes 是
  * Partial<Omit<Transaction,'id'>>，全带上也完全合法，且避免"哪些字段
  * 被用户碰过"这层额外状态。
@@ -67,7 +68,7 @@ export function EditForm({
   }
 
   return (
-    <li className="space-y-2.5 border-b border-border bg-surface-2/50 px-4 py-3 last:border-b-0">
+    <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs font-medium text-muted">
           {t('editCategoryLabel')}
@@ -149,6 +150,6 @@ export function EditForm({
           {t('editDelete')}
         </button>
       </div>
-    </li>
+    </div>
   );
 }

@@ -143,3 +143,44 @@ textarea {
     opacity: 1;
   }
 }
+
+/* EditDialog（Radix Dialog）的淡入淡出/缩放——Radix 的 Presence 会在
+   [data-state=closed] 动画播完后才真正把节点从 DOM 卸载，所以这两组
+   keyframes 配合 Radix 自动打的 data-state 属性，就能同时做到"关闭时有
+   退场动画"和"每次重新打开 EditForm 内部状态都是全新的"（卸载过一次）。 */
+@keyframes dialog-overlay-show {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-overlay-hide {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-content-show {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes dialog-content-hide {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+}
