@@ -75,8 +75,10 @@ export default function StatsPage() {
                       <span className="flex-1 text-sm font-medium text-ink">
                         {CATEGORY_LABELS[locale][cat.category]}
                       </span>
-                      <span className="font-mono tabular-nums text-sm text-ink">
-                        {formatAmount(cat.totalCents, currencyStats.currency)}
+                      {/* expenseByCategory 顾名思义全是支出，跟 Total spent
+                          同一套方向配色/负号约定，不需要按符号分叉判断。 */}
+                      <span className="font-mono tabular-nums text-sm text-expense">
+                        {`-${formatAmount(cat.totalCents, currencyStats.currency)}`}
                       </span>
                     </button>
                     {open && (
