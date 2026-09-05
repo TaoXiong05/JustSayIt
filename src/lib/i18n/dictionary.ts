@@ -65,7 +65,9 @@ export type DictKey =
   | 'statsNext'
   | 'statsTotalExpense'
   | 'statsTotalIncome'
-  | 'statsEmpty';
+  | 'statsEmpty'
+  | 'navLedger'
+  | 'navStats';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -113,6 +115,8 @@ const en: Record<DictKey, DictValue> = {
   statsTotalExpense: 'Total spent',
   statsTotalIncome: 'Income',
   statsEmpty: 'Nothing recorded in this period.',
+  navLedger: 'Ledger',
+  navStats: 'Stats',
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
@@ -167,6 +171,8 @@ const zh: Record<DictKey, DictValue> = {
   statsTotalExpense: '总支出',
   statsTotalIncome: '收入',
   statsEmpty: '这段时间还没有记录。',
+  navLedger: '记账',
+  navStats: '统计',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',
