@@ -4,6 +4,7 @@ import { Mic } from 'lucide-react';
 import { useLocale } from '@/lib/i18n/context';
 import { CATEGORY_LABELS } from '@/lib/i18n/dictionary';
 import { CATEGORY_ICONS } from '@/lib/i18n/categoryIcons';
+import { CATEGORY_TINTS } from '@/lib/i18n/categoryTint';
 
 const WAVEFORM = [5, 12, 8, 16, 10, 14, 6, 11, 15, 9, 7, 13];
 // 跟 VoiceButton 录音态的错峰节奏是同一套设计语言（改善方向 #3 的声音
@@ -58,13 +59,19 @@ export function CaptureDemo() {
       <ul className="mt-4 space-y-2 border-t border-border pt-4">
         {DEMO_ROWS.map((row) => {
           const Icon = CATEGORY_ICONS[row.category];
+          // 用真实 TransactionRow 同一套分类配色（改善方向 #5），不是这个
+          // mockup 自己另起一份单色 brand-soft 徽标——这是在演示产品本身
+          // 长什么样，理应跟真实列表一致。
+          const tint = CATEGORY_TINTS[row.category];
           return (
             <li
               key={row.merchant}
               className="flex items-center gap-3 rounded-lg bg-surface-2 px-3 py-2"
             >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-                <Icon className="size-3.5" />
+              <span
+                className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tint.bg}`}
+              >
+                <Icon className={`size-3.5 ${tint.fg}`} />
               </span>
               <span className="flex-1 text-xs font-medium text-ink">{row.merchant}</span>
               <span className="text-[10px] text-muted">
