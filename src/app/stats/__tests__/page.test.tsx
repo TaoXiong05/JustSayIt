@@ -72,6 +72,17 @@ describe('统计页', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText(/Nothing recorded/)).toBeDefined());
   });
+
+  it('展开的分类明细是固定高度内部滚动的容器，不是让整个页面变高（同 History 展开天/主屏最近记录）', async () => {
+    await addTransactions([tx({ category: 'FOOD', description: '买菜' })]);
+    render(<StatsPage />);
+    await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
+    fireEvent.click(screen.getByText('Food'));
+    const row = screen.getByText('买菜');
+    const list = row.closest('ul');
+    expect(list?.className).toContain('max-h-64');
+    expect(list?.className).toContain('overflow-y-auto');
+  });
 });
 
 describe('统计页 · 多币种', () => {

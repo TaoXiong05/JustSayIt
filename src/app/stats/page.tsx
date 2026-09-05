@@ -83,7 +83,9 @@ export default function StatsPage() {
                           </span>
                         </button>
                         {open && (
-                          <ul className="ml-11 mb-1 space-y-0.5">
+                          // 跟主屏最近记录、History 展开天同一个处理：分类下
+                          // 笔数多时容器自己滚动，不要把整个页面撑高。
+                          <ul className="ml-11 mb-1 max-h-64 space-y-0.5 overflow-y-auto">
                             {cat.transactions.map((transaction) => (
                               <TransactionRow key={transaction.id} transaction={transaction} />
                             ))}
