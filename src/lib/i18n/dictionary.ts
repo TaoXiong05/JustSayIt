@@ -178,7 +178,7 @@ const en: Record<DictKey, DictValue> = {
   navStats: 'Stats',
   ledgerTagline: 'Speak your expenses, master your money.',
   historyTagline: 'Effortless tracking for a clearer financial future.',
-  statsTagline: 'Take control of your wealth, one sentence at a time.',
+  statsTagline: "Let's see what's been stealing your money…",
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
