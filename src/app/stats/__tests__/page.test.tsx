@@ -36,7 +36,7 @@ describe('统计页', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
     expect(screen.getByText('Transport')).toBeDefined();
-    // 总支出 10+5=15.00：左栏各币种段 + 桌面总览栏各出现一次（断点不同、DOM 同存）
+    // 总支出 10+5=15.00：分类段自己的总支出 + 页面底部的月度总览各出现一次
     expect(screen.getAllByText('15.00').length).toBeGreaterThan(0);
   });
 
@@ -61,9 +61,9 @@ describe('统计页', () => {
     await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
     expect(screen.queryByText('Transport')).toBeNull();
 
-    // 桌面档位下 MonthSwitcher 在左栏和总览栏各渲染一份（两个断点共用同一 DOM），
-    // 取第一份即可——两个实例状态同步，点哪个行为一致。
-    await user.click(screen.getAllByRole('button', { name: 'Previous month' })[0]);
+    // MonthSwitcher 现在页面顶部只有一份（不再是移动端一份、桌面侧边栏
+    // 再一份），直接找即可。
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
     await waitFor(() => expect(screen.getByText('Transport')).toBeDefined());
     expect(screen.queryByText('Food')).toBeNull();
   });
