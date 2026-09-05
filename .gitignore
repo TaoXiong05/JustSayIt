@@ -10,6 +10,10 @@ out/
 build/
 dist/
 
+# Serwist 在每次 next build 时生成的 Service Worker 产物（源码是 src/app/sw.ts）
+/public/sw.js
+/public/sw.js.map
+
 # Prisma
 prisma/*.db
 prisma/*.db-journal

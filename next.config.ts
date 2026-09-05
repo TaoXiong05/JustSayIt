@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import withSerwistInit from '@serwist/next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -7,4 +8,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['192.168.1.55.nip.io'],
 };
 
-export default nextConfig;
+const withSerwist = withSerwistInit({
+  swSrc: 'src/app/sw.ts',
+  swDest: 'public/sw.js',
+});
+
+export default withSerwist(nextConfig);
