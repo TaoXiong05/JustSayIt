@@ -1,5 +1,5 @@
 import { beforeAll, describe, it, expect } from 'vitest';
-import type { RuntimeCaching } from 'serwist';
+import { NetworkFirst, type RuntimeCaching } from 'serwist';
 
 /**
  * spec §13.4 硬性规则：Service Worker 绝不能缓存 /api/* 下的任何响应
@@ -10,9 +10,10 @@ import type { RuntimeCaching } from 'serwist';
  * 实际上包含一条会缓存 /api/* GET 响应的运行时规则（NetworkFirst，
  * cacheName: "apis"，见 node_modules/@serwist/next/src/index.worker.ts），
  * 并不像常见印象/文档标题暗示的那样"默认已排除 /api/*"。因此本项目没有
- * 使用 defaultCache，而是让 runtimeCaching 保持为空数组：只预缓存构建期
- * 生成的应用外壳（precacheEntries），其余一切请求（包括所有 /api/*
- * 请求）都直接走网络、不经过任何缓存规则。
+ * 使用 defaultCache，而是手写唯一一条运行时规则：同源 + 仅导航请求 +
+ * 显式排除 /api/*，策略 NetworkFirst（spec §13.4 要求的"导航请求
+ * network-first 回退到缓存的外壳"）。除导航请求外的一切请求（包括所有
+ * /api/* 请求）都直接走网络、不经过任何缓存规则。
  */
 describe('Service Worker runtimeCaching 规则（spec §13.4 硬性规则）', () => {
   let runtimeCaching: RuntimeCaching[];
@@ -28,8 +29,51 @@ describe('Service Worker runtimeCaching 规则（spec §13.4 硬性规则）', (
     ({ runtimeCaching } = await import('@/app/sw'));
   });
 
-  it('为空数组：只预缓存应用外壳，不设置任何运行时缓存规则', () => {
-    expect(runtimeCaching).toEqual([]);
+  /**
+   * 用一个「假的 fetch 事件上下文」调用函数形式的 matcher。
+   * 不用 `new Request(url, { mode: 'navigate' })`——fetch 规范禁止在构造
+   * 函数里指定 navigate 模式（只有浏览器自己发起的导航才会是这个 mode），
+   * 而 matcher 只读 request.mode 这一个字段，所以传一个最小的字面量即可。
+   */
+  function callMatcher(
+    rule: RuntimeCaching,
+    { path, mode, sameOrigin = true }: { path: string; mode: string; sameOrigin?: boolean },
+  ) {
+    const matcher = rule.matcher;
+    if (typeof matcher !== 'function') throw new Error('期望 matcher 是函数形式');
+    const url = new URL(`https://example.com${path}`);
+    return matcher({
+      url,
+      sameOrigin,
+      request: { mode, url: url.href } as Request,
+    } as Parameters<typeof matcher>[0]);
+  }
+
+  it('只有一条运行时规则：同源导航请求的 network-first 外壳回退', () => {
+    expect(runtimeCaching).toHaveLength(1);
+  });
+
+  it('导航规则匹配同源导航请求（/ 与 /stats），让离线时也能加载外壳 HTML', () => {
+    const [navRule] = runtimeCaching;
+    expect(callMatcher(navRule, { path: '/', mode: 'navigate' })).toBeTruthy();
+    expect(callMatcher(navRule, { path: '/stats', mode: 'navigate' })).toBeTruthy();
+  });
+
+  it('导航规则不匹配 /api/ 下的请求——即便该请求的 mode 是 navigate', () => {
+    const [navRule] = runtimeCaching;
+    expect(callMatcher(navRule, { path: '/api/structure', mode: 'navigate' })).toBeFalsy();
+    expect(callMatcher(navRule, { path: '/api/structure', mode: 'cors' })).toBeFalsy();
+  });
+
+  it('导航规则不匹配非导航请求，也不匹配跨源请求', () => {
+    const [navRule] = runtimeCaching;
+    expect(callMatcher(navRule, { path: '/stats', mode: 'cors' })).toBeFalsy();
+    expect(callMatcher(navRule, { path: '/', mode: 'navigate', sameOrigin: false })).toBeFalsy();
+  });
+
+  it('导航规则用的是 network-first 策略（先网络、失败才回退缓存）', () => {
+    const [navRule] = runtimeCaching;
+    expect(navRule.handler).toBeInstanceOf(NetworkFirst);
   });
 
   it('不包含任何匹配 /api/ 路径的缓存规则（即便未来往里加规则，这条测试也兜底）', () => {

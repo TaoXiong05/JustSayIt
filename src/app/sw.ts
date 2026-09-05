@@ -1,5 +1,5 @@
 import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from 'serwist';
-import { Serwist } from 'serwist';
+import { NetworkFirst, Serwist } from 'serwist';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -24,15 +24,26 @@ declare const self: WorkerGlobalScope;
  * 项目"SW 绝不能缓存 API 响应"的硬性规则冲突（项目已有基于 IndexedDB 的
  * 离线数据层，SW 再缓存 API 响应会产生第二个互相打架的真相来源）。
  *
- * 因此这里不使用 defaultCache，而是让 runtimeCaching 保持为空数组：
- * Serwist 只负责预缓存构建期生成的应用外壳（precacheEntries，来自
- * __SW_MANIFEST），其余一切请求——包括所有 /api/* 请求——都不会被任何
- * 运行时缓存规则拦截，直接走浏览器原生网络请求。
+ * 因此这里不使用 defaultCache，而是手写唯一一条运行时规则：
+ * 同源 + 仅导航请求（request.mode === 'navigate'）+ 显式排除 /api/*，
+ * 策略为 NetworkFirst（先走网络，失败时回退到缓存里的外壳 HTML）。
+ * 这正是 spec §13.4 要求的三件事里的第二件——"导航请求 network-first
+ * 回退到缓存的外壳"；没有它，已安装的 PWA 离线时连外壳 HTML 都加载不出来。
  *
- * sw.test.ts 对这个数组做了双重断言（为空、且即便以后加了规则也不能匹配
- * /api/），不只靠"读一遍文档相信它"。
+ * 除导航请求外的一切请求——尤其是所有 /api/* 请求——都不会被任何运行时
+ * 缓存规则拦截，直接走浏览器原生网络请求（数据的离线能力由 IndexedDB
+ * 事件日志 + 离线队列负责，SW 绝不碰）。
+ *
+ * sw.test.ts 对这个数组做了双重断言（这条导航规则存在且行为正确、且数组里
+ * 任何一条规则都不能匹配 /api/），不只靠"读一遍文档相信它"。
  */
-export const runtimeCaching: RuntimeCaching[] = [];
+export const runtimeCaching: RuntimeCaching[] = [
+  {
+    matcher: ({ request, url, sameOrigin }) =>
+      sameOrigin && request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+    handler: new NetworkFirst({ cacheName: 'pages' }),
+  },
+];
 
 export const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
