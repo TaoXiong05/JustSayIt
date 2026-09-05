@@ -188,12 +188,17 @@ export default function Home() {
           <ChevronRight aria-hidden="true" className="size-4" />
         </Link>
       </div>
-      {/* max-h-64 之前是 256px，占屏幕相当一块面积，手指想滑动整个页面时
-          很容易先落在这块区域里、被当成"要滑动内部列表"而不是滑页面——
-          缩小到 192px 减少误触概率；overscroll-contain 防止滑到内部列表
-          顶/底之后继续滑动被"接力"到页面滚动，两个方向都更可控（用户
-          反馈：滑动容器有效范围太大，容易误触）。 */}
-      <div className="max-h-48 overflow-y-auto overscroll-contain rounded-lg">
+      {/* 缩小高度那版改错方向了，退回 256px——用户真正想要的是"进入白色
+          卡片区域才能滚动"，不是把卡片缩小。真正的根因：这个滚动容器
+          原来是"裸"的（没有自己的背景/边框），日期标题用页面背景色
+          （bg-bg，不是白色）浮在卡片上方——鼠标只要落在这条非白色的
+          标题行上就已经算"进了滚动容器"，能滚动列表，但视觉上还没碰到
+          白色卡片，跟直觉不符。现在让这个滚动容器本身就是那张白色卡片
+          （border/bg-surface/shadow-card 直接搬到这一层），日期标题也
+          改用同色背景（见 LedgerList.tsx）——滚动容器的可见范围和可交互
+          范围完全重合，不再有"看着是外面、其实已经在里面"的灰色地带。
+          overscroll-contain 防止滑到顶/底之后继续被"接力"到页面滚动。 */}
+      <div className="max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface shadow-card">
         <LedgerList transactions={recentTransactions(transactions, 10)} />
       </div>
       <SyncWarning />
