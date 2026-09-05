@@ -22,8 +22,10 @@ export function CaptureDemo() {
   return (
     <section aria-hidden="true" className="px-6 py-8">
       <div className="mx-auto max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-pop">
-        {/* mic orb */}
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-2 text-brand-ink">
+        {/* mic orb——跟真实的 VoiceButton 一样用纯色 brand，不是渐变：这个
+            mockup 是在演示产品本身的样子，不该比真实按钮更花哨（渐变收窄
+            到 Logo 一处，改善方向 #2）。 */}
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-brand text-brand-ink">
           <Mic className="size-7" />
         </div>
 

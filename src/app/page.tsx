@@ -95,39 +95,31 @@ export default function Home() {
           <Composer onSubmit={handleSubmit} />
         </section>
       ) : (
-        // 渐变卡片，故意不跟随浅色/深色主题切换——这是一个要主动抓眼球的
-        // 招牌 CTA，不是普通页面文本，两种主题下都保持同一个微光观感
-        // （跟营销首页 Hero 的定位一致：都是"引导去登录"的关键时刻）。
-        // 调浅过一版：原来从近黑的深藏青起步，太重；现在整段都在偏亮的
-        // 品牌紫蓝区间里，白字对比度依然够，但整体观感轻一些。CTA 直接
-        // 指向 OAuth 端点、不经过 /login 营销页——会看到这块 banner 的人
-        // 已经在用产品了，不需要再看一遍营销话术，少一次跳转就少一次流失。
-        <div className="relative mb-6 overflow-hidden rounded-2xl p-5 text-white shadow-pop">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-[linear-gradient(135deg,#4f46e5_0%,#7c6ff0_50%,#a78bfa_100%)]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -right-8 -top-10 size-36 rounded-full bg-white/20 blur-3xl"
-          />
-          <div className="relative flex items-start gap-3.5">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15">
+        // 之前是满版品牌渐变+白字的"招牌 CTA"卡片——跟 Logo/CTA/Hero 用的
+        // 是同一个渐变，导致"重要"的东西全用同一招表达，互相抵消层级感
+        // （改善方向 #2：渐变收窄到一个真正的签名时刻，这里改用跟其它
+        // 卡片同一套语言：surface 底 + border + shadow-card，用 brand-soft
+        // 图标点题就够，不需要整张卡片都是品牌色）。CTA 直接指向 OAuth
+        // 端点、不经过 /login 营销页——会看到这张卡片的人已经在用产品了，
+        // 不需要再看一遍营销话术，少一次跳转就少一次流失。
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-5 shadow-card">
+          <div className="flex items-start gap-3.5">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
               <RefreshCw aria-hidden="true" className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-semibold">{t('logInPrompt')}</p>
-              <p className="mt-1 text-sm text-white/80">{t('logInDescription')}</p>
+              <p className="font-display text-base font-semibold text-ink">{t('logInPrompt')}</p>
+              <p className="mt-1 text-sm text-muted">{t('logInDescription')}</p>
             </div>
           </div>
-          <div className="relative mt-4 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <a
               href="/api/auth/login"
-              className="inline-flex items-center gap-2.5 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-[#3c4043] shadow-sm transition-transform hover:scale-[1.02]"
+              className="inline-flex items-center gap-2.5 rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-[#3c4043] shadow-sm transition-colors hover:bg-surface-2"
             >
               {/* Google 官方四色 G 标志，"使用 Google 登录"按钮的标准画法——
-                  按钮本身用 Google 品牌指南要求的浅底深字，不是这块 banner
-                  自己的渐变配色，两者刻意不同源。 */}
+                  按钮本身用 Google 品牌指南要求的浅底深字，不跟随这个
+                  项目自己的品牌色。 */}
               <svg aria-hidden="true" viewBox="0 0 18 18" className="size-[18px] shrink-0">
                 <path
                   fill="#4285F4"

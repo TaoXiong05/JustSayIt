@@ -5,7 +5,9 @@ import { useLocale } from '@/lib/i18n/context';
 /**
  * 营销页 Hero 段——独立可裁剪/重排的组件，不依赖其它段的状态
  * （咨询要求：componentized so sections can be trimmed/reordered）。
- * 渐变头条只出现在 hero 时刻（Global Constraint 1）。
+ * 标题不再用渐变裁切文字——品牌渐变收窄到唯一的签名时刻（Logo 图标），
+ * 这里跟应用内 Ledger/History/Stats 的话术标题用同一套纯色处理，两处
+ * 视觉语言保持一致（改善方向 #2）。
  */
 export function Hero() {
   const { t } = useLocale();
@@ -13,9 +15,7 @@ export function Hero() {
     <section className="px-6 pb-10 pt-16 text-center sm:pt-24">
       <div className="mx-auto max-w-2xl">
         <h1 className="font-display text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-          <span className="bg-gradient-to-r from-brand to-brand-2 bg-clip-text text-transparent">
-            {t('loginHeroTitle')}
-          </span>
+          {t('loginHeroTitle')}
         </h1>
         <p className="mt-4 text-base text-muted sm:text-lg">{t('loginHeroSubhead')}</p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
