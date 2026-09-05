@@ -188,7 +188,12 @@ export default function Home() {
           <ChevronRight aria-hidden="true" className="size-4" />
         </Link>
       </div>
-      <div className="max-h-64 overflow-y-auto rounded-lg">
+      {/* max-h-64 之前是 256px，占屏幕相当一块面积，手指想滑动整个页面时
+          很容易先落在这块区域里、被当成"要滑动内部列表"而不是滑页面——
+          缩小到 192px 减少误触概率；overscroll-contain 防止滑到内部列表
+          顶/底之后继续滑动被"接力"到页面滚动，两个方向都更可控（用户
+          反馈：滑动容器有效范围太大，容易误触）。 */}
+      <div className="max-h-48 overflow-y-auto overscroll-contain rounded-lg">
         <LedgerList transactions={recentTransactions(transactions, 10)} />
       </div>
       <SyncWarning />

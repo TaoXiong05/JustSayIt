@@ -25,7 +25,7 @@ export function LedgerList({ transactions }: { transactions: Transaction[] }) {
     <div>
       {groupByDate(transactions).map(([date, items]) => (
         <section key={date} className="mb-4">
-          {/* 主屏最近记录的外层容器是 max-h-64 overflow-y-auto（page.tsx）——
+          {/* 主屏最近记录的外层容器是 max-h-48 overflow-y-auto（ledger/page.tsx）——
               日期标题吸顶，滚动明细时它不跟着滚走。背景色是必须的：sticky
               定住后下面滚上来的账目卡片会被它盖住，没有实色背景就会透出来
               叠在一起看不清。 */}
