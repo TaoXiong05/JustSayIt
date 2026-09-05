@@ -71,6 +71,8 @@ export type DictKey =
   | 'settingsTitle'
   | 'settingsAccount'
   | 'settingsStorageUsage'
+  | 'settingsStorageTitle'
+  | 'settingsDataTitle'
   | 'settingsExport'
   | 'settingsAvatarLabel'
   | 'installTitle'
@@ -168,7 +170,9 @@ const en: Record<DictKey, DictValue> = {
   queuedOffline: 'Queued offline — will record once back online',
   settingsTitle: 'Settings',
   settingsAccount: 'Account',
-  settingsStorageUsage: ({ used, quota }) => `Local storage: ${used} MB / ${quota} MB`,
+  settingsStorageUsage: ({ used, quota }) => `${used} MB / ${quota} MB`,
+  settingsStorageTitle: 'Local storage',
+  settingsDataTitle: 'Data',
   settingsExport: 'Export backup',
   settingsAvatarLabel: 'Settings',
   installTitle: 'Install JustSayIt',
@@ -265,7 +269,9 @@ const zh: Record<DictKey, DictValue> = {
   queuedOffline: '离线待处理，联网后自动记账',
   settingsTitle: '设置',
   settingsAccount: '账号',
-  settingsStorageUsage: ({ used, quota }) => `本地已用 ${used} MB / 配额 ${quota} MB`,
+  settingsStorageUsage: ({ used, quota }) => `${used} MB / ${quota} MB`,
+  settingsStorageTitle: '本地存储',
+  settingsDataTitle: '数据',
   settingsExport: '导出备份',
   settingsAvatarLabel: '设置',
   installTitle: '安装 JustSayIt',

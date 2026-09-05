@@ -1,11 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
 import { useSession, fetchLogout } from '@/lib/auth/client';
 import { getStorageEstimate } from '@/lib/pwa/storage';
 import { exportBackup } from '@/lib/sync/export';
 import { useLocale } from '@/lib/i18n/context';
 import { InstallBanner } from '@/components/InstallBanner';
+
+/** 四张卡片（账号/存储/数据/PWA）统一走这个壳，宽度和视觉权重才不会各自漂移。 */
+function SettingsCard({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border bg-surface p-5 shadow-card">
+      {children}
+    </section>
+  );
+}
 
 export default function SettingsPage() {
   const { user, loading } = useSession();
@@ -29,35 +39,82 @@ export default function SettingsPage() {
   }, []);
 
   const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2);
+  // 分母是 0（极少见的浏览器怪响应）时不要 NaN%——夹在 [0,100] 内，UI 上
+  // 一条空/满的进度条总比一条宽度是 NaN 的进度条安全。
+  const usagePct =
+    usage && usage.quotaBytes > 0
+      ? Math.min(100, Math.max(0, (usage.usageBytes / usage.quotaBytes) * 100))
+      : 0;
 
   return (
-    <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:pb-6">
-      <h1 className="font-display text-xl font-bold text-ink">{t('settingsTitle')}</h1>
-      <section className="mt-4 rounded-lg border border-border bg-surface p-4 shadow-card">
-        <h2 className="font-display text-sm font-semibold text-ink">{t('settingsAccount')}</h2>
-        {user && <p className="mt-1 text-sm text-muted">{user.email ?? user.googleSub}</p>}
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          disabled={loading}
-          className="mt-3 rounded border border-danger-soft bg-danger-soft px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:opacity-80 disabled:opacity-50"
-        >
-          {t('logOut')}
-        </button>
-      </section>
-      {usage && (
-        <p className="mt-3 rounded-lg border border-border bg-surface p-4 text-sm text-muted shadow-card">
-          {t('settingsStorageUsage', { used: toMb(usage.usageBytes), quota: toMb(usage.quotaBytes) })}
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={() => void exportBackup()}
-        className="mt-3 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink shadow-card transition-colors hover:opacity-90"
-      >
-        {t('settingsExport')}
-      </button>
-      <div className="mt-4">
+    <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:px-8 lg:pb-10">
+      <header className="mb-6">
+        <h1 className="font-display text-2xl font-bold text-ink">{t('settingsTitle')}</h1>
+      </header>
+
+      <div className="flex flex-col gap-4">
+        <SettingsCard>
+          <h2 className="font-display text-sm font-semibold text-ink">{t('settingsAccount')}</h2>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            {user && (
+              <p className="min-w-0 truncate text-sm text-muted">{user.email ?? user.googleSub}</p>
+            )}
+            {/* 次要动作用轮廓+悬停才显色，不跟 Export/Install 的实心品牌色按钮
+                抢视觉权重——"退出"不该长得比"导出备份"更抓眼球。 */}
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              disabled={loading}
+              className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:border-danger-soft hover:bg-danger-soft disabled:opacity-50"
+            >
+              {t('logOut')}
+            </button>
+          </div>
+        </SettingsCard>
+
+        {usage && (
+          <SettingsCard>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-sm font-semibold text-ink">
+                {t('settingsStorageTitle')}
+              </h2>
+              <span className="font-mono text-xs tabular-nums text-muted">
+                {t('settingsStorageUsage', {
+                  used: toMb(usage.usageBytes),
+                  quota: toMb(usage.quotaBytes),
+                })}
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label={t('settingsStorageTitle')}
+              aria-valuenow={Math.round(usagePct)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="mt-3 h-2 overflow-hidden rounded-full bg-surface-2"
+            >
+              <div
+                className="h-full rounded-full bg-brand transition-[width]"
+                style={{ width: `${usagePct}%` }}
+              />
+            </div>
+          </SettingsCard>
+        )}
+
+        <SettingsCard>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-sm font-semibold text-ink">{t('settingsDataTitle')}</h2>
+            <button
+              type="button"
+              onClick={() => void exportBackup()}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
+            >
+              <Download aria-hidden="true" className="size-4" />
+              {t('settingsExport')}
+            </button>
+          </div>
+        </SettingsCard>
+
         <InstallBanner />
       </div>
     </main>

@@ -18,10 +18,15 @@ vi.mock('@/lib/sync/export', () => ({ exportBackup: vi.fn() }));
 beforeEach(() => vi.clearAllMocks());
 
 describe('设置页', () => {
-  it('显示账号邮箱与存储用量', async () => {
+  it('显示账号邮箱与存储用量（标题和数值分开渲染，标题是卡片标题，不是数值前缀）', async () => {
     render(<SettingsPage />);
     expect(screen.getByText('u@example.com')).toBeDefined();
-    await waitFor(() => expect(screen.getByText('Local storage: 1.00 MB / 100.00 MB')).toBeDefined());
+    // 用量卡片整块要等 getStorageEstimate() resolve 后才挂载（含标题）
+    await waitFor(() => expect(screen.getByText('1.00 MB / 100.00 MB')).toBeDefined());
+    expect(screen.getByText('Local storage')).toBeDefined();
+    // 进度条：1MB / 100MB = 1%
+    const bar = screen.getByRole('progressbar', { name: 'Local storage' });
+    expect(bar.getAttribute('aria-valuenow')).toBe('1');
   });
 
   it('点登出调用 fetchLogout 并跳回主屏（不是留在原地无反馈）', async () => {

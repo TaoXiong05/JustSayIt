@@ -18,32 +18,32 @@ export function InstallBanner() {
     return () => clearInterval(id);
   }, []);
 
+  // 卡片外壳跟 settings/page.tsx 的 SettingsCard 保持完全一致（rounded-xl +
+  // p-5），不是各自维护一份相近但不同的圆角/内边距——不然设置页里这四张卡片
+  // 挨在一起看，这一张会很显眼地"差一点"。
   if (isStandalone()) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+      <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
         <p className="text-sm text-muted">{t('installAlreadyInstalled')}</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-      <p className="font-display text-sm font-semibold text-ink">{t('installTitle')}</p>
-      <div className="mt-2">
-        {isIOS() ? (
-          <p className="text-sm text-muted">{t('installInstructionsIOS')}</p>
-        ) : (
-          installable && (
-            <button
-              type="button"
-              onClick={() => void promptInstall()}
-              className="rounded bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
-            >
-              {t('installActionAndroid')}
-            </button>
-          )
+    <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-display text-sm font-semibold text-ink">{t('installTitle')}</p>
+        {!isIOS() && installable && (
+          <button
+            type="button"
+            onClick={() => void promptInstall()}
+            className="inline-flex shrink-0 items-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
+          >
+            {t('installActionAndroid')}
+          </button>
         )}
       </div>
+      {isIOS() && <p className="mt-2 text-sm text-muted">{t('installInstructionsIOS')}</p>}
     </div>
   );
 }
