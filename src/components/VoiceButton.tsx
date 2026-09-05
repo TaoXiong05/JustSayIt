@@ -109,7 +109,7 @@ export function VoiceButton({
             onClick={cancel}
             aria-label={t('voiceCancel')}
             title={t('voiceCancel')}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink [clip-path:circle(50%)]"
           >
             <X aria-hidden="true" className="size-5" />
           </button>
@@ -118,7 +118,7 @@ export function VoiceButton({
             onClick={() => void stop()}
             aria-label={t('voiceStop')}
             title={t('voiceStop')}
-            className="relative flex size-24 items-center justify-center rounded-full bg-danger text-white shadow-pop"
+            className="relative flex size-24 items-center justify-center rounded-full bg-danger text-white shadow-pop [clip-path:circle(50%)]"
           >
             {/* ping 波纹圈：跟下面的竖线声波是两种视觉语言的同一个意思——
                 "正在录音"，圈负责外围的呼吸感，竖线负责"像声音在跳动"。 */}
@@ -176,7 +176,7 @@ export function VoiceButton({
           disabled={status === 'transcribing'}
           aria-label={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
           title={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
-          className="relative flex size-16 items-center justify-center rounded-full bg-brand text-brand-ink shadow-pop transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+          className="relative flex size-16 items-center justify-center rounded-full bg-brand text-brand-ink shadow-pop transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 [clip-path:circle(50%)]"
         >
           {status === 'transcribing' ? (
             <span
