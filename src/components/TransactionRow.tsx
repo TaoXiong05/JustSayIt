@@ -46,15 +46,17 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
   }
 
   return (
-    <li onClick={() => setEditing(true)}>
-      {/* 未同步/已同步的持久视觉标记（spec §8.5 第 1 点），零打扰、永久可见 */}
-      <span aria-hidden="true">{synced ? '●' : '○'}</span>
-      <span>{transaction.merchant ?? '—'}</span>
-      <span>{transaction.description}</span>
-      {/* category 存的是稳定英文 key（FOOD/TRANSPORT/…），这里只做展示层的
-          本地化映射——切换 UI 语言不改变底层存储的 key（中英文支持要求 §6、§7）*/}
-      <span>{CATEGORY_LABELS[locale][transaction.category]}</span>
-      <span>{`${sign}${formatAmount(transaction.amountCents, transaction.currency)}`}</span>
+    <li>
+      <button type="button" onClick={() => setEditing(true)}>
+        {/* 未同步/已同步的持久视觉标记（spec §8.5 第 1 点），零打扰、永久可见 */}
+        <span aria-hidden="true">{synced ? '●' : '○'}</span>
+        <span>{transaction.merchant ?? '—'}</span>
+        <span>{transaction.description}</span>
+        {/* category 存的是稳定英文 key（FOOD/TRANSPORT/…），这里只做展示层的
+            本地化映射——切换 UI 语言不改变底层存储的 key（中英文支持要求 §6、§7）*/}
+        <span>{CATEGORY_LABELS[locale][transaction.category]}</span>
+        <span>{`${sign}${formatAmount(transaction.amountCents, transaction.currency)}`}</span>
+      </button>
     </li>
   );
 }
