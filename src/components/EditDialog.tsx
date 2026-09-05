@@ -42,7 +42,18 @@ export function EditDialog({
         />
         <Dialog.Content
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-pop data-[state=closed]:[animation:dialog-content-hide_150ms_ease-in] data-[state=open]:[animation:dialog-content-show_150ms_ease-out]"
+          // 居中用 [transform:translate(-50%,-50%)] 这个任意值类，不用
+          // Tailwind v4 的 -translate-x-1/2 -translate-y-1/2 工具类——v4 起
+          // 那两个工具类写的是独立的 CSS `translate` 属性，跟下面动画
+          // 操作的 `transform` 属性是两个不同属性，会同时生效、叠加：
+          // 动画播放期间实际位移变成两者相加（约 -100%/-100%），弹窗会先
+          // 明显偏到左上角，动画播完只剩 `translate` 属性单独生效才弹回
+          // 正确的居中位置——这正是用户反馈的"从偏左上跳到居中"。改用
+          // 同一个 `transform` 属性做静态基准 + 动画，两者只有一个在起
+          // 作用，不会叠加；forwards 让动画结束后停在 to 关键帧（依然是
+          // 同一个 translate(-50%,-50%)），不依赖动画结束后"回退到静态值"
+          // 这层隐式行为。
+          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md [transform:translate(-50%,-50%)] rounded-xl border border-border bg-surface p-5 shadow-pop data-[state=closed]:[animation:dialog-content-hide_150ms_ease-in_forwards] data-[state=open]:[animation:dialog-content-show_150ms_ease-out_forwards]"
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <Dialog.Title className="font-display text-base font-semibold text-ink">
