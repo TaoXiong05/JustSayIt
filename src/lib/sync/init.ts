@@ -66,6 +66,13 @@ export function initSync(): () => void {
       if (newIds.length > 0) markUnsynced(newIds);
       void syncNow().catch(() => {});
     });
+    // 回归：上面的订阅只在*后续*账本变化时才触发 syncNow()——全新设备
+    // 登录后本地事件流从始至终是空的（没人新建/修改过账目），永远等不到
+    // 一次订阅通知，syncNow() 就永远不会被调用，Drive 上其它设备早就存在
+    // 的账目也就永远不会被拉下来合并（用户反馈：换设备登录同一账号，
+    // 一条记录都看不到）。这里的基线一旦建立就主动同步一次，不管本地
+    // 有没有变化，新设备首次登录也能立刻把远端历史账目拉下来。
+    void syncNow().catch(() => {});
   });
 
   return () => {

@@ -40,6 +40,17 @@ async function flushHydrate() {
 }
 
 describe('initSync', () => {
+  it('全新设备首次登录：本地没有任何变化（没人新建/修改账目）也要主动同步一次，才能拉到其它设备已有的账目（回归：之前 syncNow 只在订阅回调里被动触发，全新设备在第一次本地改动之前永远不会主动去 Drive 拉取，登录后"看不到任何记录"）', async () => {
+    vi.resetModules();
+    const { initSync } = await import('@/lib/sync/init');
+    initSync();
+    await flushHydrate();
+
+    // 关键：这里不模拟任何 store 变化通知（不调用 listeners 里的任何 fn）——
+    // 全新设备的本地事件流从始至终是空的，不会有任何 push()/commit()。
+    expect(syncNow).toHaveBeenCalled();
+  });
+
   it('账本变化时，新出现的 transaction_created 事件被标记为未同步，并触发一次同步', async () => {
     vi.resetModules();
     const { initSync } = await import('@/lib/sync/init');
