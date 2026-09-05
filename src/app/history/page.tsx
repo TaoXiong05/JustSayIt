@@ -111,7 +111,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-xl px-4 py-6 pb-24 md:pb-6 lg:max-w-6xl">
+    <main className="mx-auto w-full max-w-xl px-4 py-6 pb-24 md:pb-6 lg:max-w-2xl">
       <header className="mb-4">
         <h1 className="font-display text-xl font-bold text-ink">{t('navHistory')}</h1>
       </header>
@@ -192,110 +192,107 @@ export default function HistoryPage() {
         </section>
       )}
 
-      <div className="lg:grid lg:grid-cols-[1fr_300px] lg:items-start lg:gap-6">
-        <div>
-          {/* 筛选激活时月份浏览失活：按钮禁用 + 整块降透明度 */}
-          <div className="mb-4">
-            <MonthSwitcher
-              month={nav.month}
-              onChange={nav.setMonth}
-              earliestMonth={nav.earliestMonth}
-              disabled={filterActive}
-            />
-          </div>
-
-          {visible.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
-              {filterActive ? t('historyNoResults') : t('emptyLedger')}
-            </p>
-          ) : (
-            <div>
-              {groups.map((day) => {
-                const open = isDayOpen(day.date);
-                return (
-                  <section key={day.date} className="mb-3">
-                    {/* 折叠态是天头本身的按钮，不是天头旁边另一个按钮——整行
-                        都可点，触摸目标够大，符合 brief 的 mobile-friendly 要求。 */}
-                    <button
-                      type="button"
-                      onClick={() => toggleDay(day.date)}
-                      aria-expanded={open}
-                      className="mb-1.5 flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-surface-2"
-                    >
-                      <ChevronDown
-                        aria-hidden="true"
-                        className={`size-4 shrink-0 text-muted transition-transform duration-200 ${
-                          open ? '' : '-rotate-90'
-                        }`}
-                      />
-                      <h2 className="font-display text-sm font-semibold text-muted">
-                        {formatDayHeader(day.date, locale)}
-                      </h2>
-                      <span className="ml-auto flex gap-2">
-                        {day.subtotalsByCurrency.map((s) => (
-                          <span
-                            key={s.currency}
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              s.netCents >= 0
-                                ? 'bg-income-soft text-income'
-                                : 'bg-expense-soft text-expense'
-                            }`}
-                          >
-                            {formatAmount(s.netCents, s.currency)} {s.currency}
-                          </span>
-                        ))}
-                      </span>
-                    </button>
-                    {/* grid-template-rows 0fr/1fr 的经典技巧：纯 CSS 就能把
-                        任意高度的内容平滑收起/展开，不需要量高度的 JS。 */}
-                    <div
-                      className={`grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out ${
-                        open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                      }`}
-                    >
-                      <div className="min-h-0 overflow-hidden">
-                        {/* 跟主屏最近记录同一个处理：展开的那一天笔数多时，
-                            让这个容器自己滚动，不要把整个页面撑高——用户
-                            反馈的原话就是"应该和主页一样是一个可以滑动的
-                            容器，而不是整个页面"。 */}
-                        <ul className="max-h-64 overflow-y-auto rounded-lg border border-border bg-surface shadow-card">
-                          {day.items.map((transaction) => (
-                            <TransactionRow key={transaction.id} transaction={transaction} />
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <aside className="hidden lg:sticky lg:top-6 lg:block">
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="font-display text-sm font-semibold text-ink">
-              {t('historySummaryTitle')}
-            </h2>
-            {summaryByCurrency.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {summaryByCurrency.map(([currency, netCents]) => (
-                  <li key={currency} className="flex items-center justify-between text-sm">
-                    <span className="text-muted">{currency}</span>
-                    <span
-                      className={`font-mono tabular-nums font-medium ${
-                        netCents >= 0 ? 'text-income' : 'text-expense'
-                      }`}
-                    >
-                      {formatAmount(netCents, currency)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </aside>
+      {/* 筛选激活时月份浏览失活：按钮禁用 + 整块降透明度 */}
+      <div className="mb-4">
+        <MonthSwitcher
+          month={nav.month}
+          onChange={nav.setMonth}
+          earliestMonth={nav.earliestMonth}
+          disabled={filterActive}
+        />
       </div>
+
+      {visible.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
+          {filterActive ? t('historyNoResults') : t('emptyLedger')}
+        </p>
+      ) : (
+        <div>
+          {groups.map((day) => {
+            const open = isDayOpen(day.date);
+            return (
+              <section key={day.date} className="mb-3">
+                {/* 折叠态是天头本身的按钮，不是天头旁边另一个按钮——整行
+                    都可点，触摸目标够大，符合 brief 的 mobile-friendly 要求。 */}
+                <button
+                  type="button"
+                  onClick={() => toggleDay(day.date)}
+                  aria-expanded={open}
+                  className="mb-1.5 flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-surface-2"
+                >
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`size-4 shrink-0 text-muted transition-transform duration-200 ${
+                      open ? '' : '-rotate-90'
+                    }`}
+                  />
+                  <h2 className="font-display text-sm font-semibold text-muted">
+                    {formatDayHeader(day.date, locale)}
+                  </h2>
+                  <span className="ml-auto flex gap-2">
+                    {day.subtotalsByCurrency.map((s) => (
+                      <span
+                        key={s.currency}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          s.netCents >= 0
+                            ? 'bg-income-soft text-income'
+                            : 'bg-expense-soft text-expense'
+                        }`}
+                      >
+                        {formatAmount(s.netCents, s.currency)} {s.currency}
+                      </span>
+                    ))}
+                  </span>
+                </button>
+                {/* grid-template-rows 0fr/1fr 的经典技巧：纯 CSS 就能把
+                    任意高度的内容平滑收起/展开，不需要量高度的 JS。 */}
+                <div
+                  className={`grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out ${
+                    open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  }`}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    {/* 跟主屏最近记录同一个处理：展开的那一天笔数多时，
+                        让这个容器自己滚动，不要把整个页面撑高——用户
+                        反馈的原话就是"应该和主页一样是一个可以滑动的
+                        容器，而不是整个页面"。 */}
+                    <ul className="max-h-64 overflow-y-auto rounded-lg border border-border bg-surface shadow-card">
+                      {day.items.map((transaction) => (
+                        <TransactionRow key={transaction.id} transaction={transaction} />
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Net by currency 挪到页面最下面，不再是桌面端才有的侧边栏——
+          页面宽度也跟着改回 Settings/Record 同款的正常宽度（lg:max-w-2xl），
+          不再需要给两栏布局单独留出宽屏空间。所有断点都显示，不只是桌面端。 */}
+      {summaryByCurrency.length > 0 && (
+        <section className="mt-6 rounded-lg border border-border bg-surface p-4 shadow-card">
+          <h2 className="font-display text-sm font-semibold text-ink">
+            {t('historySummaryTitle')}
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {summaryByCurrency.map(([currency, netCents]) => (
+              <li key={currency} className="flex items-center justify-between text-sm">
+                <span className="text-muted">{currency}</span>
+                <span
+                  className={`font-mono tabular-nums font-medium ${
+                    netCents >= 0 ? 'text-income' : 'text-expense'
+                  }`}
+                >
+                  {formatAmount(netCents, currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }
