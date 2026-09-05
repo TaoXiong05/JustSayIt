@@ -14,6 +14,14 @@ import { useLocale } from '@/lib/i18n/context';
 
 const DURATION_MS = 6000;
 
+// useSyncExternalStore 的第三个参数（getServerSnapshot）必须每次调用都返回
+// 同一个引用，否则 React 会判定"每次快照都不同"，报
+// "The result of getServerSnapshot should be cached to avoid an infinite
+// loop"。`() => []` 每次调用都会分配一个新数组，正好踩中这个坑——同一份
+// 模式在本文件其它 useSyncExternalStore 用法（如 SyncStatusDot 的
+// EMPTY_SYNC_STATE）里已经用模块级常量避开了，这里之前漏做。
+const EMPTY_TOASTS: ToastItem[] = [];
+
 /** 每个变体的左舷色 + 图标，严格按 artifact 的 toast mockup：
  *  success=收入绿左框 + 对勾、warning=琥珀左框 + 三角、error=支出红左框 + 圆叹号。
  *  注意：这里出现的 income/expense 色是方案显式授权的 toast 语义色用法，
@@ -38,7 +46,7 @@ const VARIANT_ICON_COLOR: Record<ToastVariant, string> = {
 
 export function Toaster() {
   const { t } = useLocale();
-  const toasts = useSyncExternalStore(subscribe, getSnapshot, () => []);
+  const toasts = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_TOASTS);
   return (
     <Toast.Provider duration={DURATION_MS} swipeDirection="right" label={t('toastRegion')}>
       {toasts.map((item) => (
