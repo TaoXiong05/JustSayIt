@@ -13,6 +13,14 @@ import {
 import { CATEGORY_LABELS } from '@/lib/i18n/dictionary';
 import { useLocale } from '@/lib/i18n/context';
 
+/**
+ * Transaction.date 的规范格式，与 src/lib/ai/schema.ts 里校验 AI 输出用的是
+ * 同一个 pattern。`<input type="date">` 被用户清空时给出的是空字符串，而编辑
+ * 是以事件追加进只增日志的——存进去的空日期无法"当没发生过"，且会让这笔账
+ * 从所有统计周期里消失（`t.date >= start` 这类字符串比较对 '' 全部为 false）。
+ */
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 function categoriesFor(type: Transaction['type']): readonly CategoryKey[] {
   return type === 'EXPENSE'
     ? [...EXPENSE_CATEGORIES, ...SHARED_CATEGORIES]
@@ -49,6 +57,10 @@ export function EditForm({
     const parsed = Number(amountYuan);
     if (!isValidYuanAmount(parsed)) {
       setError(t('editAmountInvalid'));
+      return;
+    }
+    if (!DATE_PATTERN.test(date)) {
+      setError(t('editDateInvalid'));
       return;
     }
     setError(null);

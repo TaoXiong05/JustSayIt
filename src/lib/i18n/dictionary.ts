@@ -59,6 +59,7 @@ export type DictKey =
   | 'editMerchantLabel'
   | 'editDescriptionLabel'
   | 'editAmountInvalid'
+  | 'editDateInvalid'
   | 'statsTabWeek'
   | 'statsTabMonth'
   | 'statsPrev'
@@ -117,6 +118,7 @@ const en: Record<DictKey, DictValue> = {
   editMerchantLabel: 'Merchant',
   editDescriptionLabel: 'Description',
   editAmountInvalid: 'Enter a positive amount with at most 2 decimals',
+  editDateInvalid: 'Enter a valid date (YYYY-MM-DD)',
   statsTabWeek: 'Week',
   statsTabMonth: 'Month',
   statsPrev: '◀',
@@ -182,6 +184,7 @@ const zh: Record<DictKey, DictValue> = {
   editMerchantLabel: '商户',
   editDescriptionLabel: '描述',
   editAmountInvalid: '请输入正数金额，最多两位小数',
+  editDateInvalid: '请输入有效日期（YYYY-MM-DD）',
   statsTabWeek: '本周',
   statsTabMonth: '本月',
   statsPrev: '◀',

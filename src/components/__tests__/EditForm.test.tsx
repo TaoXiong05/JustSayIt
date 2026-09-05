@@ -58,6 +58,24 @@ describe('EditForm', () => {
     expect(screen.getByText('Enter a positive amount with at most 2 decimals')).toBeDefined();
   });
 
+  it('日期被清空时点保存不调用 onSave，显示日期错误提示（不是金额那条）', () => {
+    const onSave = vi.fn();
+    render(<EditForm transaction={tx} onSave={onSave} onDelete={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter a valid date (YYYY-MM-DD)')).toBeDefined();
+  });
+
+  it('日期格式不是 YYYY-MM-DD 时同样拒绝保存', () => {
+    const onSave = vi.fn();
+    render(<EditForm transaction={tx} onSave={onSave} onDelete={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-9-5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter a valid date (YYYY-MM-DD)')).toBeDefined();
+  });
+
   it('商户留空时传 null（不是空字符串）', () => {
     const onSave = vi.fn();
     render(<EditForm transaction={tx} onSave={onSave} onDelete={vi.fn()} onCancel={vi.fn()} />);
