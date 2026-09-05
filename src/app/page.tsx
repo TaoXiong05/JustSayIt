@@ -42,7 +42,10 @@ export default function Home() {
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
   // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
   // 占位行一起清掉，导致仍在等待中的那条提前消失。
-  const [pending, setPending] = useState<{ id: string; text: string }[]>([]);
+  // viaVoice 只是个瞬时展示状态（改善方向 #3：占位行上的"刚刚是说出来的"
+  // 标记），不进 Transaction schema——账目一旦落地，"当时是打字还是说的"
+  // 不是记账事实的一部分，也没必要为这个装饰性提示牵动 replay/event 结构。
+  const [pending, setPending] = useState<{ id: string; text: string; viaVoice: boolean }[]>([]);
   const [lastAdded, setLastAdded] = useState<string[]>([]);
 
   const clearToast = useCallback(() => setLastAdded([]), []);
@@ -52,10 +55,10 @@ export default function Home() {
     setLastAdded([]);
   }, [lastAdded]);
 
-  async function handleSubmit(text: string) {
+  async function handleSubmit(text: string, viaVoice: boolean) {
     const pendingId = randomUUID();
     // 乐观插入：提交瞬间就出现占位行，用户不面对 spinner（spec §9、§16.5）
-    setPending((p) => [...p, { id: pendingId, text }]);
+    setPending((p) => [...p, { id: pendingId, text, viaVoice }]);
     try {
       const ctx = {
         localTime: new Date().toISOString(),
@@ -146,7 +149,7 @@ export default function Home() {
       {pending.length > 0 && (
         <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
           {pending.map((entry) => (
-            <PendingRow key={entry.id} text={entry.text} />
+            <PendingRow key={entry.id} text={entry.text} viaVoice={entry.viaVoice} />
           ))}
         </ul>
       )}

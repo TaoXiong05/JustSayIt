@@ -24,7 +24,8 @@ describe('Composer', () => {
     await user.type(box, '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    expect(onSubmit).toHaveBeenCalledWith('早餐麦当劳25');
+    // 纯手打的文本，第二个参数（viaVoice）应为 false
+    expect(onSubmit).toHaveBeenCalledWith('早餐麦当劳25', false);
     await waitFor(() => expect((box as HTMLTextAreaElement).value).toBe(''));
   });
 
@@ -131,7 +132,8 @@ describe('Composer', () => {
 
     // 回填后由用户点击提交，复用既有流程
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    expect(onSubmit).toHaveBeenCalledWith('Woolworths 买菜');
+    // 这次输入用了语音回填，第二个参数（viaVoice）应为 true
+    expect(onSubmit).toHaveBeenCalledWith('Woolworths 买菜', true);
   });
 
   it('已有文本时语音回填追加到末尾并以空格分隔', async () => {

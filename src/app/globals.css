@@ -162,6 +162,21 @@ textarea {
   }
 }
 
+/* 改善方向 #3：把"声音"从 VoiceButton 一个按钮延展成一个跨组件的动效
+   母题——语音转写结果回填进输入框时，输入胶囊有一圈一次性向外扩散淡出
+   的涟漪，跟 mic-idle-ring 是同一个视觉语言（向外扩散+淡出），但这里只
+   放一次，不循环：这是"刚刚发生的事"的提示，不是持续邀请点击的空闲态。 */
+@keyframes voice-pulse-once {
+  0% {
+    box-shadow: 0 0 0 0 var(--brand);
+    opacity: 0.45;
+  }
+  100% {
+    box-shadow: 0 0 0 8px var(--brand);
+    opacity: 0;
+  }
+}
+
 /* 录音按钮的声波动画（VoiceButton 的 recording 态）——Tailwind 内置动画
    没有"逐条竖线起伏"这个效果，用一个具名 keyframes 配合 Tailwind v4 的
    animate-[name_duration_...] 任意值语法引用，每条竖线自己的 animationDelay
