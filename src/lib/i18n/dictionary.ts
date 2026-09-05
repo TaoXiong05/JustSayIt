@@ -72,7 +72,11 @@ export type DictKey =
   | 'settingsAccount'
   | 'settingsStorageUsage'
   | 'settingsExport'
-  | 'settingsAvatarLabel';
+  | 'settingsAvatarLabel'
+  | 'installTitle'
+  | 'installActionAndroid'
+  | 'installInstructionsIOS'
+  | 'installAlreadyInstalled';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -134,6 +138,10 @@ const en: Record<DictKey, DictValue> = {
   settingsStorageUsage: ({ used, quota }) => `Local storage: ${used} MB / ${quota} MB`,
   settingsExport: 'Export backup',
   settingsAvatarLabel: 'Settings',
+  installTitle: 'Install JustSayIt',
+  installActionAndroid: 'Install',
+  installInstructionsIOS: 'Tap the Share button, then "Add to Home Screen".',
+  installAlreadyInstalled: 'Already installed to your home screen.',
 };
 
 const zh: Record<DictKey, DictValue> = {
@@ -195,6 +203,10 @@ const zh: Record<DictKey, DictValue> = {
   settingsStorageUsage: ({ used, quota }) => `本地已用 ${used} MB / 配额 ${quota} MB`,
   settingsExport: '导出备份',
   settingsAvatarLabel: '设置',
+  installTitle: '安装 JustSayIt',
+  installActionAndroid: '安装',
+  installInstructionsIOS: '点击分享按钮，选择"添加到主屏幕"。',
+  installAlreadyInstalled: '已经安装到主屏幕了。',
 };
 
 export const dictionaries: Record<Locale, Record<DictKey, DictValue>> = { en, zh };

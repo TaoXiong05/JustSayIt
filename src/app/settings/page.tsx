@@ -5,6 +5,7 @@ import { useSession, fetchLogout } from '@/lib/auth/client';
 import { getStorageEstimate } from '@/lib/pwa/storage';
 import { exportBackup } from '@/lib/sync/export';
 import { useLocale } from '@/lib/i18n/context';
+import { InstallBanner } from '@/components/InstallBanner';
 
 export default function SettingsPage() {
   const { user, loading } = useSession();
@@ -33,6 +34,7 @@ export default function SettingsPage() {
       <button type="button" onClick={() => void exportBackup()}>
         {t('settingsExport')}
       </button>
+      <InstallBanner />
     </main>
   );
 }
