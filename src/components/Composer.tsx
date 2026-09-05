@@ -64,7 +64,10 @@ export function Composer({
     // 裸放在页面上的一组控件，而是一个自成一体的"输入区"卡片。录音按钮
     // 独立在输入框上方，是这块卡片的主视觉；录音中输入框/按钮照常可编辑/
     // 可点，两者互不阻塞（见 VoiceButton 的录音态说明）。
-    <div className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+    // shadow-pop（而不是列表/数据类卡片统一用的 shadow-card）：这是页面上
+    // 唯一的主操作入口，材质上应该比历史记录、统计面板这些"数据展示"卡片
+    // 更"实体化"一点，建立当前扁平卡片系统里缺失的层级（改善方向 #6）。
+    <div className="rounded-2xl border border-border bg-surface p-6 shadow-pop">
       <div className="text-center">
         <h2 className="font-display text-lg font-bold text-ink">{t('composerTitle')}</h2>
         <p className="mt-1 text-sm text-muted">{t('composerSubtitle')}</p>

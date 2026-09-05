@@ -101,11 +101,14 @@ export default function Home() {
         // 之前是满版品牌渐变+白字的"招牌 CTA"卡片——跟 Logo/CTA/Hero 用的
         // 是同一个渐变，导致"重要"的东西全用同一招表达，互相抵消层级感
         // （改善方向 #2：渐变收窄到一个真正的签名时刻，这里改用跟其它
-        // 卡片同一套语言：surface 底 + border + shadow-card，用 brand-soft
-        // 图标点题就够，不需要整张卡片都是品牌色）。CTA 直接指向 OAuth
-        // 端点、不经过 /login 营销页——会看到这张卡片的人已经在用产品了，
-        // 不需要再看一遍营销话术，少一次跳转就少一次流失。
-        <div className="mb-6 rounded-2xl border border-border bg-surface p-5 shadow-card">
+        // 卡片同一套语言：surface 底 + border，用 brand-soft 图标点题就够，
+        // 不需要整张卡片都是品牌色）。CTA 直接指向 OAuth 端点、不经过
+        // /login 营销页——会看到这张卡片的人已经在用产品了，不需要再看
+        // 一遍营销话术，少一次跳转就少一次流失。这张卡片在访客态占的是
+        // Composer 同一个位置（两者互斥），所以也用 shadow-pop 跟 Composer
+        // 同一个"主操作入口"层级，而不是列表/数据卡片的 shadow-card
+        // （改善方向 #6）。
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-5 shadow-pop">
           <div className="flex items-start gap-3.5">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
               <RefreshCw aria-hidden="true" className="size-5" />
