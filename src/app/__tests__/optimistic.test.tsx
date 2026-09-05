@@ -3,6 +3,8 @@ import { screen, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
 import Home from '@/app/page';
+import { Toaster } from '@/components/Toaster';
+import { resetToastStoreForTests, getSnapshot } from '@/lib/toast';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
@@ -31,9 +33,20 @@ const oneRecord = {
 
 beforeEach(async () => {
   localStorage.clear();
+  resetToastStoreForTests();
   await clearAllEvents();
   await hydrate();
 });
+
+/** UndoToast 现在把数据交给全局 <Toaster /> 渲染，页面测试需一并挂载 */
+function renderHome() {
+  return render(
+    <>
+      <Home />
+      <Toaster />
+    </>,
+  );
+}
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -46,7 +59,7 @@ describe('乐观 UI', () => {
     );
 
     const user = userEvent.setup();
-    render(<Home />);
+    renderHome();
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -72,7 +85,7 @@ describe('乐观 UI', () => {
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ records: [oneRecord] }) }),
     );
     const user = userEvent.setup();
-    render(<Home />);
+    renderHome();
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -86,7 +99,7 @@ describe('乐观 UI', () => {
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ records: [oneRecord] }) }),
     );
     const user = userEvent.setup();
-    render(<Home />);
+    renderHome();
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -97,55 +110,28 @@ describe('乐观 UI', () => {
     expect(screen.getByText(/No records yet/)).toBeDefined();
   });
 
-  it('连续两次提交时，UndoToast 随新一批重新挂载，旧计时器被清理、新计时器独立起算（回归：Finding 2）', async () => {
-    // 用真实计时器 + 监听 setTimeout/clearTimeout 调用，而不是伪造计时器：
-    // 伪造 setTimeout 会连带影响 React scheduler（它优先用 setImmediate，
-    // 但对已捕获的 localSetTimeout 引用敏感）与 testing-library 的 waitFor
-    // 轮询机制，在这套 jsdom + React 18 组合下会直接挂起测试。
-    // 直接断言"关键效果"更稳妥：旧 batch 的计时器是否在第二次提交时被
-    // clearTimeout 清理，第二批是否拿到一个全新的 6s 计时器——这正是
-    // key={lastAdded.join(',')} 强制重新挂载要保证的两件事，比真的等待
-    // 6 秒观察 DOM 更直接、也更快。
-    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
-    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
-    const AUTO_DISMISS_MS = 6000; // 与 UndoToast.tsx 内的常量保持一致
-
+  it('连续两次提交时，两批各自产生一条独立 toast（key 重挂载 → 每次重新 push）', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ records: [oneRecord] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ records: [oneRecord] }) });
     vi.stubGlobal('fetch', fetchMock);
 
-    const dismissCalls = () =>
-      setTimeoutSpy.mock.calls.filter(([, delay]) => delay === AUTO_DISMISS_MS);
-
     const user = userEvent.setup();
-    render(<Home />);
+    renderHome();
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined());
-    // useEffect 的挂载是被动效果，在提交后额外 paint 一拍才真正执行——
-    // 因此除了等按钮出现，还要单独等 setTimeout 调用本身落地，
-    // 否则在并行跑测试时偶发读到"按钮已渲染但 effect 还没跑"的中间态。
-    await waitFor(() => expect(dismissCalls()).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText(/Recorded 1 item/)).toHaveLength(1));
+    expect(getSnapshot()).toHaveLength(1);
 
-    const firstCallIndex = setTimeoutSpy.mock.calls.indexOf(dismissCalls()[0]);
-    const firstTimerId = setTimeoutSpy.mock.results[firstCallIndex].value;
-    expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(false);
-
-    // 第一批的 toast 还显示着时，提交第二批
+    // 第二批：同 count 的连续提交。若 UndoToast 不因 key 变化重新挂载，
+    // effect 依赖（count/unsyncedCount）未变就不会重新 push——key 强制
+    // 重挂载保证每批各推进一条 toast。Radix 给每条 toast 独立自动关闭
+    // 计时器，两批互不干扰（替代旧实现里手动 setTimeout 的等价语义）。
     await user.type(screen.getByRole('textbox'), '午餐麦当劳30');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    await waitFor(() => expect(screen.getByText(/Recorded 1 item/)).toBeDefined());
-
-    // 修复后：UndoToast 因 key 改变而卸载重挂——旧 effect 的清理函数必须
-    // clearTimeout 掉第一批的计时器，新 effect 必须重新 setTimeout 一个
-    // 全新的 6s 计时器，而不是复用/延续第一批那个。两者都是被动效果，
-    // 同样要用 waitFor 等它们真正执行完，而不是在 DOM 更新的那一拍立刻断言。
-    await waitFor(() =>
-      expect(clearTimeoutSpy.mock.calls.some(([id]) => id === firstTimerId)).toBe(true),
-    );
-    await waitFor(() => expect(dismissCalls()).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText(/Recorded 1 item/)).toHaveLength(2));
+    expect(getSnapshot()).toHaveLength(2);
   });
 
   it('失败时占位行消失且输入内容保留', async () => {

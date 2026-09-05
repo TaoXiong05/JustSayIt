@@ -42,18 +42,30 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t('composerPlaceholder')}
         rows={2}
+        className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none"
       />
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}>
-        {submitting ? t('submitting') : t('submit')}
-      </button>
-      <VoiceButton onTranscribed={appendText} />
-      {error && <p role="alert">{error}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitting ? t('submitting') : t('submit')}
+        </button>
+        <VoiceButton onTranscribed={appendText} />
+      </div>
+      {error && (
+        <p role="alert" className="text-sm font-medium text-expense">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

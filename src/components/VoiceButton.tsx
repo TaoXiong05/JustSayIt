@@ -1,5 +1,6 @@
 'use client';
 
+import { Mic } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { knownMerchants } from '@/lib/ledger/store';
 import { initializeRecorder } from '@/lib/voice/recorder';
@@ -82,14 +83,24 @@ export function VoiceButton({
 
   if (status === 'recording') {
     return (
-      <span>
-        <button type="button" onClick={() => void stop()}>
+      <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
+        <button
+          type="button"
+          onClick={() => void stop()}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
+        >
           {t('voiceStop')}
         </button>
-        <button type="button" onClick={cancel}>
+        <button
+          type="button"
+          onClick={cancel}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2"
+        >
           {t('voiceCancel')}
         </button>
-        <span aria-live="polite">{t('voiceRecording')}</span>
+        <span aria-live="polite" className="animate-pulse font-medium text-expense">
+          {t('voiceRecording')}
+        </span>
       </span>
     );
   }
@@ -100,10 +111,24 @@ export function VoiceButton({
         type="button"
         onClick={() => void start()}
         disabled={status === 'transcribing'}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
+        {status === 'transcribing' ? (
+          t('voiceTranscribing')
+        ) : (
+          <>
+            {/* 原 emoji（🎤）拆成纯文本字典 + 独立 Mic 图标（Global Constraint 9）——
+                字典字符串承载不了 React 组件。 */}
+            <Mic aria-hidden="true" className="size-4" />
+            {t('voiceStart')}
+          </>
+        )}
       </button>
-      {error && <span role="alert">{error}</span>}
+      {error && (
+        <span role="alert" className="ml-2 text-sm font-medium text-expense">
+          {error}
+        </span>
+      )}
     </span>
   );
 }

@@ -19,22 +19,35 @@ export default function SettingsPage() {
   const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2);
 
   return (
-    <main>
-      <h1>{t('settingsTitle')}</h1>
-      <section>
-        <h2>{t('settingsAccount')}</h2>
-        {user && <p>{user.email ?? user.googleSub}</p>}
-        <button type="button" onClick={() => void fetchLogout()} disabled={loading}>
+    <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:pb-6">
+      <h1 className="font-display text-xl font-bold text-ink">{t('settingsTitle')}</h1>
+      <section className="mt-4 rounded-lg border border-border bg-surface p-4 shadow-card">
+        <h2 className="font-display text-sm font-semibold text-ink">{t('settingsAccount')}</h2>
+        {user && <p className="mt-1 text-sm text-muted">{user.email ?? user.googleSub}</p>}
+        <button
+          type="button"
+          onClick={() => void fetchLogout()}
+          disabled={loading}
+          className="mt-3 rounded border border-expense-soft bg-expense-soft px-3 py-1.5 text-sm font-medium text-expense transition-colors hover:opacity-80 disabled:opacity-50"
+        >
           {t('logOut')}
         </button>
       </section>
       {usage && (
-        <p>{t('settingsStorageUsage', { used: toMb(usage.usageBytes), quota: toMb(usage.quotaBytes) })}</p>
+        <p className="mt-3 rounded-lg border border-border bg-surface p-4 text-sm text-muted shadow-card">
+          {t('settingsStorageUsage', { used: toMb(usage.usageBytes), quota: toMb(usage.quotaBytes) })}
+        </p>
       )}
-      <button type="button" onClick={() => void exportBackup()}>
+      <button
+        type="button"
+        onClick={() => void exportBackup()}
+        className="mt-3 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink shadow-card transition-colors hover:opacity-90"
+      >
         {t('settingsExport')}
       </button>
-      <InstallBanner />
+      <div className="mt-4">
+        <InstallBanner />
+      </div>
     </main>
   );
 }

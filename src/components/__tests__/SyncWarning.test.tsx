@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { render } from '@/test/renderWithLocale';
 import { SyncWarning } from '@/components/SyncWarning';
+import { Toaster } from '@/components/Toaster';
+import { resetToastStoreForTests } from '@/lib/toast';
 import {
   markUnsynced,
   markSynced,
@@ -18,9 +21,20 @@ vi.mock('@/lib/pwa/install', () => ({ shouldPrioritizeInstallGuidance: vi.fn() }
 import { isIOS, isStandalone } from '@/lib/platform';
 import { shouldPrioritizeInstallGuidance } from '@/lib/pwa/install';
 
+/** 24–72h 档现在由警告 toast 呈现，需要把全局 <Toaster /> 一并渲染。 */
+function renderWarning(ui?: ReactElement) {
+  return render(
+    <>
+      {ui ?? <SyncWarning />}
+      <Toaster />
+    </>,
+  );
+}
+
 beforeEach(() => {
   markSynced(getSnapshot().unsyncedIds);
   clearAuthError();
+  resetToastStoreForTests();
   vi.mocked(isIOS).mockReturnValue(false);
   vi.mocked(isStandalone).mockReturnValue(false);
   vi.mocked(shouldPrioritizeInstallGuidance).mockReturnValue(false);
@@ -40,11 +54,11 @@ describe('SyncWarning', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('24-72 小时之间渲染持久横幅', () => {
+  it('24-72 小时之间以警告 toast 呈现（不再渲染内联横幅）', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
     markUnsynced(['tx1']);
     vi.setSystemTime(new Date('2026-09-02T12:00:00Z')); // +36h
-    render(<SyncWarning />);
+    renderWarning();
     expect(screen.getByText(/Not backed up to the cloud yet/)).toBeDefined();
   });
 
@@ -72,7 +86,7 @@ describe('SyncWarning 平台分支文案（spec §8.6）', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
     markUnsynced(['tx1']);
     vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
-    render(<SyncWarning />);
+    renderWarning();
     expect(screen.getByText(/Safari may clear this data/)).toBeDefined();
   });
 
@@ -82,7 +96,7 @@ describe('SyncWarning 平台分支文案（spec §8.6）', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
     markUnsynced(['tx1']);
     vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
-    render(<SyncWarning />);
+    renderWarning();
     expect(screen.getByText(/Not backed up to the cloud yet/)).toBeDefined();
     expect(screen.queryByText(/Safari may clear/)).toBeNull();
   });
@@ -93,7 +107,7 @@ describe('SyncWarning 平台分支文案（spec §8.6）', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
     markUnsynced(['tx1']);
     vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
-    render(<SyncWarning />);
+    renderWarning();
     expect(screen.getByText(/Not backed up to the cloud yet/)).toBeDefined();
   });
 });
@@ -160,13 +174,13 @@ describe('SyncWarning 安装引导提权（spec §8.8）', () => {
     expect(screen.getByText(NUDGE)).toBeDefined();
   });
 
-  it('24-72h 的 iOS 横幅不重复这句引导——横幅文案本身已经是这条建议了', () => {
+  it('24-72h 的 iOS toast 不重复这句引导——横幅文案本身已经是这条建议了', () => {
     vi.mocked(isIOS).mockReturnValue(true);
     vi.mocked(isStandalone).mockReturnValue(false);
     vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
     markUnsynced(['tx1']);
     vi.setSystemTime(new Date('2026-09-02T12:00:00Z')); // +36h
-    render(<SyncWarning />);
+    renderWarning();
     expect(screen.getByText(/Add to Home Screen to keep it safe/)).toBeDefined();
     expect(screen.queryByText(NUDGE)).toBeNull();
   });

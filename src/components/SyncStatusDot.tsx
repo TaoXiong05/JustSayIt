@@ -19,9 +19,16 @@ const EMPTY: SyncState = {
 export function SyncStatusDot() {
   const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
   const { t } = useLocale();
+  const pending = state.unsyncedIds.length > 0;
   return (
-    <span role="status">
-      {state.unsyncedIds.length > 0
+    <span
+      role="status"
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+        pending ? 'bg-warning-soft text-warning' : 'bg-income-soft text-income'
+      }`}
+    >
+      <span aria-hidden="true" className={pending ? 'animate-pulse' : ''}>●</span>
+      {pending
         ? t('syncPendingCount', { count: state.unsyncedIds.length })
         : t('syncedUpToDate')}
     </span>

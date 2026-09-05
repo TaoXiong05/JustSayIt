@@ -1,11 +1,114 @@
 @import "tailwindcss";
 
-/* 仅为方便本地测试撑开容器宽度，非设计——组件本身仍不带 className/style */
-body {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 16px;
+/*
+ * Design tokens — Plan 5 (UI Design System)。
+ * 采用 artifact-design 的三态 token 模式：裸 `:root` = 亮色值；
+ * 媒体查询块按 prefers-color-scheme 重定义全部 token 为暗色值。
+ * 本应用没有手动主题开关（Global Constraint 3），但保留
+ * `:root:not` 的 data-theme 守卫以符合契约、便于未来加开关。
+ * 刻意不加 data-theme 的暗色分支块——没有开关驱动它。
+ *
+ * 品牌色（indigo→violet）与交易语义色严格分离（Global Constraint 1）：
+ * income/expense 只用于金额着色，绝不作为品牌按钮色复用。
+ */
+:root {
+  /* surfaces / ink */
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  /* brand */
+  --brand: #4f46e5;
+  --brand-2: #8b5cf6;
+  --brand-soft: #eef2ff;
+  --brand-ink: #ffffff;
+  /* transaction semantics (reserved) */
+  --income: #0e9f6e;
+  --income-soft: #e6f5ef;
+  --expense: #e0463b;
+  --expense-soft: #fdeaec;
+  /* warning (sync tiers, toasts) */
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  /* geometry */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  /* elevation */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-pop: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 10px 20px -6px rgba(15, 23, 42, 0.12);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1120;
+    --surface: #0f172a;
+    --surface-2: #1e293b;
+    --ink: #f1f5f9;
+    --muted: #94a3b8;
+    --border: #1e293b;
+    --brand: #818cf8;
+    --brand-2: #a78bfa;
+    --brand-soft: rgba(99, 102, 241, 0.18);
+    --brand-ink: #ffffff;
+    --income: #35d399;
+    --income-soft: rgba(53, 211, 153, 0.15);
+    --expense: #fb7b71;
+    --expense-soft: rgba(251, 123, 113, 0.15);
+    --warning: #fbbf24;
+    --warning-soft: rgba(251, 191, 36, 0.15);
+    --radius-sm: 0.375rem;
+    --radius-md: 0.625rem;
+    --radius-lg: 1rem;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-pop: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 10px 20px -6px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* 映射进 Tailwind v4 的 CSS 主题，使 bg-brand / text-income / border-border /
+   font-display / rounded-lg / shadow-card 等 utility 全局可用。
+   next/font 通过各自 variable 选项暴露的名字（--font-outfit 等）与 @theme token
+  （--font-display/body/mono）区分开，避免 `--font-body: var(--font-body)`
+   这类自我引用循环；字体族名最终由 <html> 上的 font-loader 变量注入。 */
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --font-display: var(--font-outfit), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", "Cascadia Mono", monospace;
+}
+
+body {
+  /* 移除 Plan 1 时代的 max-width 占位规则——Task 15 用真正的断点布局替代
+     （Global Constraint 10：桌面端是真实的布局，不是靠更宽的间距冒充）。 */
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 textarea {
   width: 100%;
   box-sizing: border-box;

@@ -1,7 +1,5 @@
 import type { CategoryKey, Transaction } from '@/lib/ai/schema';
 
-export type StatsPeriod = 'week' | 'month';
-
 export type CategoryTotal = {
   category: CategoryKey;
   totalCents: number;
@@ -57,50 +55,28 @@ function partsInTimeZone(
 }
 
 /**
- * 周/月边界（spec §6.4 规则 2：按用户时区，不按 UTC；周一为周起点）。
- * 返回值是 YYYY-MM-DD 字符串——Transaction.date 本身就是已按用户时区
- * 解析好的日历日字符串（spec §5.4），直接做字符串比较即可判断是否落在
- * 周期内，不需要再对每条账目做时区转换。
+ * 月边界（Plan 5 Task 11：week 模式已删除，Stats 只有月口径）。
+ * 返回 [当月第一天, 下月第一天)，字符串比较即可判断 t.date 是否落在周期内。
  */
-export function periodRange(
-  period: StatsPeriod,
-  referenceDate: Date,
-  timeZone: string,
-): { start: string; end: string } {
-  const { year, month, day, weekday } = partsInTimeZone(referenceDate, timeZone);
-  // 用 UTC 正午构造"代表这个日历日"的 Date，避免夏令时/边界问题——
-  // 后续所有算术都在这个安全的 UTC 正午基准上做，最后按 UTC 分量读回字符串。
-  const todayUtcNoon = new Date(Date.UTC(year, month - 1, day, 12));
-
-  if (period === 'month') {
-    const start = `${year}-${pad2(month)}-01`;
-    const nextMonthUtcNoon = new Date(Date.UTC(year, month, 1, 12)); // Date.UTC 的月份天然进位跨年
-    const end = dateKeyOfUtcNoon(nextMonthUtcNoon);
-    return { start, end };
-  }
-
-  // week：weekday 0=周日..6=周六；周一为起点，需要回退的天数：周日回退 6 天，
-  // 其余回退 (weekday - 1) 天。
-  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
-  const weekStartUtcNoon = new Date(todayUtcNoon);
-  weekStartUtcNoon.setUTCDate(weekStartUtcNoon.getUTCDate() - daysSinceMonday);
-  const weekEndUtcNoon = new Date(weekStartUtcNoon);
-  weekEndUtcNoon.setUTCDate(weekEndUtcNoon.getUTCDate() + 7);
-  return { start: dateKeyOfUtcNoon(weekStartUtcNoon), end: dateKeyOfUtcNoon(weekEndUtcNoon) };
+export function periodRange(referenceDate: Date, timeZone: string): { start: string; end: string } {
+  const { year, month } = partsInTimeZone(referenceDate, timeZone);
+  const start = `${year}-${pad2(month)}-01`;
+  const nextMonthUtcNoon = new Date(Date.UTC(year, month, 1, 12)); // Date.UTC 的月份天然进位跨年
+  const end = dateKeyOfUtcNoon(nextMonthUtcNoon);
+  return { start, end };
 }
 
 /**
- * 按周/月的分类统计（spec §6.4）：对内存里的 Transaction[] 做一次 reduce，
+ * 按月分类统计（spec §6.4）：对内存里的 Transaction[] 做一次 reduce，
  * 不引入索引/查询层。四条规则：按币种分组不跨币种求和、边界按用户时区、
  * 只对 EXPENSE 求总支出（INCOME 单独展示不抵扣）、口径以 date 字段为准。
  */
 export function computeStats(
   transactions: Transaction[],
-  period: StatsPeriod,
   referenceDate: Date,
   timeZone: string,
 ): CurrencyStats[] {
-  const { start, end } = periodRange(period, referenceDate, timeZone);
+  const { start, end } = periodRange(referenceDate, timeZone);
   const inPeriod = transactions.filter((t) => t.date >= start && t.date < end);
 
   const byCurrency = new Map<string, CurrencyStats>();

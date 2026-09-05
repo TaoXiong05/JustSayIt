@@ -60,13 +60,10 @@ export type DictKey =
   | 'editDescriptionLabel'
   | 'editAmountInvalid'
   | 'editDateInvalid'
-  | 'statsTabWeek'
-  | 'statsTabMonth'
-  | 'statsPrev'
-  | 'statsNext'
   | 'statsTotalExpense'
   | 'statsTotalIncome'
   | 'statsEmpty'
+  | 'statsMonthSummary'
   | 'navLedger'
   | 'navStats'
   | 'settingsTitle'
@@ -78,7 +75,37 @@ export type DictKey =
   | 'installActionAndroid'
   | 'installInstructionsIOS'
   | 'installAlreadyInstalled'
-  | 'installNudgeUnsynced';
+  | 'installNudgeUnsynced'
+  | 'toastDismiss'
+  | 'toastRegion'
+  | 'monthPrev'
+  | 'monthNext'
+  | 'navHistory'
+  | 'historySearchLabel'
+  | 'historyDateFrom'
+  | 'historyDateTo'
+  | 'historyKeywordPlaceholder'
+  | 'historyClearFilter'
+  | 'historyNoResults'
+  | 'historySummaryTitle'
+  | 'viewAllHistory'
+  | 'loginHeroTitle'
+  | 'loginHeroSubhead'
+  | 'heroSecondaryCta'
+  | 'statSpeedNumber'
+  | 'statSpeedLabel'
+  | 'statLocalNumber'
+  | 'statLocalLabel'
+  | 'statZeroNumber'
+  | 'statZeroLabel'
+  | 'featureVoiceTitle'
+  | 'featureVoiceDesc'
+  | 'featureAutoTitle'
+  | 'featureAutoDesc'
+  | 'featureOfflineTitle'
+  | 'featureOfflineDesc'
+  | 'featurePrivacyTitle'
+  | 'featurePrivacyDesc';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -91,7 +118,7 @@ const en: Record<DictKey, DictValue> = {
   composerPlaceholder: "What's on your mind…",
   submit: 'Submit',
   submitting: 'Submitting…',
-  voiceStart: '🎤 Record',
+  voiceStart: 'Record',
   voiceStop: 'Stop',
   voiceCancel: 'Cancel',
   voiceRecording: 'Recording…',
@@ -120,13 +147,10 @@ const en: Record<DictKey, DictValue> = {
   editDescriptionLabel: 'Description',
   editAmountInvalid: 'Enter a positive amount with at most 2 decimals',
   editDateInvalid: 'Enter a valid date (YYYY-MM-DD)',
-  statsTabWeek: 'Week',
-  statsTabMonth: 'Month',
-  statsPrev: '◀',
-  statsNext: '▶',
   statsTotalExpense: 'Total spent',
   statsTotalIncome: 'Income',
   statsEmpty: 'Nothing recorded in this period.',
+  statsMonthSummary: 'Monthly overview',
   navLedger: 'Ledger',
   navStats: 'Stats',
   errorUnauthenticated: 'Please log in first',
@@ -146,6 +170,37 @@ const en: Record<DictKey, DictValue> = {
   installInstructionsIOS: 'Tap the Share button, then "Add to Home Screen".',
   installAlreadyInstalled: 'Already installed to your home screen.',
   installNudgeUnsynced: "Add to Home Screen to keep this device's data safe.",
+  toastDismiss: 'Dismiss',
+  toastRegion: 'Notifications',
+  monthPrev: 'Previous month',
+  monthNext: 'Next month',
+  navHistory: 'History',
+  historySearchLabel: 'Search',
+  historyDateFrom: 'From',
+  historyDateTo: 'To',
+  historyKeywordPlaceholder: 'Merchant or description…',
+  historyClearFilter: 'Clear filter',
+  historyNoResults: 'No matching records — try a different date range or keyword.',
+  historySummaryTitle: 'Net by currency',
+  viewAllHistory: 'View all history',
+  loginHeroTitle: 'Just say it.',
+  loginHeroSubhead:
+    'Record expenses by voice in seconds — auto-categorized, local-first, always yours.',
+  heroSecondaryCta: 'See how it works',
+  statSpeedNumber: '<3s',
+  statSpeedLabel: 'from voice to record',
+  statLocalNumber: '100%',
+  statLocalLabel: 'processed on your device',
+  statZeroNumber: '0',
+  statZeroLabel: 'copies held on our servers',
+  featureVoiceTitle: 'Voice-first input',
+  featureVoiceDesc: 'Tap once, say it, done — no forms to fill.',
+  featureAutoTitle: 'Smart categorization',
+  featureAutoDesc: 'AI sorts every entry into the right category.',
+  featureOfflineTitle: 'Works offline',
+  featureOfflineDesc: 'Entries queue up and sync when you are back online.',
+  featurePrivacyTitle: 'Local-first & private',
+  featurePrivacyDesc: 'Your data lives on your device — the cloud is just backup.',
 };
 
 const zh: Record<DictKey, DictValue> = {
@@ -159,7 +214,7 @@ const zh: Record<DictKey, DictValue> = {
   composerPlaceholder: '说点什么…',
   submit: '提交',
   submitting: '提交中…',
-  voiceStart: '🎤 录音',
+  voiceStart: '录音',
   voiceStop: '停止',
   voiceCancel: '取消',
   voiceRecording: '录音中…',
@@ -187,13 +242,10 @@ const zh: Record<DictKey, DictValue> = {
   editDescriptionLabel: '描述',
   editAmountInvalid: '请输入正数金额，最多两位小数',
   editDateInvalid: '请输入有效日期（YYYY-MM-DD）',
-  statsTabWeek: '本周',
-  statsTabMonth: '本月',
-  statsPrev: '◀',
-  statsNext: '▶',
   statsTotalExpense: '总支出',
   statsTotalIncome: '收入',
   statsEmpty: '这段时间还没有记录。',
+  statsMonthSummary: '本月总览',
   navLedger: '记账',
   navStats: '统计',
   errorUnauthenticated: '请先登录',
@@ -213,6 +265,36 @@ const zh: Record<DictKey, DictValue> = {
   installInstructionsIOS: '点击分享按钮，选择"添加到主屏幕"。',
   installAlreadyInstalled: '已经安装到主屏幕了。',
   installNudgeUnsynced: '添加到主屏幕以保护这台设备上的数据。',
+  toastDismiss: '关闭',
+  toastRegion: '通知',
+  monthPrev: '上月',
+  monthNext: '下月',
+  navHistory: '历史',
+  historySearchLabel: '搜索',
+  historyDateFrom: '从',
+  historyDateTo: '至',
+  historyKeywordPlaceholder: '商户或描述…',
+  historyClearFilter: '清除筛选',
+  historyNoResults: '没有匹配的记录，试试换个日期范围或关键词。',
+  historySummaryTitle: '按币种净额',
+  viewAllHistory: '查看全部历史',
+  loginHeroTitle: '说一句，账就记好了',
+  loginHeroSubhead: '用一句话记下一笔——自动分类、本地优先、数据永远属于你。',
+  heroSecondaryCta: '看看它是怎么记的',
+  statSpeedNumber: '<3s',
+  statSpeedLabel: '从说出口到记好账',
+  statLocalNumber: '100%',
+  statLocalLabel: '全部在你的设备上处理',
+  statZeroNumber: '0',
+  statZeroLabel: '服务器上零副本',
+  featureVoiceTitle: '语音输入为主',
+  featureVoiceDesc: '点一下，说出来，就记好了——不用填表。',
+  featureAutoTitle: '智能分类',
+  featureAutoDesc: 'AI 把每笔消费自动归到正确的分类。',
+  featureOfflineTitle: '离线也能记',
+  featureOfflineDesc: '离线时记账自动排队，联网后自动同步。',
+  featurePrivacyTitle: '本地优先、隐私安全',
+  featurePrivacyDesc: '数据存留在你的设备上——云端只作备份。',
 };
 
 export const dictionaries: Record<Locale, Record<DictKey, DictValue>> = { en, zh };

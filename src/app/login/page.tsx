@@ -2,6 +2,10 @@
 
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
+import { Hero } from '@/components/marketing/Hero';
+import { CaptureDemo } from '@/components/marketing/CaptureDemo';
+import { StatStrip } from '@/components/marketing/StatStrip';
+import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
 export default function LoginPage() {
   const { user, loading } = useSession();
@@ -14,15 +18,18 @@ export default function LoginPage() {
 
   return (
     <main>
-      <h1>{t('appTitle')}</h1>
-      <p>{t('logInDescription')}</p>
-      {/* 客户端不保存凭据；跳转 /api/auth/login → Google */}
-      <p>
-        <a href="/api/auth/login">{t('logInAction')}</a>
-      </p>
-      <p>
-        <a href="/">{t('backToLedger')}</a>
-      </p>
+      <Hero />
+      <CaptureDemo />
+      <StatStrip />
+      <FeatureGrid />
+      <footer className="px-6 pb-10 pt-2 text-center">
+        <a
+          href="/"
+          className="text-sm font-medium text-muted transition-colors hover:text-ink"
+        >
+          {t('backToLedger')}
+        </a>
+      </footer>
     </main>
   );
 }

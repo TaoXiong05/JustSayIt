@@ -4,7 +4,8 @@ import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
 import Home from '@/app/page';
 import { clearAllEvents } from '@/lib/ledger/db';
-import { hydrate } from '@/lib/ledger/store';
+import { addTransactions, hydrate } from '@/lib/ledger/store';
+import type { Transaction } from '@/lib/ai/schema';
 
 // Mock 认证：默认已登录，保证 Plan 1 的既有用例（提交/归并/失败路径）聚焦
 // 且不触发 /api/auth/session 的 fetch。未登录分支在单独用例中断言。
@@ -29,6 +30,50 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('主屏', () => {
+  const tx = (over: Partial<Transaction>): Transaction => ({
+    id: crypto.randomUUID(),
+    type: 'EXPENSE',
+    amountCents: 1000,
+    currency: 'AUD',
+    date: '2026-09-05',
+    category: 'FOOD',
+    merchant: null,
+    description: 'x',
+    ...over,
+  });
+
+  it('超过 10 笔时主屏只渲染最近的 10 笔（replay 天然 date 降序）', async () => {
+    for (let i = 1; i <= 12; i++) {
+      await addTransactions([
+        tx({ date: `2026-09-${String(i).padStart(2, '0')}`, merchant: `商家${i}` }),
+      ]);
+    }
+    render(<Home />);
+    // 最新的 10 笔（12..3）在列
+    await waitFor(() => expect(screen.getByText('商家12')).toBeDefined());
+    expect(screen.getByText('商家11')).toBeDefined();
+    expect(screen.getByText('商家4')).toBeDefined();
+    expect(screen.getByText('商家3')).toBeDefined();
+    // 最旧的 2 笔被裁掉
+    expect(screen.queryByText('商家1')).toBeNull();
+    expect(screen.queryByText('商家2')).toBeNull();
+    // 查看全部历史入口始终存在
+    expect(screen.getByRole('link', { name: /View all history/ })).toHaveProperty(
+      'href',
+      'http://localhost:3000/history',
+    );
+  });
+
+  it('账目不超过 10 笔时查看全部历史链接仍然渲染', async () => {
+    await addTransactions([tx({ date: '2026-09-05', merchant: '单笔商户' })]);
+    render(<Home />);
+    await waitFor(() => expect(screen.getByText('单笔商户')).toBeDefined());
+    expect(screen.getByRole('link', { name: /View all history/ })).toHaveProperty(
+      'href',
+      'http://localhost:3000/history',
+    );
+  });
+});
   it('提交后账目出现在列表中', async () => {
     vi.stubGlobal(
       'fetch',
@@ -200,4 +245,3 @@ describe('主屏', () => {
     expect(screen.getByText('Transport')).toBeDefined();
     expect(screen.getByText('Uber')).toBeDefined();
   });
-});

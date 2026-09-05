@@ -2,20 +2,44 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BarChart3, History, ReceiptText, type LucideIcon } from 'lucide-react';
 import { useLocale } from '@/lib/i18n/context';
 
-/** 底部只有记账/统计两个 tab；设置从头像进，不占永久 tab（spec §13.1）。 */
+/**
+ * 底部三 tab：记账 / 历史 / 统计；设置从头像进，不占永久 tab（spec §13.1）。
+ * 激活态用品牌色（--brand）指示，绝不用 income/expense 语义色（Global
+ * Constraint 1）。移动端显示；桌面端由 SidebarNav 接管（Task 15，lg: 起隐藏）。
+ */
+const TABS: { href: string; key: 'navLedger' | 'navHistory' | 'navStats'; icon: LucideIcon }[] = [
+  { href: '/', key: 'navLedger', icon: ReceiptText },
+  { href: '/history', key: 'navHistory', icon: History },
+  { href: '/stats', key: 'navStats', icon: BarChart3 },
+];
+
 export function BottomNav() {
   const pathname = usePathname();
   const { t } = useLocale();
   return (
-    <nav>
-      <Link href="/" aria-current={pathname === '/' ? 'page' : undefined}>
-        {t('navLedger')}
-      </Link>
-      <Link href="/stats" aria-current={pathname === '/stats' ? 'page' : undefined}>
-        {t('navStats')}
-      </Link>
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/90 backdrop-blur lg:hidden">
+      <ul className="mx-auto flex max-w-md items-stretch justify-around">
+        {TABS.map(({ href, key, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <li key={href} className="flex-1">
+              <Link
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${
+                  active ? 'text-brand' : 'text-muted hover:text-ink'
+                }`}
+              >
+                <Icon aria-hidden="true" className="size-5" />
+                {t(key)}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }

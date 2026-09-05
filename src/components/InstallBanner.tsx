@@ -20,24 +20,30 @@ export function InstallBanner() {
 
   if (isStandalone()) {
     return (
-      <div>
-        <p>{t('installAlreadyInstalled')}</p>
+      <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+        <p className="text-sm text-muted">{t('installAlreadyInstalled')}</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <p>{t('installTitle')}</p>
-      {isIOS() ? (
-        <p>{t('installInstructionsIOS')}</p>
-      ) : (
-        installable && (
-          <button type="button" onClick={() => void promptInstall()}>
-            {t('installActionAndroid')}
-          </button>
-        )
-      )}
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+      <p className="font-display text-sm font-semibold text-ink">{t('installTitle')}</p>
+      <div className="mt-2">
+        {isIOS() ? (
+          <p className="text-sm text-muted">{t('installInstructionsIOS')}</p>
+        ) : (
+          installable && (
+            <button
+              type="button"
+              onClick={() => void promptInstall()}
+              className="rounded bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
+            >
+              {t('installActionAndroid')}
+            </button>
+          )
+        )}
+      </div>
     </div>
   );
 }

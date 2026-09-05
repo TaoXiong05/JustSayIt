@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { render } from '@/test/renderWithLocale';
 import StatsPage from '@/app/stats/page';
 import { clearAllEvents } from '@/lib/ledger/db';
@@ -35,7 +36,8 @@ describe('统计页', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
     expect(screen.getByText('Transport')).toBeDefined();
-    expect(screen.getByText('15.00')).toBeDefined(); // 总支出 10+5
+    // 总支出 10+5=15.00：左栏各币种段 + 桌面总览栏各出现一次（断点不同、DOM 同存）
+    expect(screen.getAllByText('15.00').length).toBeGreaterThan(0);
   });
 
   it('展开某个分类看明细，明细行是可编辑的 TransactionRow（同一组件）', async () => {
@@ -49,14 +51,21 @@ describe('统计页', () => {
     expect(screen.getByLabelText('Description')).toBeDefined();
   });
 
-  it('周/月切换改变统计口径', async () => {
+  it('共享 MonthSwitcher：切换月份后统计按该月口径重算', async () => {
     await addTransactions([
-      tx({ date: '2026-09-15', category: 'FOOD', amountCents: 1000 }), // 本月，不在本周
+      tx({ date: '2026-09-15', category: 'FOOD', amountCents: 1000, description: '本月' }),
+      tx({ date: '2026-08-15', category: 'TRANSPORT', amountCents: 500, description: '上月' }),
     ]);
+    const user = userEvent.setup();
     render(<StatsPage />);
-    await waitFor(() => expect(screen.getAllByText('10.00')).toHaveLength(2)); // 单一分类下，分类小计与总支出恰好相等，两处都合法显示 10.00
-    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
-    await waitFor(() => expect(screen.getByText(/Nothing recorded/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
+    expect(screen.queryByText('Transport')).toBeNull();
+
+    // 桌面档位下 MonthSwitcher 在左栏和总览栏各渲染一份（两个断点共用同一 DOM），
+    // 取第一份即可——两个实例状态同步，点哪个行为一致。
+    await user.click(screen.getAllByRole('button', { name: 'Previous month' })[0]);
+    await waitFor(() => expect(screen.getByText('Transport')).toBeDefined());
+    expect(screen.queryByText('Food')).toBeNull();
   });
 
   it('没有记录时显示空态文案', async () => {
@@ -66,7 +75,7 @@ describe('统计页', () => {
 });
 
 describe('统计页 · 多币种', () => {
-  /** 找到某个币种那一段的 <section>（金额本身不带货币符号，只能靠段落标题区分） */
+  /** 找到某个币种那一段的 <section>（金额本身不带货币符号，只能靠段落标题区分）。 */
   function sectionFor(currency: string): HTMLElement {
     const heading = screen.getByText(currency);
     const section = heading.closest('section');
@@ -92,7 +101,8 @@ describe('统计页 · 多币种', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText('AUD')).toBeDefined());
 
-    fireEvent.click(within(sectionFor('AUD')).getByRole('button', { name: 'Food' }));
+    // 分类按钮的可访问名现在包含金额文本（按钮内聚了图标+标签+金额）→ 用正则匹配
+    fireEvent.click(within(sectionFor('AUD')).getByRole('button', { name: /Food/ }));
 
     expect(within(sectionFor('AUD')).getByText('澳元买菜')).toBeDefined();
     expect(within(sectionFor('USD')).queryByText('美元买菜')).toBeNull();
