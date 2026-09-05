@@ -121,6 +121,19 @@ describe('历史页', () => {
     expect(screen.getByText('-10.00 AUD')).toBeDefined();
     expect(screen.getByText('-20.00 USD')).toBeDefined();
   });
+
+  it('展开的当天列表是固定高度内部滚动的容器，不是让整个页面变高（回归：用户反馈应跟主屏最近记录一致）', async () => {
+    await addTransactions([
+      tx({ date: '2026-09-05', merchant: '今天买菜' }),
+    ]);
+    render(<HistoryPage />);
+    await waitFor(() => expect(screen.getByText('今天买菜')).toBeDefined());
+    // 今天默认展开，账目行所在的 <ul> 就是那个可滚动容器
+    const row = screen.getByText('今天买菜');
+    const list = row.closest('ul');
+    expect(list?.className).toContain('max-h-64');
+    expect(list?.className).toContain('overflow-y-auto');
+  });
 });
 
 describe('按天折叠（UX brief 要求：今天默认展开，其余天默认收起）', () => {

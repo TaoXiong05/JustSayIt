@@ -254,7 +254,11 @@ export default function HistoryPage() {
                       }`}
                     >
                       <div className="min-h-0 overflow-hidden">
-                        <ul className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
+                        {/* 跟主屏最近记录同一个处理：展开的那一天笔数多时，
+                            让这个容器自己滚动，不要把整个页面撑高——用户
+                            反馈的原话就是"应该和主页一样是一个可以滑动的
+                            容器，而不是整个页面"。 */}
+                        <ul className="max-h-64 overflow-y-auto rounded-lg border border-border bg-surface shadow-card">
                           {day.items.map((transaction) => (
                             <TransactionRow key={transaction.id} transaction={transaction} />
                           ))}
