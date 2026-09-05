@@ -80,6 +80,12 @@ export async function startRecording(opts?: {
     });
 
   const cancel = () => {
+    // 显式 stop() 而不是只停轨道再指望浏览器"自动"把 recorder 收尾——
+    // track.stop() 之后 UA 是否/何时把 MediaRecorder 转成 inactive 没有
+    // 跨浏览器的同步时序保证。这里不挂 onstop，产出的最后一帧
+    // ondataavailable 数据留在这个作废的 chunks 数组里没人会再读，
+    // 但让 recorder 尽快真正停下来，别处于说不清的中间状态。
+    if (recorder.state !== 'inactive') recorder.stop();
     stream.getTracks().forEach((t) => t.stop());
     if (timer) clearTimeout(timer);
   };

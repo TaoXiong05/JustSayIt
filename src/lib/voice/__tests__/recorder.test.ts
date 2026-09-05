@@ -76,6 +76,14 @@ describe('startRecording', () => {
     expect((err as RecorderError).code).toBe('permission-denied');
   });
 
+  it('cancel() 显式停止 MediaRecorder，不只是停轨道后指望浏览器自动收尾', async () => {
+    const handle = await startRecording();
+    const recorderInstance = mediaRecorderCtor.mock.results[0].value as FakeMediaRecorder;
+    expect(recorderInstance.state).toBe('recording');
+    handle.cancel();
+    expect(recorderInstance.state).toBe('inactive');
+  });
+
   it('initializeRecorder 返回可 start 的工厂', async () => {
     const rec = initializeRecorder();
     expect(typeof rec.start).toBe('function');

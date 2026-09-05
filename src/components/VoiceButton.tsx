@@ -98,15 +98,20 @@ export function VoiceButton({
   if (status === 'recording') {
     return (
       <div className="flex flex-col items-center gap-2.5">
-        <div className="flex items-center gap-3">
+        {/* size-11（44px，移动端最小可靠点按尺寸）+ gap-7（28px）：36px 按钮
+            紧挨 96px 大圆时，手指目标是"取消"但触点落进大圆矩形热区（按钮
+            的可点击范围是它的方形包围盒，不是看起来的圆形）的概率很高——
+            这正是用户反馈"点 X 还是回填到输入框"最可能的成因，不是取消
+            逻辑本身的 bug（已有测试覆盖：取消不会触发转写）。 */}
+        <div className="flex items-center gap-7">
           <button
             type="button"
             onClick={cancel}
             aria-label={t('voiceCancel')}
             title={t('voiceCancel')}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            <X aria-hidden="true" className="size-4" />
+            <X aria-hidden="true" className="size-5" />
           </button>
           <button
             type="button"
@@ -121,7 +126,7 @@ export function VoiceButton({
             <Mic aria-hidden="true" className="relative size-9" />
           </button>
           {/* 占位元素，抵消左边取消按钮的宽度，让大圆图标视觉居中而不是偏右 */}
-          <span className="size-9 shrink-0" aria-hidden="true" />
+          <span className="size-11 shrink-0" aria-hidden="true" />
         </div>
         <div className="flex h-5 items-end gap-1" aria-hidden="true">
           {WAVE_BAR_DELAYS_MS.map((delay, i) => (
