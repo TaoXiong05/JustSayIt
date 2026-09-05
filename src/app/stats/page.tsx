@@ -95,8 +95,8 @@ export default function StatsPage() {
             <div className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
               <p className="flex justify-between gap-3 text-muted">
                 <span>{t('statsTotalExpense')}</span>
-                <span className="font-mono tabular-nums font-medium text-ink">
-                  {formatAmount(currencyStats.totalExpenseCents, currencyStats.currency)}
+                <span className="font-mono tabular-nums font-medium text-expense">
+                  {`-${formatAmount(currencyStats.totalExpenseCents, currencyStats.currency)}`}
                 </span>
               </p>
               <p className="flex justify-between gap-3 text-muted">
@@ -105,6 +105,23 @@ export default function StatsPage() {
                   {formatAmount(currencyStats.totalIncomeCents, currencyStats.currency)}
                 </span>
               </p>
+              {/* 结余 = 收入 - 支出，跟账目行同一套方向配色/正负号约定
+                  （Global Constraint 1：income/expense 只用于金额方向着色，
+                  结余本身就是一个有方向的金额，套用同一规则是一致的）。 */}
+              {(() => {
+                const balanceCents = currencyStats.totalIncomeCents - currencyStats.totalExpenseCents;
+                const isPositive = balanceCents >= 0;
+                return (
+                  <p className="flex justify-between gap-3 text-muted">
+                    <span>{t('statsBalance')}</span>
+                    <span
+                      className={`font-mono tabular-nums font-medium ${isPositive ? 'text-income' : 'text-expense'}`}
+                    >
+                      {`${isPositive ? '+' : '-'}${formatAmount(Math.abs(balanceCents), currencyStats.currency)}`}
+                    </span>
+                  </p>
+                );
+              })()}
             </div>
           </section>
         ))
@@ -125,8 +142,8 @@ export default function StatsPage() {
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{t('statsTotalExpense')}</dt>
-              <dd className="font-mono tabular-nums text-ink">
-                {formatAmount(currencyStats.totalExpenseCents, currencyStats.currency)}
+              <dd className="font-mono tabular-nums text-expense">
+                {`-${formatAmount(currencyStats.totalExpenseCents, currencyStats.currency)}`}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
@@ -135,6 +152,18 @@ export default function StatsPage() {
                 {formatAmount(currencyStats.totalIncomeCents, currencyStats.currency)}
               </dd>
             </div>
+            {(() => {
+              const balanceCents = currencyStats.totalIncomeCents - currencyStats.totalExpenseCents;
+              const isPositive = balanceCents >= 0;
+              return (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted">{t('statsBalance')}</dt>
+                  <dd className={`font-mono tabular-nums ${isPositive ? 'text-income' : 'text-expense'}`}>
+                    {`${isPositive ? '+' : '-'}${formatAmount(Math.abs(balanceCents), currencyStats.currency)}`}
+                  </dd>
+                </div>
+              );
+            })()}
           </dl>
         </section>
       ))}

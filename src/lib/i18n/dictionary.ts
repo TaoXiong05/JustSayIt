@@ -68,6 +68,7 @@ export type DictKey =
   | 'editDateInvalid'
   | 'statsTotalExpense'
   | 'statsTotalIncome'
+  | 'statsBalance'
   | 'statsEmpty'
   | 'statsMonthSummary'
   | 'navLedger'
@@ -172,6 +173,7 @@ const en: Record<DictKey, DictValue> = {
   editDateInvalid: 'Enter a valid date (YYYY-MM-DD)',
   statsTotalExpense: 'Total spent',
   statsTotalIncome: 'Income',
+  statsBalance: 'Balance',
   statsEmpty: 'Nothing recorded in this period.',
   statsMonthSummary: 'Monthly overview',
   navLedger: 'Ledger',
@@ -278,6 +280,7 @@ const zh: Record<DictKey, DictValue> = {
   editDateInvalid: '请输入有效日期（YYYY-MM-DD）',
   statsTotalExpense: '总支出',
   statsTotalIncome: '收入',
+  statsBalance: '结余',
   statsEmpty: '这段时间还没有记录。',
   statsMonthSummary: '本月总览',
   navLedger: '记账',

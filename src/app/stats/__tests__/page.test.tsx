@@ -36,8 +36,33 @@ describe('统计页', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
     expect(screen.getByText('Transport')).toBeDefined();
-    // 总支出 10+5=15.00：分类段自己的总支出 + 页面底部的月度总览各出现一次
-    expect(screen.getAllByText('15.00').length).toBeGreaterThan(0);
+    // 总支出 10+5=15.00，红色负号显示：分类段自己的总支出 + 页面底部的
+    // 月度总览各出现一次
+    expect(screen.getAllByText('-15.00').length).toBeGreaterThan(0);
+  });
+
+  it('结余 = 收入 - 支出，跟支出/收入同一套方向配色/正负号约定', async () => {
+    await addTransactions([
+      tx({ type: 'EXPENSE', category: 'FOOD', amountCents: 1000, description: '买菜' }),
+      tx({ type: 'INCOME', category: 'SALARY', amountCents: 3000, description: '工资' }),
+    ]);
+    render(<StatsPage />);
+    // "Balance" 同时出现在分类段自己的汇总和页面底部的月度总览里，
+    // 跟 "总支出" 一样用 getAllByText。
+    await waitFor(() => expect(screen.getAllByText('Balance').length).toBeGreaterThan(0));
+    // 3000 - 1000 = 2000 分 = 20.00，收支相抵为正，走 income 的颜色/加号
+    const balanceValue = screen.getAllByText('+20.00')[0];
+    expect(balanceValue.className).toContain('text-income');
+
+    // 反过来：支出大于收入，结余为负，走 expense 的颜色/减号
+    // 总支出变成 10+50=60.00，收入 30.00，结余 30-60=-30.00
+    await addTransactions([
+      tx({ type: 'EXPENSE', category: 'SHOPPING', amountCents: 5000, description: '大采购' }),
+    ]);
+    await waitFor(() => {
+      const negBalance = screen.getAllByText('-30.00')[0];
+      expect(negBalance.className).toContain('text-expense');
+    });
   });
 
   it('展开某个分类看明细，明细行是可编辑的 TransactionRow（同一组件）', async () => {
