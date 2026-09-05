@@ -14,7 +14,7 @@ import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
 import { initSync } from '@/lib/sync/init';
 import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
-import { useSession, fetchLogout } from '@/lib/auth/client';
+import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 import { randomUUID } from '@/lib/platform';
 
@@ -81,16 +81,13 @@ export default function Home() {
           {t('localeToggleLabel')}
         </button>
         {user && (
-          <div>
-            <span>{user.email ?? user.googleSub}</span>
-            <button
-              type="button"
-              onClick={() => void fetchLogout()}
-              disabled={loading}
-            >
-              {t('logOut')}
-            </button>
-          </div>
+          <a href="/settings" aria-label={t('settingsAvatarLabel')}>
+            {user.picture ? (
+              <img src={user.picture} alt="" width={32} height={32} />
+            ) : (
+              (user.email ?? user.googleSub).slice(0, 1).toUpperCase()
+            )}
+          </a>
         )}
       </header>
       {pending.length > 0 && (

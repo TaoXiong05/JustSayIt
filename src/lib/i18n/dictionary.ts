@@ -67,7 +67,12 @@ export type DictKey =
   | 'statsTotalIncome'
   | 'statsEmpty'
   | 'navLedger'
-  | 'navStats';
+  | 'navStats'
+  | 'settingsTitle'
+  | 'settingsAccount'
+  | 'settingsStorageUsage'
+  | 'settingsExport'
+  | 'settingsAvatarLabel';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -124,6 +129,11 @@ const en: Record<DictKey, DictValue> = {
   errorTranscribeFailed: 'Transcription failed, please retry',
   errorGeneric: 'Something went wrong, please retry',
   queuedOffline: 'Queued offline — will record once back online',
+  settingsTitle: 'Settings',
+  settingsAccount: 'Account',
+  settingsStorageUsage: ({ used, quota }) => `Local storage: ${used} MB / ${quota} MB`,
+  settingsExport: 'Export backup',
+  settingsAvatarLabel: 'Settings',
 };
 
 const zh: Record<DictKey, DictValue> = {
@@ -180,6 +190,11 @@ const zh: Record<DictKey, DictValue> = {
   errorTranscribeFailed: '转写失败，请重试',
   errorGeneric: '出了点问题，请重试',
   queuedOffline: '离线待处理，联网后自动记账',
+  settingsTitle: '设置',
+  settingsAccount: '账号',
+  settingsStorageUsage: ({ used, quota }) => `本地已用 ${used} MB / 配额 ${quota} MB`,
+  settingsExport: '导出备份',
+  settingsAvatarLabel: '设置',
 };
 
 export const dictionaries: Record<Locale, Record<DictKey, DictValue>> = { en, zh };
