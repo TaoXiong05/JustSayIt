@@ -51,10 +51,10 @@ describe('统计页', () => {
 
   it('周/月切换改变统计口径', async () => {
     await addTransactions([
-      tx({ date: '2026-09-01', category: 'FOOD', amountCents: 1000 }), // 本月，不在本周
+      tx({ date: '2026-09-15', category: 'FOOD', amountCents: 1000 }), // 本月，不在本周
     ]);
     render(<StatsPage />);
-    await waitFor(() => expect(screen.getByText('10.00')).toBeDefined());
+    await waitFor(() => expect(screen.getAllByText('10.00')).toHaveLength(2)); // 单一分类下，分类小计与总支出恰好相等，两处都合法显示 10.00
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
     await waitFor(() => expect(screen.getByText(/Nothing recorded/)).toBeDefined());
   });
