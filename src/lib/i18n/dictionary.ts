@@ -284,7 +284,7 @@ const zh: Record<DictKey, DictValue> = {
   navStats: '统计',
   ledgerTagline: '说出你的消费，掌控你的财富。',
   historyTagline: '轻松记录每一笔，让财务未来更清晰。',
-  statsTagline: '一句话，掌控你的财富。',
+  statsTagline: '我们来看看，是什么抢走了你的财富~',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',
