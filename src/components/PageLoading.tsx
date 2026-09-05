@@ -1,27 +1,24 @@
 'use client';
 
 import { useLocale } from '@/lib/i18n/context';
+import { Skeleton } from '@/components/Skeleton';
 
 /**
- * 统一的"页面加载中"过渡态——用户明确要求：任何页面在关键状态（目前特指
- * useSession() 的 loading）落定之前，不要把"暂时还不确定对不对"的内容
- * 先画出来再等它跳变（比如 /ledger 对已登录用户先闪一下访客登录卡片，
- * 再翻成 Composer；/settings 先空着账号那一行）。所有依赖 useSession()
- * 的页面（/、/ledger、/login、/settings）在 loading 这段时间统一换成
- * 这一个组件，而不是各自发挥、样子不统一。
- *
- * role="status" + 视觉隐藏的文案：转圈本身对读屏器不说明任何事，
- * aria-hidden 挡掉转圈图形，真正的语义交给这行文字播报。
+ * 根路径 / 专用的加载态——它自己从不展示真实内容（永远直接跳到 /login
+ * 或 /ledger），所以画不出一个"它本来长什么样"的轮廓，用一个中性、
+ * 跟 LedgerSkeleton/SettingsSkeleton/LoginSkeleton 同一种"呼吸灰块"
+ * 视觉语言的通用占位就够（改善方向：页面加载统一换成 Next.js 官方教程
+ * 那种骨架屏轮廓，而不是一个跟页面内容无关的转圈图标）。
  */
 export function PageLoading() {
   const { t } = useLocale();
   return (
-    <main role="status" className="flex min-h-[60vh] items-center justify-center">
-      <span
-        aria-hidden="true"
-        className="size-8 animate-spin rounded-full border-2 border-muted/30 border-t-brand"
-      />
+    <main role="status" className="flex min-h-[60vh] items-center justify-center px-6">
       <span className="sr-only">{t('pageLoading')}</span>
+      <div className="flex w-full max-w-xs flex-col items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-full" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
     </main>
   );
 }

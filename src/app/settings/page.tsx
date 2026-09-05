@@ -7,7 +7,7 @@ import { getStorageEstimate } from '@/lib/pwa/storage';
 import { exportBackup } from '@/lib/sync/export';
 import { useLocale } from '@/lib/i18n/context';
 import { InstallBanner } from '@/components/InstallBanner';
-import { PageLoading } from '@/components/PageLoading';
+import { SettingsSkeleton } from '@/components/SettingsSkeleton';
 
 /** 四张卡片（账号/存储/数据/PWA）统一走这个壳，宽度和视觉权重才不会各自漂移。 */
 function SettingsCard({ children }: { children: React.ReactNode }) {
@@ -52,7 +52,7 @@ export default function SettingsPage() {
 
   // session 待定期间账号那一行是空的（user 还是 null），先别画整个页面
   // （用户明确要求：页面加载时不展示未确定内容，统一换成标准过渡动画）。
-  if (loading) return <PageLoading />;
+  if (loading) return <SettingsSkeleton />;
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:px-8 lg:pb-10">

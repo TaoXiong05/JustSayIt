@@ -19,7 +19,7 @@ import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 import { randomUUID } from '@/lib/platform';
-import { PageLoading } from '@/components/PageLoading';
+import { LedgerSkeleton } from '@/components/LedgerSkeleton';
 
 const DEFAULT_CURRENCY = 'AUD';
 
@@ -84,7 +84,7 @@ export default function Home() {
   // （用户明确要求：页面加载时不展示未确定内容，统一换成标准过渡动画）。
   // 这跟 §11.4 local-first 不冲突——账本不因"确定未登录"而隐藏，这里挡的
   // 只是"还不知道算不算登录"的过渡瞬间。
-  if (loading) return <PageLoading />;
+  if (loading) return <LedgerSkeleton />;
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">

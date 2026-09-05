@@ -6,7 +6,7 @@ import { useLocale } from '@/lib/i18n/context';
 import { Hero } from '@/components/marketing/Hero';
 import { StatStrip } from '@/components/marketing/StatStrip';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
-import { PageLoading } from '@/components/PageLoading';
+import { LoginSkeleton } from '@/components/LoginSkeleton';
 
 export default function LoginPage() {
   const { user, loading } = useSession();
@@ -22,7 +22,7 @@ export default function LoginPage() {
   // session 待定，或者已经确定登录、正等着上面的 effect 把人送走——
   // 这两种情况都不该先把营销页画出来再撤掉（用户明确要求：页面加载时
   // 不展示未确定内容，统一换成标准过渡动画）。
-  if (loading || authed) return <PageLoading />;
+  if (loading || authed) return <LoginSkeleton />;
 
   return (
     <main>
