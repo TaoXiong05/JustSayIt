@@ -13,14 +13,17 @@ import {
 vi.mock('@/lib/sync/export', () => ({ exportBackup: vi.fn() }));
 vi.mock('@/lib/sync/engine', () => ({ syncNow: vi.fn() }));
 vi.mock('@/lib/platform', () => ({ isIOS: vi.fn(), isStandalone: vi.fn() }));
+vi.mock('@/lib/pwa/install', () => ({ shouldPrioritizeInstallGuidance: vi.fn() }));
 
 import { isIOS, isStandalone } from '@/lib/platform';
+import { shouldPrioritizeInstallGuidance } from '@/lib/pwa/install';
 
 beforeEach(() => {
   markSynced(getSnapshot().unsyncedIds);
   clearAuthError();
   vi.mocked(isIOS).mockReturnValue(false);
   vi.mocked(isStandalone).mockReturnValue(false);
+  vi.mocked(shouldPrioritizeInstallGuidance).mockReturnValue(false);
 });
 afterEach(() => vi.useRealTimers());
 
@@ -92,5 +95,79 @@ describe('SyncWarning 平台分支文案（spec §8.6）', () => {
     vi.setSystemTime(new Date('2026-09-02T12:00:00Z'));
     render(<SyncWarning />);
     expect(screen.getByText(/Not backed up to the cloud yet/)).toBeDefined();
+  });
+});
+
+describe('SyncWarning 安装引导提权（spec §8.8）', () => {
+  const NUDGE = /Add to Home Screen to keep this device's data safe/;
+
+  beforeEach(() => {
+    // 用真实的三条件逻辑驱动这个 mock，这样下面的用例既验证了"接线接上了"，
+    // 也验证了传进去的 hasUnsyncedData 参数确实来自当前同步状态。
+    vi.mocked(shouldPrioritizeInstallGuidance).mockImplementation(
+      ({ hasUnsyncedData }) => isIOS() && !isStandalone() && hasUnsyncedData,
+    );
+  });
+
+  /** 制造一个 >72h 的模态场景（模态文案本身是通用的，不含任何安装引导） */
+  function renderWithModal() {
+    vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
+    markUnsynced(['tx1']);
+    vi.setSystemTime(new Date('2026-09-05T00:00:00Z')); // +96h
+    return render(<SyncWarning />);
+  }
+
+  it('iOS + 未安装 + 有未同步数据时，模态里追加一句安装引导', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    renderWithModal();
+    expect(screen.getByText(NUDGE)).toBeDefined();
+    expect(shouldPrioritizeInstallGuidance).toHaveBeenCalledWith({ hasUnsyncedData: true });
+  });
+
+  it('iOS 但已安装时不追加（已有 ITP 豁免，没什么可劝的）', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(true);
+    renderWithModal();
+    expect(screen.getByText(/unsynced for a while/)).toBeDefined();
+    expect(screen.queryByText(NUDGE)).toBeNull();
+  });
+
+  it('非 iOS 平台不追加', () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    renderWithModal();
+    expect(screen.getByText(/unsynced for a while/)).toBeDefined();
+    expect(screen.queryByText(NUDGE)).toBeNull();
+  });
+
+  it('A 类失败但没有未同步数据时不追加（三条件缺一不可）', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    markAuthError();
+    render(<SyncWarning />);
+    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeDefined(); // 模态确实在显示
+    expect(screen.queryByText(NUDGE)).toBeNull();
+    expect(shouldPrioritizeInstallGuidance).toHaveBeenCalledWith({ hasUnsyncedData: false });
+  });
+
+  it('A 类失败且有未同步数据时追加（此时三条件齐了）', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    markUnsynced(['tx1']);
+    markAuthError();
+    render(<SyncWarning />);
+    expect(screen.getByText(NUDGE)).toBeDefined();
+  });
+
+  it('24-72h 的 iOS 横幅不重复这句引导——横幅文案本身已经是这条建议了', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
+    markUnsynced(['tx1']);
+    vi.setSystemTime(new Date('2026-09-02T12:00:00Z')); // +36h
+    render(<SyncWarning />);
+    expect(screen.getByText(/Add to Home Screen to keep it safe/)).toBeDefined();
+    expect(screen.queryByText(NUDGE)).toBeNull();
   });
 });

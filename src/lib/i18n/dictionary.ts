@@ -77,7 +77,8 @@ export type DictKey =
   | 'installTitle'
   | 'installActionAndroid'
   | 'installInstructionsIOS'
-  | 'installAlreadyInstalled';
+  | 'installAlreadyInstalled'
+  | 'installNudgeUnsynced';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -144,6 +145,7 @@ const en: Record<DictKey, DictValue> = {
   installActionAndroid: 'Install',
   installInstructionsIOS: 'Tap the Share button, then "Add to Home Screen".',
   installAlreadyInstalled: 'Already installed to your home screen.',
+  installNudgeUnsynced: "Add to Home Screen to keep this device's data safe.",
 };
 
 const zh: Record<DictKey, DictValue> = {
@@ -210,6 +212,7 @@ const zh: Record<DictKey, DictValue> = {
   installActionAndroid: '安装',
   installInstructionsIOS: '点击分享按钮，选择"添加到主屏幕"。',
   installAlreadyInstalled: '已经安装到主屏幕了。',
+  installNudgeUnsynced: '添加到主屏幕以保护这台设备上的数据。',
 };
 
 export const dictionaries: Record<Locale, Record<DictKey, DictValue>> = { en, zh };
