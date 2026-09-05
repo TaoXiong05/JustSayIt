@@ -42,33 +42,44 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* 录音按钮独立在输入框上方，是主屏输入区的主视觉——不再挤在
-          Submit 旁边一起当小按钮（这次重做的核心诉求：主屏空间主要
-          呈现"记录"这个动作）。录音中输入框/Submit 照常可编辑/可点，
-          两者互不阻塞（见 VoiceButton 的录音态说明）。 */}
-      <div className="flex justify-center">
+    // 整块包进一张卡片，带标题+说明文案——用户提供的参考设计：不再是
+    // 裸放在页面上的一组控件，而是一个自成一体的"输入区"卡片。录音按钮
+    // 独立在输入框上方，是这块卡片的主视觉；录音中输入框/按钮照常可编辑/
+    // 可点，两者互不阻塞（见 VoiceButton 的录音态说明）。
+    <div className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+      <div className="text-center">
+        <h2 className="font-display text-lg font-bold text-ink">{t('composerTitle')}</h2>
+        <p className="mt-1 text-sm text-muted">{t('composerSubtitle')}</p>
+      </div>
+      <div className="mt-5 flex justify-center">
         <VoiceButton onTranscribed={appendText} />
       </div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={t('composerPlaceholder')}
-        rows={2}
-        className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none"
-      />
-      <div className="flex justify-center">
+      {/* 输入框+按钮合成一行胶囊——参考设计的另一个关键点：不再是"输入框
+          一行、按钮单独居中一行"两段式。原来的多行 textarea 换成单行
+          input：这一行本身就矮，装不下换行内容，且账目描述本来就以
+          短句为主。 */}
+      <div className="mt-5 flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 pl-4 pr-1.5 focus-within:border-brand">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSubmit();
+          }}
+          placeholder={t('composerPlaceholder')}
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
+        />
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="rounded-lg bg-brand px-6 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? t('submitting') : t('submit')}
         </button>
       </div>
       {error && (
-        <p role="alert" className="text-center text-sm font-medium text-danger">
+        <p role="alert" className="mt-3 text-center text-sm font-medium text-danger">
           {error}
         </p>
       )}

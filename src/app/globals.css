@@ -128,6 +128,35 @@ textarea {
   box-sizing: border-box;
 }
 
+/* 新加的空闲态柔光环是一个只要页面开着就持续循环的动画——趁这次加它，
+   把"尊重 prefers-reduced-motion"这条一并补上（这个项目之前没有任何
+   全局兜底）。用广谱写法压掉全部动画/过渡的时长，而不是只处理这一个
+   动画：ping/spin/声波竖线/弹窗过渡等其它已有动画将来也一并受益，不用
+   每加一个新动画就单独补一条媒体查询。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 录音按钮空闲态的柔光环——不是一个固定不动的圆，是持续向外扩散、
+   淡出的涟漪，两条环错开一半周期各自循环，做出连续不断的"声波"呼吸感，
+   邀请用户点击开始录音（比一个静止的光环更贴近"这是个语音按钮"的直觉）。 */
+@keyframes mic-idle-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
 /* 录音按钮的声波动画（VoiceButton 的 recording 态）——Tailwind 内置动画
    没有"逐条竖线起伏"这个效果，用一个具名 keyframes 配合 Tailwind v4 的
    animate-[name_duration_...] 任意值语法引用，每条竖线自己的 animationDelay

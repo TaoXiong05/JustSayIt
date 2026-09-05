@@ -22,6 +22,8 @@ export type DictKey =
   | 'logInAction'
   | 'backToLedger'
   | 'localeToggleLabel'
+  | 'composerTitle'
+  | 'composerSubtitle'
   | 'composerPlaceholder'
   | 'submit'
   | 'submitting'
@@ -122,6 +124,8 @@ const en: Record<DictKey, DictValue> = {
   logInAction: 'Continue with Google',
   backToLedger: 'Back (view local ledger)',
   localeToggleLabel: '中文',
+  composerTitle: 'Record anytime, anywhere',
+  composerSubtitle: 'Say it or type it — e.g. "spent 15 on noodles for lunch"',
   composerPlaceholder: "What's on your mind…",
   submit: 'Submit',
   submitting: 'Submitting…',
@@ -224,6 +228,8 @@ const zh: Record<DictKey, DictValue> = {
   logInAction: '使用 Google 登录',
   backToLedger: '返回（可查看本地账本）',
   localeToggleLabel: 'English',
+  composerTitle: '随时随地，语音记账',
+  composerSubtitle: '直接说出或输入消费，例如："中午吃面条花费15块"',
   composerPlaceholder: '说点什么…',
   submit: '提交',
   submitting: '提交中…',

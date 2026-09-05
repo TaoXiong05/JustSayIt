@@ -146,28 +146,53 @@ export function VoiceButton({
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => void start()}
-        disabled={status === 'transcribing'}
-        aria-label={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
-        title={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
-        className="flex size-16 items-center justify-center rounded-full bg-brand text-brand-ink shadow-pop transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
-      >
-        {status === 'transcribing' ? (
-          <span
-            aria-hidden="true"
-            className="size-6 animate-spin rounded-full border-2 border-brand-ink/30 border-t-brand-ink"
-          />
+      {/* 外圈柔光环（参考设计的关键细节）：一开始是一个静止的 brand-soft
+          实心圆，用户反馈"不要固定这样，做成声波类型的动画效果"——改成
+          两圈持续向外扩散淡出的涟漪，错开半个周期各自循环，做出连续不断
+          的"呼吸"感，而不是一个死的光晕。只在真正空闲（能点击开始录音）
+          时才动——转写中按钮是禁用状态，继续播"邀请点击"的动画会自相
+          矛盾，那时只留脚下的实心 brand-soft 垫底、不做动效。空闲态不再
+          显示文字说明（原来"Record"），靠标题区的文案 + 按钮自带的
+          aria-label 提供上下文/无障碍名，视觉上更干净。转写态保留文字，
+          那是一个需要用户等待的过程，光看一个转圈图标不够明确。 */}
+      <div className="relative flex size-24 items-center justify-center">
+        {status === 'idle' ? (
+          <>
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full bg-brand-soft [animation:mic-idle-ring_2.4s_ease-out_infinite]"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full bg-brand-soft [animation:mic-idle-ring_2.4s_ease-out_infinite_1.2s]"
+            />
+          </>
         ) : (
-          // 原 emoji（🎤）拆成纯文本字典 + 独立 Mic 图标（Global Constraint 9）——
-          // 字典字符串承载不了 React 组件。
-          <Mic aria-hidden="true" className="size-7" />
+          <span aria-hidden="true" className="absolute inset-0 rounded-full bg-brand-soft" />
         )}
-      </button>
-      <span className="text-xs font-medium text-muted">
-        {status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
-      </span>
+        <button
+          type="button"
+          onClick={() => void start()}
+          disabled={status === 'transcribing'}
+          aria-label={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
+          title={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
+          className="relative flex size-16 items-center justify-center rounded-full bg-brand text-brand-ink shadow-pop transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+        >
+          {status === 'transcribing' ? (
+            <span
+              aria-hidden="true"
+              className="size-6 animate-spin rounded-full border-2 border-brand-ink/30 border-t-brand-ink"
+            />
+          ) : (
+            // 原 emoji（🎤）拆成纯文本字典 + 独立 Mic 图标（Global Constraint 9）——
+            // 字典字符串承载不了 React 组件。
+            <Mic aria-hidden="true" className="size-7" />
+          )}
+        </button>
+      </div>
+      {status === 'transcribing' && (
+        <span className="text-xs font-medium text-muted">{t('voiceTranscribing')}</span>
+      )}
       {error && (
         <span role="alert" className="max-w-[220px] text-center text-sm font-medium text-danger">
           {error}
