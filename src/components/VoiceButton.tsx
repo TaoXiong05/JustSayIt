@@ -98,7 +98,7 @@ export function VoiceButton({
         >
           {t('voiceCancel')}
         </button>
-        <span aria-live="polite" className="animate-pulse font-medium text-expense">
+        <span aria-live="polite" className="animate-pulse font-medium text-danger">
           {t('voiceRecording')}
         </span>
       </span>
@@ -125,7 +125,7 @@ export function VoiceButton({
         )}
       </button>
       {error && (
-        <span role="alert" className="ml-2 text-sm font-medium text-expense">
+        <span role="alert" className="ml-2 text-sm font-medium text-danger">
           {error}
         </span>
       )}

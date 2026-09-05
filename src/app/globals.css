@@ -32,6 +32,16 @@
   /* warning (sync tiers, toasts) */
   --warning: #d97706;
   --warning-soft: #fef3c7;
+  /* destructive UI actions (delete/logout, validation & request errors) —
+     deliberately a SEPARATE token from --expense even though it starts at
+     the same hex: Global Constraint 1 reserves income/expense exclusively
+     for transaction-amount coloring. A button or error message is not a
+     transaction amount, so it must not reference --expense directly, even
+     though "red for danger" and "red for expense" happen to look alike
+     today — keeping them as distinct variables means changing one can
+     never silently change the other. */
+  --danger: #e0463b;
+  --danger-soft: #fdeaec;
   /* geometry */
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
@@ -59,6 +69,8 @@
     --expense-soft: rgba(251, 123, 113, 0.15);
     --warning: #fbbf24;
     --warning-soft: rgba(251, 191, 36, 0.15);
+    --danger: #fb7b71;
+    --danger-soft: rgba(251, 123, 113, 0.15);
     --radius-sm: 0.375rem;
     --radius-md: 0.625rem;
     --radius-lg: 1rem;
@@ -89,6 +101,8 @@
   --color-expense-soft: var(--expense-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);

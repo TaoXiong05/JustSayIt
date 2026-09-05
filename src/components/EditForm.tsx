@@ -122,7 +122,7 @@ export function EditForm({
         </label>
       </div>
       {error && (
-        <span role="alert" className="block text-sm font-medium text-expense">
+        <span role="alert" className="block text-sm font-medium text-danger">
           {error}
         </span>
       )}
@@ -144,7 +144,7 @@ export function EditForm({
         <button
           type="button"
           onClick={onDelete}
-          className="ml-auto rounded border border-expense-soft bg-expense-soft px-3 py-1.5 text-sm font-medium text-expense transition-colors hover:opacity-80"
+          className="ml-auto rounded border border-danger-soft bg-danger-soft px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:opacity-80"
         >
           {t('editDelete')}
         </button>

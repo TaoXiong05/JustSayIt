@@ -28,7 +28,7 @@ export default function SettingsPage() {
           type="button"
           onClick={() => void fetchLogout()}
           disabled={loading}
-          className="mt-3 rounded border border-expense-soft bg-expense-soft px-3 py-1.5 text-sm font-medium text-expense transition-colors hover:opacity-80 disabled:opacity-50"
+          className="mt-3 rounded border border-danger-soft bg-danger-soft px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:opacity-80 disabled:opacity-50"
         >
           {t('logOut')}
         </button>

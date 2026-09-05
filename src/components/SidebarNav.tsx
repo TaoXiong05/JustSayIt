@@ -2,19 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, History, ReceiptText, type LucideIcon } from 'lucide-react';
 import { useLocale } from '@/lib/i18n/context';
+import { NAV_TABS } from '@/lib/navTabs';
 
 /**
  * 桌面端侧边导航（Task 15）：lg: 断点起替代底部导航（BottomNav 同断点隐藏）。
- * 与 BottomNav 共用一份 tab 定义，避免两处漂移。
+ * 与 BottomNav 共用同一份 tab 定义（@/lib/navTabs），不是各自维护一份。
  */
-const TABS: { href: string; key: 'navLedger' | 'navHistory' | 'navStats'; icon: LucideIcon }[] = [
-  { href: '/', key: 'navLedger', icon: ReceiptText },
-  { href: '/history', key: 'navHistory', icon: History },
-  { href: '/stats', key: 'navStats', icon: BarChart3 },
-];
-
 export function SidebarNav() {
   const pathname = usePathname();
   const { t } = useLocale();
@@ -25,7 +19,7 @@ export function SidebarNav() {
       </div>
       <nav className="flex-1 p-3" aria-label="主导航">
         <ul className="space-y-1">
-          {TABS.map(({ href, key, icon: Icon }) => {
+          {NAV_TABS.map(({ href, key, icon: Icon }) => {
             const active = pathname === href;
             return (
               <li key={href}>

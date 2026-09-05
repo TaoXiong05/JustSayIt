@@ -103,4 +103,35 @@ describe('recentTransactions', () => {
     expect(recentTransactions(data, 0)).toEqual([]);
     expect(recentTransactions(data, 99)).toEqual(data);
   });
+
+  it('当天笔数超过 n 时，取当天最新写入的那几笔，不是最早的（回归：曾误用 slice(0,n)）', () => {
+    // replay.ts：整体按 date 降序，但同一天内保持事件写入顺序（旧→新）。
+    // 今天（09-05）写入顺序是 t1..t5（t5 最新）；朴素 slice(0, n=3) 会切到
+    // [t1,t2,t3]（今天最早的三笔），漏掉刚记的 t4/t5。正确结果应是
+    // [t5,t4,t3]——今天真正最新的三笔。
+    const data = [
+      tx({ id: 't1', date: '2026-09-05', description: '今天第1笔' }),
+      tx({ id: 't2', date: '2026-09-05', description: '今天第2笔' }),
+      tx({ id: 't3', date: '2026-09-05', description: '今天第3笔' }),
+      tx({ id: 't4', date: '2026-09-05', description: '今天第4笔' }),
+      tx({ id: 't5', date: '2026-09-05', description: '今天第5笔（刚记的）' }),
+      tx({ id: 'yesterday', date: '2026-09-04' }),
+    ];
+    expect(recentTransactions(data, 3).map((t) => t.id)).toEqual(['t5', 't4', 't3']);
+  });
+
+  it('跨天边界：当天不够 n 笔时，接着从更早的一天补齐，且同样取该天最新的', () => {
+    const data = [
+      tx({ id: 'today-1', date: '2026-09-05' }),
+      tx({ id: 'yest-1', date: '2026-09-04' }),
+      tx({ id: 'yest-2', date: '2026-09-04' }),
+      tx({ id: 'yest-3', date: '2026-09-04' }),
+    ];
+    // 今天 1 笔 + 昨天补 2 笔（昨天内新→旧：yest-3, yest-2）
+    expect(recentTransactions(data, 3).map((t) => t.id)).toEqual([
+      'today-1',
+      'yest-3',
+      'yest-2',
+    ]);
+  });
 });

@@ -62,7 +62,7 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
         <VoiceButton onTranscribed={appendText} />
       </div>
       {error && (
-        <p role="alert" className="text-sm font-medium text-expense">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

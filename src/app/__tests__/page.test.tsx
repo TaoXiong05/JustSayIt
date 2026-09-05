@@ -29,7 +29,7 @@ beforeEach(async () => {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('主屏', () => {
+describe('主屏 - 最近记录裁剪与历史入口', () => {
   const tx = (over: Partial<Transaction>): Transaction => ({
     id: crypto.randomUUID(),
     type: 'EXPENSE',
@@ -74,6 +74,8 @@ describe('主屏', () => {
     );
   });
 });
+
+describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
   it('提交后账目出现在列表中', async () => {
     vi.stubGlobal(
       'fetch',
@@ -245,3 +247,4 @@ describe('主屏', () => {
     expect(screen.getByText('Transport')).toBeDefined();
     expect(screen.getByText('Uber')).toBeDefined();
   });
+});

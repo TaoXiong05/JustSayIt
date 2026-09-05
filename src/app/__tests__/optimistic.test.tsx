@@ -104,7 +104,11 @@ describe('乐观 UI', () => {
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await screen.findByText('麦当劳');
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    // getByRole（同步）在这里会偶发抢跑：账本行的更新来自 ledger store 的
+    // 外部订阅提交，Undo 按钮来自另一条独立链路（setLastAdded → UndoToast
+    // 挂载 → effect → toast store push → <Toaster/> 重渲染），两者是两次
+    // 独立的 React commit，先后顺序不保证——必须用 findByRole 等它真正出现。
+    await user.click(await screen.findByRole('button', { name: 'Undo' }));
 
     await waitFor(() => expect(screen.queryByText('麦当劳')).toBeNull());
     expect(screen.getByText(/No records yet/)).toBeDefined();
@@ -121,8 +125,14 @@ describe('乐观 UI', () => {
     renderHome();
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    await waitFor(() => expect(screen.getAllByText(/Recorded 1 item/)).toHaveLength(1));
-    expect(getSnapshot()).toHaveLength(1);
+    // 断言直接等 toast store 的快照，而不是数 DOM 里匹配到的文案节点数：
+    // Radix Toast 会为每条 toast 额外渲染一份视觉隐藏的副本供屏幕阅读器
+    // 播报（见 node_modules/@radix-ui/react-toast 的 ToastAnnounce，带一次
+    // 延迟渲染），同一条 toast 短暂地就能在 DOM 里产生 2 个匹配文本节点——
+    // 用 getAllByText(...).toHaveLength(2) 来判断"有几条 toast"会在只有
+    // 1 条真实 toast 时就误判为满足条件，导致间歇性失败。
+    await waitFor(() => expect(getSnapshot()).toHaveLength(1));
+    await screen.findByText(/Recorded 1 item/);
 
     // 第二批：同 count 的连续提交。若 UndoToast 不因 key 变化重新挂载，
     // effect 依赖（count/unsyncedCount）未变就不会重新 push——key 强制
@@ -130,8 +140,8 @@ describe('乐观 UI', () => {
     // 计时器，两批互不干扰（替代旧实现里手动 setTimeout 的等价语义）。
     await user.type(screen.getByRole('textbox'), '午餐麦当劳30');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    await waitFor(() => expect(screen.getAllByText(/Recorded 1 item/)).toHaveLength(2));
-    expect(getSnapshot()).toHaveLength(2);
+    await waitFor(() => expect(getSnapshot()).toHaveLength(2));
+    expect(screen.getAllByText(/Recorded 1 item/).length).toBeGreaterThanOrEqual(2);
   });
 
   it('失败时占位行消失且输入内容保留', async () => {

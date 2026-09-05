@@ -23,8 +23,11 @@ export function SyncStatusDot() {
   return (
     <span
       role="status"
+      // 同步状态是独立于"收入/支出"的第三个维度——不能借用 income 表示
+      // "已同步"，否则一枚绿色徽标会和金额那边"收入=绿"的语义混在一起
+      // （Global Constraint 1）。已同步用中性色，待同步保留 warning 琥珀色。
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-        pending ? 'bg-warning-soft text-warning' : 'bg-income-soft text-income'
+        pending ? 'bg-warning-soft text-warning' : 'bg-surface-2 text-muted'
       }`}
     >
       <span aria-hidden="true" className={pending ? 'animate-pulse' : ''}>●</span>

@@ -68,10 +68,21 @@ export function filterHistory(transactions: Transaction[], filter: HistoryFilter
 }
 
 /**
- * 最近的 n 笔。replay.ts 对 transactions 的排序是 date 降序（最新在前），
- * 所以「最近 n 笔」就是数组前 n 项——不要按天升序假设去 slice(-n).reverse()。
+ * 最近的 n 笔。replay.ts 对 transactions 的排序是 date 降序，但**同一天内**
+ * 保持事件写入顺序（旧→新，见 replay.ts 第 46 行注释）——所以不能直接
+ * slice(0, n)：当天笔数超过 n 时，前 n 项会是当天最早的几笔，反而漏掉刚
+ * 记的账（真正的"最近"）。按天分段、段内反转成新→旧，再按原有的天序拼接，
+ * 才是整体严格按记录新旧排列的顺序，再从头取 n 笔。
  * 该假设以 replay.ts 第 45-47 行的 sort 为准，改动排序时必须回来改这里。
  */
 export function recentTransactions(transactions: Transaction[], n: number): Transaction[] {
-  return transactions.slice(0, n);
+  const trueRecencyOrder: Transaction[] = [];
+  let i = 0;
+  while (i < transactions.length) {
+    let j = i;
+    while (j < transactions.length && transactions[j].date === transactions[i].date) j++;
+    for (let k = j - 1; k >= i; k--) trueRecencyOrder.push(transactions[k]);
+    i = j;
+  }
+  return trueRecencyOrder.slice(0, n);
 }

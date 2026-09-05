@@ -56,8 +56,11 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
         onClick={() => setEditing(true)}
         className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2"
       >
-        {/* 未同步/已同步的持久视觉标记（spec §8.5 第 1 点），零打扰、永久可见 */}
-        <span aria-hidden="true" className={synced ? 'text-income' : 'text-expense'}>
+        {/* 未同步/已同步的持久视觉标记（spec §8.5 第 1 点），零打扰、永久可见。
+            用中性色/warning，不用 income/expense——同步状态和这笔账是收入
+            还是支出是两回事，一个未同步的收入不该在这里显示成"支出红"
+            （Global Constraint 1：income/expense 只用于金额方向着色）。 */}
+        <span aria-hidden="true" className={synced ? 'text-muted' : 'text-warning'}>
           {synced ? '●' : '○'}
         </span>
         {/* 分类图标 + 文本标签并存——icon-only 无法为读屏器提供语义替代（Task 14） */}
