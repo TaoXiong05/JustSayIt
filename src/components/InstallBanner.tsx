@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { isIOS, isStandalone } from '@/lib/platform';
-import { initInstallPromptCapture, canPromptInstall, promptInstall } from '@/lib/pwa/install';
+import { canPromptInstall, promptInstall } from '@/lib/pwa/install';
 import { useLocale } from '@/lib/i18n/context';
 
 export function InstallBanner() {
@@ -10,14 +10,12 @@ export function InstallBanner() {
   const [installable, setInstallable] = useState(() => canPromptInstall());
 
   useEffect(() => {
-    const cleanup = initInstallPromptCapture();
-    // beforeinstallprompt 触发时机不确定，轮询一次挂载后的状态即可——
-    // 这个横幅本身不是高频重渲染的组件，用 useSyncExternalStore 属于过度设计。
+    // 事件的捕获在应用外壳层（PersistStorageOnMount）就已经挂好了——Chrome
+    // 只在页面早期派发一次 beforeinstallprompt，等到用户点进设置页才挂监听
+    // 就晚了。这里只读结果：轮询一次挂载后的状态即可，这个横幅本身不是高频
+    // 重渲染的组件，用 useSyncExternalStore 属于过度设计。
     const id = setInterval(() => setInstallable(canPromptInstall()), 500);
-    return () => {
-      cleanup();
-      clearInterval(id);
-    };
+    return () => clearInterval(id);
   }, []);
 
   if (isStandalone()) {

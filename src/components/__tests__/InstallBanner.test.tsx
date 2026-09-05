@@ -11,7 +11,7 @@ vi.mock('@/lib/pwa/install', () => ({
 }));
 
 import { isIOS, isStandalone } from '@/lib/platform';
-import { canPromptInstall, promptInstall } from '@/lib/pwa/install';
+import { canPromptInstall, promptInstall, initInstallPromptCapture } from '@/lib/pwa/install';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -38,5 +38,12 @@ describe('InstallBanner', () => {
     render(<InstallBanner />);
     fireEvent.click(screen.getByRole('button', { name: 'Install' }));
     expect(promptInstall).toHaveBeenCalled();
+  });
+
+  it('自己不再挂 beforeinstallprompt 监听——捕获归应用外壳层负责，挂在这里会错过事件', () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    render(<InstallBanner />);
+    expect(initInstallPromptCapture).not.toHaveBeenCalled();
   });
 });
