@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { subscribe, getSnapshot, classifyBTier, type BTier, type SyncState } from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
 import { exportBackup } from '@/lib/sync/export';
@@ -36,12 +36,21 @@ export function SyncWarning() {
   const { push } = useToast();
   const tier = classifyBTier(state);
 
-  // spec §8.8：「iOS + 未安装 + 有未同步数据」时把安装引导提升为高优先级。
-  const nudgeInstall = shouldPrioritizeInstallGuidance({
-    hasUnsyncedData: state.unsyncedIds.length > 0,
-  });
+  // isIOS()/isStandalone() 只有浏览器才答得出来，服务端渲染时永远是
+  // false——nudgeInstall 直接进了下面 authError/gt72h 分支的 JSX，若不
+  // 等 mounted 就用真实客户端结果，会跟服务端渲染出的 HTML 对不上，触发
+  // hydration mismatch（跟 InstallBanner.tsx 同一类问题，那边先报出来了，
+  // 这里是同一个根因，趁手一并修掉）。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  // "可能被清除"仅 iOS + 未安装为真（spec §8.6）。
+  // spec §8.8：「iOS + 未安装 + 有未同步数据」时把安装引导提升为高优先级。
+  const nudgeInstall =
+    mounted && shouldPrioritizeInstallGuidance({ hasUnsyncedData: state.unsyncedIds.length > 0 });
+
+  // "可能被清除"仅 iOS + 未安装为真（spec §8.6）。这个值只在下面的
+  // useEffect（toast 文案选择）里用到，effect 本来就只在客户端 mount 后
+  // 跑，不参与 hydration 对比，不需要额外拿 mounted 门控。
   const iosAtRisk = isIOS() && !isStandalone();
 
   // 24–72h 档在「进入该档」时推一条警告 toast。用 ref 记录最后一次推送的档位，

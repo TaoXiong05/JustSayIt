@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import type { ReactElement } from 'react';
 import { render } from '@/test/renderWithLocale';
+import { LocaleProvider } from '@/lib/i18n/context';
 import { SyncWarning } from '@/components/SyncWarning';
 import { Toaster } from '@/components/Toaster';
 import { resetToastStoreForTests } from '@/lib/toast';
@@ -76,6 +78,19 @@ describe('SyncWarning', () => {
     markAuthError();
     render(<SyncWarning />);
     expect(screen.getByRole('button', { name: 'Retry sync' })).toBeDefined();
+  });
+
+  it('服务端渲染（renderToString，effect 永远不跑）不会调用 shouldPrioritizeInstallGuidance —— 回归：nudgeInstall 曾经在渲染体里直接算，SSR 输出跟真机客户端首次渲染不一致，触发 hydration mismatch（同 InstallBanner.tsx 那次的根因）', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.mocked(shouldPrioritizeInstallGuidance).mockReturnValue(true);
+    markAuthError(); // 确保走 authError/gt72h 那个会用到 nudgeInstall 的分支
+    renderToString(
+      <LocaleProvider>
+        <SyncWarning />
+      </LocaleProvider>,
+    );
+    expect(shouldPrioritizeInstallGuidance).not.toHaveBeenCalled();
   });
 });
 

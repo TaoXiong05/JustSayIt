@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { render } from '@/test/renderWithLocale';
+import { LocaleProvider } from '@/lib/i18n/context';
 import { InstallBanner } from '@/components/InstallBanner';
 
 vi.mock('@/lib/platform', () => ({ isIOS: vi.fn(), isStandalone: vi.fn() }));
@@ -45,5 +47,17 @@ describe('InstallBanner', () => {
     vi.mocked(isStandalone).mockReturnValue(false);
     render(<InstallBanner />);
     expect(initInstallPromptCapture).not.toHaveBeenCalled();
+  });
+
+  it('服务端渲染（renderToString，effect 永远不跑）不会调用 isIOS/isStandalone —— 回归：曾经在渲染体里直接调用它们，导致 SSR 输出跟真机客户端首次渲染不一致，触发 hydration mismatch', () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    renderToString(
+      <LocaleProvider>
+        <InstallBanner />
+      </LocaleProvider>,
+    );
+    expect(isIOS).not.toHaveBeenCalled();
+    expect(isStandalone).not.toHaveBeenCalled();
   });
 });
