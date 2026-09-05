@@ -37,6 +37,8 @@ export type DictKey =
   | 'voicePermissionDenied'
   | 'pendingLabel'
   | 'emptyLedger'
+  | 'recentTransactionsTitle'
+  | 'viewAllHistory'
   | 'undoneCount'
   | 'undo'
   | 'errorUnauthenticated'
@@ -141,6 +143,8 @@ const en: Record<DictKey, DictValue> = {
     'Microphone access was denied. Allow it in your browser settings and try again.',
   pendingLabel: 'Processing…',
   emptyLedger: 'No records yet — try saying something.',
+  recentTransactionsTitle: 'Recent transactions',
+  viewAllHistory: 'View all history',
   undoneCount: ({ count, unsynced }) =>
     `Recorded ${count} item${count === 1 ? '' : 's'}${Number(unsynced) > 0 ? ' · pending sync' : ''}`,
   undo: 'Undo',
@@ -243,6 +247,8 @@ const zh: Record<DictKey, DictValue> = {
   voicePermissionDenied: '麦克风权限被拒绝，请在浏览器设置里允许后重试。',
   pendingLabel: '处理中…',
   emptyLedger: '还没有记录，说点什么试试。',
+  recentTransactionsTitle: '近期账单',
+  viewAllHistory: '查看全部历史',
   undoneCount: ({ count, unsynced }) =>
     `已记录 ${count} 笔${Number(unsynced) > 0 ? ' · 待同步' : ''}`,
   undo: '撤销',

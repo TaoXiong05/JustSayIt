@@ -45,9 +45,11 @@ describe('统计页', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
     fireEvent.click(screen.getByText('Food'));
-    expect(screen.getByText('买菜')).toBeDefined();
+    // 描述现在跟分类 label 拼在同一个文本节点里（"买菜 · Food"，参考设计的
+    // 副标题样式），精确匹配已不适用，改用子串匹配。
+    expect(screen.getByText('买菜', { exact: false })).toBeDefined();
     // 点明细行能进入编辑态——证明复用的是主屏同一个 TransactionRow
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     expect(screen.getByLabelText('Description')).toBeDefined();
   });
 
@@ -78,7 +80,7 @@ describe('统计页', () => {
     render(<StatsPage />);
     await waitFor(() => expect(screen.getByText('Food')).toBeDefined());
     fireEvent.click(screen.getByText('Food'));
-    const row = screen.getByText('买菜');
+    const row = screen.getByText('买菜', { exact: false });
     const list = row.closest('ul');
     expect(list?.className).toContain('max-h-64');
     expect(list?.className).toContain('overflow-y-auto');
@@ -115,7 +117,7 @@ describe('统计页 · 多币种', () => {
     // 分类按钮的可访问名现在包含金额文本（按钮内聚了图标+标签+金额）→ 用正则匹配
     fireEvent.click(within(sectionFor('AUD')).getByRole('button', { name: /Food/ }));
 
-    expect(within(sectionFor('AUD')).getByText('澳元买菜')).toBeDefined();
+    expect(within(sectionFor('AUD')).getByText('澳元买菜', { exact: false })).toBeDefined();
     expect(within(sectionFor('USD')).queryByText('美元买菜')).toBeNull();
   });
 });

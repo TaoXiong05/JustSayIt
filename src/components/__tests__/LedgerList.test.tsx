@@ -43,12 +43,14 @@ describe('LedgerList', () => {
   it('渲染商户与描述', () => {
     render(<LedgerList transactions={[tx('a', { merchant: 'Woolworths', description: '买菜' })]} />);
     expect(screen.getByText('Woolworths')).toBeDefined();
-    expect(screen.getByText('买菜')).toBeDefined();
+    // 描述现在跟分类 label 拼在同一个文本节点里（"买菜 · Food"，参考设计
+    // 的副标题样式），精确匹配已不适用，改用子串匹配。
+    expect(screen.getByText('买菜', { exact: false })).toBeDefined();
   });
 
   it('category 显示为本地化 label（默认 en），底层仍是稳定英文 key', () => {
     render(<LedgerList transactions={[tx('a', { category: 'TRANSPORT' })]} />);
-    expect(screen.getByText('Transport')).toBeDefined();
+    expect(screen.getByText('Transport', { exact: false })).toBeDefined();
   });
 
   it('支出显示负号，收入显示正号', () => {
@@ -96,13 +98,13 @@ describe('同步状态圆点', () => {
 describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹窗，见 EditDialog.tsx）', () => {
   it('点击一行弹出编辑弹窗，显示当前字段值', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     expect(screen.getByLabelText('Description')).toHaveProperty('value', '买菜');
   });
 
   it('保存时调用 amendTransaction 并收起表单', async () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(amendTransaction).toHaveBeenCalledWith('a', expect.any(Object)));
     expect(screen.queryByLabelText('Description')).toBeNull();
@@ -110,14 +112,14 @@ describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹�
 
   it('点删除调用 removeTransaction 并收起表单', async () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(removeTransaction).toHaveBeenCalledWith('a'));
   });
 
   it('点取消关闭弹窗，不调用任何保存/删除', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByLabelText('Description')).toBeNull();
     expect(amendTransaction).not.toHaveBeenCalled();
@@ -126,7 +128,7 @@ describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹�
 
   it('改了字段但按 Escape 关闭 —— 丢弃改动，不调用保存（brief 的"安全取消"要求）', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: '改过的描述' } });
     fireEvent.keyDown(screen.getByLabelText('Description'), { key: 'Escape', code: 'Escape' });
     expect(screen.queryByLabelText('Description')).toBeNull();
@@ -144,10 +146,10 @@ describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹�
 
   it('重新打开同一笔账，表单是全新挂载——不会带着上次没保存的改动', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: '改过但没保存' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    fireEvent.click(screen.getByText('买菜'));
+    fireEvent.click(screen.getByText('买菜', { exact: false }));
     expect(screen.getByLabelText('Description')).toHaveProperty('value', '买菜');
   });
 });

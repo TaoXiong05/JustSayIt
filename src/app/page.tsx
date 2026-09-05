@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { RefreshCw, ChevronRight } from 'lucide-react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
@@ -83,46 +84,11 @@ export default function Home() {
       <header className="mb-4">
         <h1 className="font-display text-xl font-bold text-ink">{t('navLedger')}</h1>
       </header>
-      {pending.length > 0 && (
-        <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-          {pending.map((entry) => (
-            <PendingRow key={entry.id} text={entry.text} />
-          ))}
-        </ul>
-      )}
-      {pendingRawInputs.length > 0 && (
-        <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-          {pendingRawInputs.map((item) => (
-            <QueuedRow key={item.id} text={item.text} />
-          ))}
-        </ul>
-      )}
-      {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
-          完整历史由 /history 承担——固定高度、超出内部滚动，不随条数把输入区
-          挤到折叠线以下。"View all history →" 链接已去掉：History 现在是
-          全局导航（顶部导航栏/底部 tab）的常驻入口，这里再放一份纯属重复。 */}
-      <div className="max-h-64 overflow-y-auto rounded-lg">
-        <LedgerList transactions={recentTransactions(transactions, 10)} />
-      </div>
-      <SyncWarning />
-      {lastAdded.length > 0 && (
-        // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
-        // 触发一次新的 push()。「同 length 的连续两批单笔提交」也会被区分开——
-        // Radix 每条 toast 持有独立的自动关闭计时器，但 effect 只在重新挂载
-        // （或 count/unsyncedCount 变化）时才会跑；仅靠 props 变化驱动，
-        // 两批同 count 的提交就没法各自产生一条新 toast。
-        <UndoToast
-          key={lastAdded.join(',')}
-          count={lastAdded.length}
-          unsyncedCount={
-            lastAdded.filter((id) => getSyncSnapshot().unsyncedIds.includes(id)).length
-          }
-          onUndo={undo}
-          onDismiss={clearToast}
-        />
-      )}
+      {/* 主输入区（已登录：Composer；访客：登录引导 banner）放在最前面——
+          用户打开首页第一眼看到的应该是"能做什么"，而不是历史记录列表
+          （用户明确要求：把 Ledger 列表挪到主输入区下面）。 */}
       {authed ? (
-        <section className="mt-6">
+        <section className="mb-6">
           <Composer onSubmit={handleSubmit} />
         </section>
       ) : (
@@ -133,7 +99,7 @@ export default function Home() {
         // 品牌紫蓝区间里，白字对比度依然够，但整体观感轻一些。CTA 直接
         // 指向 OAuth 端点、不经过 /login 营销页——会看到这块 banner 的人
         // 已经在用产品了，不需要再看一遍营销话术，少一次跳转就少一次流失。
-        <div className="relative mt-6 overflow-hidden rounded-2xl p-5 text-white shadow-pop">
+        <div className="relative mb-6 overflow-hidden rounded-2xl p-5 text-white shadow-pop">
           <div
             aria-hidden="true"
             className="absolute inset-0 bg-[linear-gradient(135deg,#4f46e5_0%,#7c6ff0_50%,#a78bfa_100%)]"
@@ -181,6 +147,56 @@ export default function Home() {
             </a>
           </div>
         </div>
+      )}
+      {pending.length > 0 && (
+        <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
+          {pending.map((entry) => (
+            <PendingRow key={entry.id} text={entry.text} />
+          ))}
+        </ul>
+      )}
+      {pendingRawInputs.length > 0 && (
+        <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
+          {pendingRawInputs.map((item) => (
+            <QueuedRow key={item.id} text={item.text} />
+          ))}
+        </ul>
+      )}
+      {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
+          完整历史由 /history 承担——固定高度、超出内部滚动，不随条数把输入区
+          挤到折叠线以下。"查看全部历史"链接只在首页出现：History 页本身已经
+          在这个链接的目的地里，再放一份纯属重复；首页则需要一条快捷路径。 */}
+      <div className="mb-1.5 flex items-center justify-between px-1">
+        <h2 className="font-display text-sm font-semibold text-ink">
+          {t('recentTransactionsTitle')}
+        </h2>
+        <Link
+          href="/history"
+          className="inline-flex items-center gap-0.5 text-sm font-medium text-brand hover:underline"
+        >
+          {t('viewAllHistory')}
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </Link>
+      </div>
+      <div className="max-h-64 overflow-y-auto rounded-lg">
+        <LedgerList transactions={recentTransactions(transactions, 10)} />
+      </div>
+      <SyncWarning />
+      {lastAdded.length > 0 && (
+        // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
+        // 触发一次新的 push()。「同 length 的连续两批单笔提交」也会被区分开——
+        // Radix 每条 toast 持有独立的自动关闭计时器，但 effect 只在重新挂载
+        // （或 count/unsyncedCount 变化）时才会跑；仅靠 props 变化驱动，
+        // 两批同 count 的提交就没法各自产生一条新 toast。
+        <UndoToast
+          key={lastAdded.join(',')}
+          count={lastAdded.length}
+          unsyncedCount={
+            lastAdded.filter((id) => getSyncSnapshot().unsyncedIds.includes(id)).length
+          }
+          onUndo={undo}
+          onDismiss={clearToast}
+        />
       )}
     </main>
   );

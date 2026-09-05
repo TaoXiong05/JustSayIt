@@ -227,18 +227,41 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
     await user.type(screen.getByRole('textbox'), 'Uber ride $25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() => expect(screen.getByText('Uber')).toBeDefined());
-    expect(screen.getByText('Transport')).toBeDefined();
+    // 描述现在跟分类 label 拼在同一个文本节点里（"ride · Transport"，参考
+    // 设计的副标题样式），精确匹配已不适用，改用子串匹配。
+    expect(screen.getByText('Transport', { exact: false })).toBeDefined();
 
     // 切到中文：category label 变了，但商户/金额这些底层数据原样还在
     await user.click(screen.getByRole('button', { name: '中文' }));
-    expect(screen.getByText('交通')).toBeDefined();
-    expect(screen.queryByText('Transport')).toBeNull();
+    expect(screen.getByText('交通', { exact: false })).toBeDefined();
+    expect(screen.queryByText('Transport', { exact: false })).toBeNull();
     expect(screen.getByText('Uber')).toBeDefined();
     expect(screen.getByText('-25.00')).toBeDefined();
 
     // 切回英文：反向验证同样成立，且切换是可逆的展示层操作
     await user.click(screen.getByRole('button', { name: 'English' }));
-    expect(screen.getByText('Transport')).toBeDefined();
+    expect(screen.getByText('Transport', { exact: false })).toBeDefined();
     expect(screen.getByText('Uber')).toBeDefined();
+  });
+});
+
+describe('主屏布局（用户明确要求：主输入区在最上面，近期账单在下面）', () => {
+  it('Composer 在 DOM 里排在近期账单列表前面', () => {
+    render(<Home />);
+    const composerHeading = screen.getByText('Record anytime, anywhere');
+    const recentHeading = screen.getByText('Recent transactions');
+    // DOCUMENT_POSITION_FOLLOWING：recentHeading 在 composerHeading 之后
+    expect(
+      composerHeading.compareDocumentPosition(recentHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('"View all history" 链接指向 /history（History 已有全局导航常驻入口，这里只是首页的快捷方式）', () => {
+    render(<Home />);
+    expect(screen.getByRole('link', { name: /View all history/ })).toHaveProperty(
+      'href',
+      'http://localhost:3000/history',
+    );
   });
 });
