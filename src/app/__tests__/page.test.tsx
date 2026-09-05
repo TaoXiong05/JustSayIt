@@ -30,7 +30,7 @@ beforeEach(async () => {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('主屏 - 最近记录裁剪与历史入口', () => {
+describe('主屏 - 最近记录裁剪', () => {
   const tx = (over: Partial<Transaction>): Transaction => ({
     id: crypto.randomUUID(),
     type: 'EXPENSE',
@@ -58,21 +58,6 @@ describe('主屏 - 最近记录裁剪与历史入口', () => {
     // 最旧的 2 笔被裁掉
     expect(screen.queryByText('商家1')).toBeNull();
     expect(screen.queryByText('商家2')).toBeNull();
-    // 查看全部历史入口始终存在
-    expect(screen.getByRole('link', { name: /View all history/ })).toHaveProperty(
-      'href',
-      'http://localhost:3000/history',
-    );
-  });
-
-  it('账目不超过 10 笔时查看全部历史链接仍然渲染', async () => {
-    await addTransactions([tx({ date: '2026-09-05', merchant: '单笔商户' })]);
-    render(<Home />);
-    await waitFor(() => expect(screen.getByText('单笔商户')).toBeDefined());
-    expect(screen.getByRole('link', { name: /View all history/ })).toHaveProperty(
-      'href',
-      'http://localhost:3000/history',
-    );
   });
 });
 

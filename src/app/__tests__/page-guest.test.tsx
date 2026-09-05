@@ -35,6 +35,12 @@ describe('主屏（未登录）', () => {
     );
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Log out' })).toBeNull();
+    // 登录引导 banner 的行动按钮直接指向 OAuth 端点，不经过 /login 营销页——
+    // 已经在用产品的人不需要再看一遍营销话术。
+    expect(screen.getByRole('link', { name: 'Continue with Google' })).toHaveProperty(
+      'href',
+      'http://localhost:3000/api/auth/login',
+    );
     // 本地账本区仍渲染（空态文案）
     expect(screen.getByText(/No records yet/)).toBeDefined();
   });

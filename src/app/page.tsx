@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
@@ -97,15 +98,9 @@ export default function Home() {
         </ul>
       )}
       {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
-          完整历史由 /history 承担——"查看全部"入口无条件渲染，且放在这块区域
-          上方（不是下方）：主屏空间要让位给下面的记录输入区，这一块本身只是
-          "最近瞥一眼"，固定高度、超出内部滚动，不随条数把输入区挤到折叠线以下。 */}
-      <a
-        href="/history"
-        className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand transition-colors hover:text-brand-2"
-      >
-        {t('viewAllHistory')} →
-      </a>
+          完整历史由 /history 承担——固定高度、超出内部滚动，不随条数把输入区
+          挤到折叠线以下。"View all history →" 链接已去掉：History 现在是
+          全局导航（顶部导航栏/底部 tab）的常驻入口，这里再放一份纯属重复。 */}
       <div className="max-h-64 overflow-y-auto rounded-lg">
         <LedgerList transactions={recentTransactions(transactions, 10)} />
       </div>
@@ -131,11 +126,37 @@ export default function Home() {
           <Composer onSubmit={handleSubmit} />
         </section>
       ) : (
-        <p className="mt-6">
-          <a className="font-medium text-brand hover:text-brand-2" href="/login">
-            {t('logInPrompt')}
+        // 深色渐变卡片，故意不跟随浅色/深色主题切换——这是一个要主动抓
+        // 眼球的招牌 CTA，不是普通页面文本，两种主题下都保持同一个深色
+        // 微光观感（跟营销首页 Hero 的定位一致：都是"引导去登录"的关键
+        // 时刻）。CTA 直接指向 OAuth 端点、不经过 /login 营销页——会看到
+        // 这块 banner 的人已经在用产品了，不需要再看一遍营销话术，少一次
+        // 跳转就少一次流失。
+        <div className="relative mt-6 overflow-hidden rounded-2xl p-5 text-white shadow-pop">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(135deg,#0f0c29_0%,#2f2364_45%,#4f46e5_75%,#8b5cf6_100%)]"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute -right-8 -top-10 size-36 rounded-full bg-white/15 blur-3xl"
+          />
+          <div className="relative flex items-start gap-3.5">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15">
+              <RefreshCw aria-hidden="true" className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-sm font-semibold">{t('logInPrompt')}</p>
+              <p className="mt-1 text-xs text-white/70">{t('logInDescription')}</p>
+            </div>
+          </div>
+          <a
+            href="/api/auth/login"
+            className="relative mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm transition-transform hover:scale-[1.02]"
+          >
+            {t('logInAction')}
           </a>
-        </p>
+        </div>
       )}
     </main>
   );

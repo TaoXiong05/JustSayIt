@@ -93,7 +93,6 @@ export type DictKey =
   | 'historyClearFilter'
   | 'historyNoResults'
   | 'historySummaryTitle'
-  | 'viewAllHistory'
   | 'loginHeroTitle'
   | 'loginHeroSubhead'
   | 'heroSecondaryCta'
@@ -194,7 +193,6 @@ const en: Record<DictKey, DictValue> = {
   historyClearFilter: 'Clear filter',
   historyNoResults: 'No matching records — try a different date range or keyword.',
   historySummaryTitle: 'Net by currency',
-  viewAllHistory: 'View all history',
   loginHeroTitle: 'Just say it.',
   loginHeroSubhead:
     'Record expenses by voice in seconds — auto-categorized, local-first, always yours.',
@@ -294,7 +292,6 @@ const zh: Record<DictKey, DictValue> = {
   historyClearFilter: '清除筛选',
   historyNoResults: '没有匹配的记录，试试换个日期范围或关键词。',
   historySummaryTitle: '按币种净额',
-  viewAllHistory: '查看全部历史',
   loginHeroTitle: '说一句，账就记好了',
   loginHeroSubhead: '用一句话记下一笔——自动分类、本地优先、数据永远属于你。',
   heroSecondaryCta: '看看它是怎么记的',
