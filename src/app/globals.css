@@ -127,3 +127,19 @@ textarea {
   width: 100%;
   box-sizing: border-box;
 }
+
+/* 录音按钮的声波动画（VoiceButton 的 recording 态）——Tailwind 内置动画
+   没有"逐条竖线起伏"这个效果，用一个具名 keyframes 配合 Tailwind v4 的
+   animate-[name_duration_...] 任意值语法引用，每条竖线自己的 animationDelay
+   由内联 style 错开，做出参差不齐的声波感。 */
+@keyframes voice-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}

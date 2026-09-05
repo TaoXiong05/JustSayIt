@@ -42,7 +42,14 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      {/* 录音按钮独立在输入框上方，是主屏输入区的主视觉——不再挤在
+          Submit 旁边一起当小按钮（这次重做的核心诉求：主屏空间主要
+          呈现"记录"这个动作）。录音中输入框/Submit 照常可编辑/可点，
+          两者互不阻塞（见 VoiceButton 的录音态说明）。 */}
+      <div className="flex justify-center">
+        <VoiceButton onTranscribed={appendText} />
+      </div>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -50,19 +57,18 @@ export function Composer({ onSubmit }: { onSubmit: (text: string) => Promise<voi
         rows={2}
         className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none"
       />
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex justify-center">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-brand px-6 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? t('submitting') : t('submit')}
         </button>
-        <VoiceButton onTranscribed={appendText} />
       </div>
       {error && (
-        <p role="alert" className="text-sm font-medium text-danger">
+        <p role="alert" className="text-center text-sm font-medium text-danger">
           {error}
         </p>
       )}

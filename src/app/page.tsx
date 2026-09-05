@@ -116,14 +116,18 @@ export default function Home() {
         </ul>
       )}
       {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
-          完整历史由 /history 承担——"查看全部"入口无条件渲染。 */}
-      <LedgerList transactions={recentTransactions(transactions, 10)} />
+          完整历史由 /history 承担——"查看全部"入口无条件渲染，且放在这块区域
+          上方（不是下方）：主屏空间要让位给下面的记录输入区，这一块本身只是
+          "最近瞥一眼"，固定高度、超出内部滚动，不随条数把输入区挤到折叠线以下。 */}
       <a
         href="/history"
-        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand transition-colors hover:text-brand-2"
+        className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand transition-colors hover:text-brand-2"
       >
         {t('viewAllHistory')} →
       </a>
+      <div className="max-h-64 overflow-y-auto rounded-lg">
+        <LedgerList transactions={recentTransactions(transactions, 10)} />
+      </div>
       <SyncWarning />
       {lastAdded.length > 0 && (
         // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
