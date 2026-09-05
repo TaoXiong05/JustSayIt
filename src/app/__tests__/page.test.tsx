@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
+import { render } from '@/test/renderWithLocale';
 import { stubLocation } from '@/test/mockLocation';
 import RootRedirect from '@/app/page';
 
@@ -26,11 +27,12 @@ describe('根路径 /（按登录态分流到 /login 或 /ledger）', () => {
     location.restore();
   });
 
-  it('session 仍在加载时不跳转', () => {
+  it('session 仍在加载时不跳转，显示统一的加载过渡态而不是任何页面内容', () => {
     useSession.mockReturnValue({ user: null, loading: true });
     const location = stubLocation('http://localhost:3000/');
-    render(<RootRedirect />);
+    const { getByRole } = render(<RootRedirect />);
     expect(window.location.href).toBe('http://localhost:3000/');
+    expect(getByRole('status')).toBeDefined();
     location.restore();
   });
 });

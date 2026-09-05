@@ -19,6 +19,7 @@ import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 import { randomUUID } from '@/lib/platform';
+import { PageLoading } from '@/components/PageLoading';
 
 const DEFAULT_CURRENCY = 'AUD';
 
@@ -76,6 +77,14 @@ export default function Home() {
       setPending((p) => p.filter((entry) => entry.id !== pendingId));
     }
   }
+
+  // session 状态是"待定"而不是"未登录"这段时间，不能提前画出访客态——
+  // authed 在 loading 时恒为 false，之前会先闪一下访客登录卡片，等
+  // useSession() 落定才翻成 Composer，对已登录用户是一次明显的内容跳变
+  // （用户明确要求：页面加载时不展示未确定内容，统一换成标准过渡动画）。
+  // 这跟 §11.4 local-first 不冲突——账本不因"确定未登录"而隐藏，这里挡的
+  // 只是"还不知道算不算登录"的过渡瞬间。
+  if (loading) return <PageLoading />;
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">

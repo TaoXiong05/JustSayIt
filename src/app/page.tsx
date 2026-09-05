@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useSession } from '@/lib/auth/client';
+import { PageLoading } from '@/components/PageLoading';
 
 /**
  * 根路径不再是 Ledger 页面本身——Ledger 挪到了 /ledger（见
@@ -24,12 +25,5 @@ export default function RootRedirect() {
     if (!loading) window.location.href = user ? '/ledger' : '/login';
   }, [loading, user]);
 
-  return (
-    <main className="flex min-h-[60vh] items-center justify-center">
-      <span
-        aria-hidden="true"
-        className="size-8 animate-spin rounded-full border-2 border-muted/30 border-t-brand"
-      />
-    </main>
-  );
+  return <PageLoading />;
 }

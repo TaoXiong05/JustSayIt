@@ -36,6 +36,7 @@ export type DictKey =
   | 'voiceInsecureContext'
   | 'voicePermissionDenied'
   | 'pendingLabel'
+  | 'pageLoading'
   | 'emptyLedger'
   | 'recentTransactionsTitle'
   | 'viewAllHistory'
@@ -146,6 +147,7 @@ const en: Record<DictKey, DictValue> = {
   voicePermissionDenied:
     'Microphone access was denied. Allow it in your browser settings and try again.',
   pendingLabel: 'Processing…',
+  pageLoading: 'Loading…',
   emptyLedger: 'No records yet — try saying something.',
   recentTransactionsTitle: 'Recent transactions',
   viewAllHistory: 'View all history',
@@ -254,6 +256,7 @@ const zh: Record<DictKey, DictValue> = {
   voiceInsecureContext: '语音录制需要安全连接（HTTPS）——当前页面是通过普通 HTTP 打开的。',
   voicePermissionDenied: '麦克风权限被拒绝，请在浏览器设置里允许后重试。',
   pendingLabel: '处理中…',
+  pageLoading: '加载中…',
   emptyLedger: '还没有记录，说点什么试试。',
   recentTransactionsTitle: '近期账单',
   viewAllHistory: '查看全部历史',

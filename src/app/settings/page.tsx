@@ -7,6 +7,7 @@ import { getStorageEstimate } from '@/lib/pwa/storage';
 import { exportBackup } from '@/lib/sync/export';
 import { useLocale } from '@/lib/i18n/context';
 import { InstallBanner } from '@/components/InstallBanner';
+import { PageLoading } from '@/components/PageLoading';
 
 /** 四张卡片（账号/存储/数据/PWA）统一走这个壳，宽度和视觉权重才不会各自漂移。 */
 function SettingsCard({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,10 @@ export default function SettingsPage() {
       ? Math.min(100, Math.max(0, (usage.usageBytes / usage.quotaBytes) * 100))
       : 0;
 
+  // session 待定期间账号那一行是空的（user 还是 null），先别画整个页面
+  // （用户明确要求：页面加载时不展示未确定内容，统一换成标准过渡动画）。
+  if (loading) return <PageLoading />;
+
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:px-8 lg:pb-10">
       <header className="mb-6">
@@ -67,8 +72,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => void handleLogout()}
-              disabled={loading}
-              className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:border-danger-soft hover:bg-danger-soft disabled:opacity-50"
+              className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:border-danger-soft hover:bg-danger-soft"
             >
               {t('logOut')}
             </button>
