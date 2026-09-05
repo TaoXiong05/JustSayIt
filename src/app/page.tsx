@@ -126,36 +126,60 @@ export default function Home() {
           <Composer onSubmit={handleSubmit} />
         </section>
       ) : (
-        // 深色渐变卡片，故意不跟随浅色/深色主题切换——这是一个要主动抓
-        // 眼球的招牌 CTA，不是普通页面文本，两种主题下都保持同一个深色
-        // 微光观感（跟营销首页 Hero 的定位一致：都是"引导去登录"的关键
-        // 时刻）。CTA 直接指向 OAuth 端点、不经过 /login 营销页——会看到
-        // 这块 banner 的人已经在用产品了，不需要再看一遍营销话术，少一次
-        // 跳转就少一次流失。
+        // 渐变卡片，故意不跟随浅色/深色主题切换——这是一个要主动抓眼球的
+        // 招牌 CTA，不是普通页面文本，两种主题下都保持同一个微光观感
+        // （跟营销首页 Hero 的定位一致：都是"引导去登录"的关键时刻）。
+        // 调浅过一版：原来从近黑的深藏青起步，太重；现在整段都在偏亮的
+        // 品牌紫蓝区间里，白字对比度依然够，但整体观感轻一些。CTA 直接
+        // 指向 OAuth 端点、不经过 /login 营销页——会看到这块 banner 的人
+        // 已经在用产品了，不需要再看一遍营销话术，少一次跳转就少一次流失。
         <div className="relative mt-6 overflow-hidden rounded-2xl p-5 text-white shadow-pop">
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-[linear-gradient(135deg,#0f0c29_0%,#2f2364_45%,#4f46e5_75%,#8b5cf6_100%)]"
+            className="absolute inset-0 bg-[linear-gradient(135deg,#4f46e5_0%,#7c6ff0_50%,#a78bfa_100%)]"
           />
           <div
             aria-hidden="true"
-            className="absolute -right-8 -top-10 size-36 rounded-full bg-white/15 blur-3xl"
+            className="absolute -right-8 -top-10 size-36 rounded-full bg-white/20 blur-3xl"
           />
           <div className="relative flex items-start gap-3.5">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15">
               <RefreshCw aria-hidden="true" className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-sm font-semibold">{t('logInPrompt')}</p>
-              <p className="mt-1 text-xs text-white/70">{t('logInDescription')}</p>
+              <p className="font-display text-base font-semibold">{t('logInPrompt')}</p>
+              <p className="mt-1 text-sm text-white/80">{t('logInDescription')}</p>
             </div>
           </div>
-          <a
-            href="/api/auth/login"
-            className="relative mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm transition-transform hover:scale-[1.02]"
-          >
-            {t('logInAction')}
-          </a>
+          <div className="relative mt-4 flex justify-center">
+            <a
+              href="/api/auth/login"
+              className="inline-flex items-center gap-2.5 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-[#3c4043] shadow-sm transition-transform hover:scale-[1.02]"
+            >
+              {/* Google 官方四色 G 标志，"使用 Google 登录"按钮的标准画法——
+                  按钮本身用 Google 品牌指南要求的浅底深字，不是这块 banner
+                  自己的渐变配色，两者刻意不同源。 */}
+              <svg aria-hidden="true" viewBox="0 0 18 18" className="size-[18px] shrink-0">
+                <path
+                  fill="#4285F4"
+                  d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+                />
+              </svg>
+              {t('logInAction')}
+            </a>
+          </div>
         </div>
       )}
     </main>

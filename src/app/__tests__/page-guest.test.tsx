@@ -31,7 +31,7 @@ describe('主屏（未登录）', () => {
     );
     render(<Home />);
     await waitFor(() =>
-      expect(screen.getByText('Log in to start tracking')).toBeDefined(),
+      expect(screen.getByText('Log in to get started')).toBeDefined(),
     );
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Log out' })).toBeNull();

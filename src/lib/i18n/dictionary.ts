@@ -113,8 +113,12 @@ export type DictKey =
 
 const en: Record<DictKey, DictValue> = {
   logOut: 'Log out',
-  logInPrompt: 'Log in to start tracking',
-  logInDescription: 'Log in to use AI expense tracking and voice input.',
+  logInPrompt: 'Log in to get started',
+  // 原文写的是"Google 云"，这里按项目实际架构改成 Google Drive——同步
+  // 走的具体是 Drive 的 appDataFolder（见 sync/drive.ts），不是笼统的
+  // "Google 云"，跟营销首页 Hero 已经在用的说法（"syncs to your own
+  // Drive"）保持一致的技术表述。
+  logInDescription: 'Your data stays on this device — sync runs through your own Google Drive.',
   logInAction: 'Continue with Google',
   backToLedger: 'Back (view local ledger)',
   localeToggleLabel: '中文',
@@ -215,8 +219,8 @@ const en: Record<DictKey, DictValue> = {
 
 const zh: Record<DictKey, DictValue> = {
   logOut: '退出',
-  logInPrompt: '登录后开始记账',
-  logInDescription: '登录后即可使用 AI 记账与语音输入。',
+  logInPrompt: '登录开始使用',
+  logInDescription: '数据都存在您的设备上，同步功能通过您自己的 Google Drive 实现。',
   logInAction: '使用 Google 登录',
   backToLedger: '返回（可查看本地账本）',
   localeToggleLabel: 'English',
