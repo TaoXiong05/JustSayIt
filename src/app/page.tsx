@@ -75,7 +75,9 @@ export default function Home() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">
-      <header className="mb-5 flex items-center gap-3">
+      {/* 桌面端隐藏：品牌名/同步点/语言切换/头像现在由全局 TopNav 提供，
+          这里重复渲染会跟顶栏打架。移动端没有等价的全局 header，保留不变。 */}
+      <header className="mb-5 flex items-center gap-3 lg:hidden">
         <h1 className="font-display text-2xl font-bold text-ink">{t('appTitle')}</h1>
         <div className="ml-auto flex items-center gap-2">
           <SyncStatusDot />

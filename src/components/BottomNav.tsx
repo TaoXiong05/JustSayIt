@@ -8,7 +8,9 @@ import { NAV_TABS } from '@/lib/navTabs';
 /**
  * 底部三 tab：记账 / 历史 / 统计；设置从头像进，不占永久 tab（spec §13.1）。
  * 激活态用品牌色（--brand）指示，绝不用 income/expense 语义色（Global
- * Constraint 1）。移动端显示；桌面端由 SidebarNav 接管（Task 15，lg: 起隐藏）。
+ * Constraint 1）。移动端显示；桌面端由全局 TopNav 接管（顶部导航，lg: 起
+ * 这里隐藏——移动端保持底部 tab 栏是用户明确选择保留的，没有跟着桌面端
+ * 从侧边栏改顶栏这次改版走）。
  */
 export function BottomNav() {
   const pathname = usePathname();

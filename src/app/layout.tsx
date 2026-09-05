@@ -2,7 +2,7 @@ import './globals.css';
 import { Outfit, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import { LocaleProvider } from '@/lib/i18n/context';
 import { Toaster } from '@/components/Toaster';
-import { SidebarNav } from '@/components/SidebarNav';
+import { TopNav } from '@/components/TopNav';
 import { BottomNav } from '@/components/BottomNav';
 import { PersistStorageOnMount } from '@/components/PersistStorageOnMount';
 
@@ -41,12 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LocaleProvider>
           <PersistStorageOnMount />
-          {/* 桌面端侧边导航占左 224px，内容区整体右移（Task 15，真·桌面布局） */}
-          <SidebarNav />
-          <div className="lg:pl-56">
-            {children}
-            <Toaster />
-          </div>
+          {/* 桌面端从侧边栏改成顶部导航条（用户明确要求去掉侧边栏），内容区
+              不再需要永久左边距——各页面自己的 max-w-* + mx-auto 负责居中。
+              移动端保持底部 tab 栏不变（用户自己选的，没跟着改成汉堡菜单）。 */}
+          <TopNav />
+          {children}
+          <Toaster />
           <BottomNav />
         </LocaleProvider>
       </body>
