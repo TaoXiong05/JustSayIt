@@ -31,6 +31,9 @@ export function isValidYuanAmount(n: number): boolean {
   return Number.isFinite(n) && n > 0 && atMostTwoDecimals(n);
 }
 
+/** Transaction.date 的规范格式，AI 输出校验和编辑表单校验共用同一个 pattern。 */
+export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 export const AiTransactionSchema = z
   .object({
     type: z.enum(['EXPENSE', 'INCOME']),
@@ -40,7 +43,7 @@ export const AiTransactionSchema = z
     }),
     // 仅当用户明确说出币种时非空，否则由客户端补默认值
     currency: z.string().length(3).nullable(),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期须为 YYYY-MM-DD'),
+    date: z.string().regex(DATE_PATTERN, '日期须为 YYYY-MM-DD'),
     category: z.enum(ALL_CATEGORIES),
     merchant: z.string().nullable(),
     description: z.string(),

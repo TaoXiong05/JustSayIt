@@ -49,7 +49,9 @@ export const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  // 没开 navigationPreload：上面的 NetworkFirst 导航规则自己发起 fetch，
+  // 不会读 event.preloadResponse（serwist 的 StrategyHandler 没有消费
+  // 预加载响应的分支）——开着只会让每次导航多打一次浪费的请求。
   runtimeCaching,
 });
 
