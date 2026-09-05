@@ -1,4 +1,4 @@
-import { subscribe, getEventsSnapshot } from '@/lib/ledger/store';
+import { subscribe, getEventsSnapshot, hydrate } from '@/lib/ledger/store';
 import { getDeviceId, type LedgerEvent } from '@/lib/ledger/events';
 import { markUnsynced } from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
@@ -36,12 +36,40 @@ function newlyCreatedOrAmendedTxIds(events: LedgerEvent[]): string[] {
  * 先标记为未同步，再异步同步（spec §7 同步时机："尽快推送，不做批量攒批"）。
  * 同步失败与否由 sync/status.ts 记录，这里不处理错误分支——UI 层的
  * 分级预警负责后续提示。
+ *
+ * 回归：seenEventIds 基线必须等真正水合完成后再取快照，不能在这里同步
+ * 调用 getEventsSnapshot()——page.tsx 里 useLedger() 也会在自己的 effect
+ * 里触发一次 hydrate()，但那是从 IndexedDB 读数据的异步操作，不会在这个
+ * effect 同步跑完之前落地。旧写法在这里同步取到的是"水合完成前"的空/旧
+ * 快照，等 hydrate() 真正 commit() 时，订阅回调会把*全部*历史事件（包括
+ * 早就同步过的）当成"新出现"，误标成待同步。多数情况下这个误判会被
+ * 紧跟着的 syncNow() 自动纠正回来，用户几乎看不到；但如果这次误判恰好
+ * 发生在没有有效登录态时（比如登出触发的整页刷新——见 settings/page.tsx
+ * 的 window.location.href 跳转），syncNow() 会因为拿不到 access token
+ * 直接失败，纠正就不会发生，误标的"待同步"会一直卡在界面上，即使那些
+ * 账目其实老早就同步过了。
+ *
+ * 修法：initSync() 自己 await 一次 hydrate()（幂等，重复调用无副作用），
+ * 确保 getEventsSnapshot() 反映的是本地 IndexedDB 里*全部*已有事件之后，
+ * 才建立基线、才订阅——这样订阅之后收到的第一次通知，一定代表"基线
+ * 之后真正发生的变化"，不会把历史存量事件误判成新事件。
  */
 export function initSync(): () => void {
-  seenEventIds = new Set(getEventsSnapshot().map((e) => e.eventId));
-  return subscribe(() => {
-    const newIds = newlyCreatedOrAmendedTxIds(getEventsSnapshot());
-    if (newIds.length > 0) markUnsynced(newIds);
-    void syncNow().catch(() => {});
+  let cancelled = false;
+  let unsubscribe: (() => void) | null = null;
+
+  void hydrate().then(() => {
+    if (cancelled) return;
+    seenEventIds = new Set(getEventsSnapshot().map((e) => e.eventId));
+    unsubscribe = subscribe(() => {
+      const newIds = newlyCreatedOrAmendedTxIds(getEventsSnapshot());
+      if (newIds.length > 0) markUnsynced(newIds);
+      void syncNow().catch(() => {});
+    });
   });
+
+  return () => {
+    cancelled = true;
+    unsubscribe?.();
+  };
 }

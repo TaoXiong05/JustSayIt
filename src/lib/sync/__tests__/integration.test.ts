@@ -60,6 +60,12 @@ afterEach(() => vi.unstubAllGlobals());
 describe('sync/init.ts 与 sync/engine.ts 的 id 契约', () => {
   it('新建一笔账目 → initSync 标记未同步 → syncNow 成功后 unsyncedIds 真的清空', async () => {
     const cleanup = initSync();
+    // initSync() 现在自己先 await 一次 hydrate() 才建立基线、才订阅（见
+    // init.ts 的详细注释：不能在 hydrate() 真正落地前就同步取基线快照，
+    // 否则会把水合落地时的历史事件误判成"新事件"）。这里用 setTimeout(0)
+    // 而不是单次 await Promise.resolve()——把所有排队中的微任务都跑完，
+    // 不用去数 hydrate() 内部到底有几层 Promise 链。
+    await new Promise((r) => setTimeout(r, 0));
 
     await addTransactions([tx]);
     expect(getSyncSnapshot().unsyncedIds).toEqual(['tx-integration-1']);
