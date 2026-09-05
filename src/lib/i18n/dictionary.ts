@@ -58,7 +58,14 @@ export type DictKey =
   | 'editDateLabel'
   | 'editMerchantLabel'
   | 'editDescriptionLabel'
-  | 'editAmountInvalid';
+  | 'editAmountInvalid'
+  | 'statsTabWeek'
+  | 'statsTabMonth'
+  | 'statsPrev'
+  | 'statsNext'
+  | 'statsTotalExpense'
+  | 'statsTotalIncome'
+  | 'statsEmpty';
 
 const en: Record<DictKey, DictValue> = {
   appTitle: 'JustSayIt',
@@ -99,6 +106,13 @@ const en: Record<DictKey, DictValue> = {
   editMerchantLabel: 'Merchant',
   editDescriptionLabel: 'Description',
   editAmountInvalid: 'Enter a positive amount with at most 2 decimals',
+  statsTabWeek: 'Week',
+  statsTabMonth: 'Month',
+  statsPrev: '◀',
+  statsNext: '▶',
+  statsTotalExpense: 'Total spent',
+  statsTotalIncome: 'Income',
+  statsEmpty: 'Nothing recorded in this period.',
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
@@ -146,6 +160,13 @@ const zh: Record<DictKey, DictValue> = {
   editMerchantLabel: '商户',
   editDescriptionLabel: '描述',
   editAmountInvalid: '请输入正数金额，最多两位小数',
+  statsTabWeek: '本周',
+  statsTabMonth: '本月',
+  statsPrev: '◀',
+  statsNext: '▶',
+  statsTotalExpense: '总支出',
+  statsTotalIncome: '收入',
+  statsEmpty: '这段时间还没有记录。',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',
