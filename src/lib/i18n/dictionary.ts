@@ -72,6 +72,9 @@ export type DictKey =
   | 'statsMonthSummary'
   | 'navLedger'
   | 'navStats'
+  | 'ledgerTagline'
+  | 'historyTagline'
+  | 'statsTagline'
   | 'settingsTitle'
   | 'settingsAccount'
   | 'settingsStorageUsage'
@@ -173,6 +176,9 @@ const en: Record<DictKey, DictValue> = {
   statsMonthSummary: 'Monthly overview',
   navLedger: 'Ledger',
   navStats: 'Stats',
+  ledgerTagline: 'Speak your expenses, master your money.',
+  historyTagline: 'Effortless tracking for a clearer financial future.',
+  statsTagline: 'Take control of your wealth, one sentence at a time.',
   errorUnauthenticated: 'Please log in first',
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
@@ -276,6 +282,9 @@ const zh: Record<DictKey, DictValue> = {
   statsMonthSummary: '本月总览',
   navLedger: '记账',
   navStats: '统计',
+  ledgerTagline: '说出你的消费，掌控你的财富。',
+  historyTagline: '轻松记录每一笔，让财务未来更清晰。',
+  statsTagline: '一句话，掌控你的财富。',
   errorUnauthenticated: '请先登录',
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',

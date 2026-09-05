@@ -77,12 +77,15 @@ export default function Home() {
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">
       {/* 品牌 logo/同步点/语言切换/头像现在是全局页眉（桌面 TopNav、移动
-          MobileHeader）提供的，不再是这个页面自己的东西——这里只留一个跟
-          History/Stats 同样规格的页面标题，不然这个页面就没有属于自己的
-          <h1> 了（之前是 logo 顶替，但 logo 现在每个页面都长一样，不该
-          再兼任某一个页面专属的标题）。 */}
-      <header className="mb-4">
-        <h1 className="font-display text-xl font-bold text-ink">{t('navLedger')}</h1>
+          MobileHeader）提供的，不再是这个页面自己的东西——页面自己的
+          <h1> 不再是纯页面名（"Ledger"），换成一句話术标语，跟 History/
+          Stats 三页统一风格：居中、比原来单词标题小一号（text-lg/sm:text-xl）
+          + leading-snug，专为多行句子调过。用户明确要求纯话术、不加页面名
+          小标签——当前页面靠底部/顶部导航栏自身的高亮状态识别。 */}
+      <header className="mb-5">
+        <h1 className="text-center font-display text-lg font-bold leading-snug text-ink sm:text-xl">
+          {t('ledgerTagline')}
+        </h1>
       </header>
       {/* 主输入区（已登录：Composer；访客：登录引导 banner）放在最前面——
           用户打开首页第一眼看到的应该是"能做什么"，而不是历史记录列表

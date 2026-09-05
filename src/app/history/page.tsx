@@ -112,8 +112,12 @@ export default function HistoryPage() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-6 pb-24 md:pb-6 lg:max-w-2xl">
-      <header className="mb-4">
-        <h1 className="font-display text-xl font-bold text-ink">{t('navHistory')}</h1>
+      {/* 三页统一的话术标语风格（Ledger/History/Stats），见 page.tsx 的
+          注释——排版专为多行句子调过。 */}
+      <header className="mb-5">
+        <h1 className="text-center font-display text-lg font-bold leading-snug text-ink sm:text-xl">
+          {t('historyTagline')}
+        </h1>
       </header>
 
       {/* 搜索框挪到标题正下方、常驻可见（brief 明确要求：不再是右上角一个

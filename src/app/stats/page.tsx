@@ -25,8 +25,12 @@ export default function StatsPage() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">
-      <header className="mb-4">
-        <h1 className="font-display text-xl font-bold text-ink">{t('navStats')}</h1>
+      {/* 三页统一的话术标语风格（Ledger/History/Stats），见 page.tsx 的
+          注释——排版专为多行句子调过。 */}
+      <header className="mb-5">
+        <h1 className="text-center font-display text-lg font-bold leading-snug text-ink sm:text-xl">
+          {t('statsTagline')}
+        </h1>
       </header>
 
       {/* 月份切换放最上面，所有断点通用——不再是"移动端在列表上方、
