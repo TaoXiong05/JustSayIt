@@ -55,8 +55,9 @@ to the user to run in their own SSH session.
    `docker/setup-qemu-action` + `platforms: linux/arm64` explicitly, or
    `docker compose pull` on the VM fails with `no matching manifest for
    linux/arm64/v8`.
-5. **New deploy key, not reused.** `justsayit_deploy_key` is created
-   fresh for this repo. Do not reuse another repo's CI SSH key — a key
+5. **New deploy key, not reused.** A dedicated ed25519 keypair (secret
+   `SSH_PRIVATE_KEY`) is created fresh for this repo. Do not reuse
+   another repo's CI SSH key — a key
    leak in one project shouldn't compromise the others sharing this VM.
 6. **Backend stays fully stateless.** No in-memory session, no local
    file cache. Session is already JWT-based (`src/lib/server/session.ts`)
@@ -297,16 +298,30 @@ config assumes this compose file's service name/network match).
    (`GROQ_API_KEY`, `GOOGLE_CLIENT_ID/SECRET`, `SESSION_SECRET`,
    `REFRESH_TOKEN_ENCRYPTION_KEY`, `AI_DAILY_QUOTA`) live in a
    `deploy`-owned, `chmod 600` `.env` file alongside this compose file
-   on the VM (`/opt/justsayit/.env`) — never committed. `DATABASE_URL`
+   on the VM (`/home/deploy/justsayit/.env`) — never committed. `DATABASE_URL`
    in that `.env` points at the internal service name:
    `postgresql://justsayit:<POSTGRES_PASSWORD>@justsayit-db:5432/justsayit`.
 4. This file is a template checked into the repo — the VM's actual copy
-   lives at `/opt/justsayit/docker-compose.yml`, owned by `deploy`.
+   lives at `/home/deploy/justsayit/docker-compose.yml`, owned by `deploy`.
    First-time setup copies it there manually (or via the first CI run);
    CI only ever runs `docker compose pull && up -d` against the
    already-present file, it does not overwrite the compose file itself
    on every deploy (keeps `.env`/volume state stable across image
    updates).
+
+   **Revised since this sketch was written** — see the real file
+   (`deploy/docker-compose.yml`) for the current state, but the deltas
+   worth calling out: the healthcheck uses `http://127.0.0.1:3000/...`,
+   not `http://localhost:3000/...` (alpine's `wget` resolves `localhost`
+   to `::1` first and the app only binds the IPv4 wildcard — found by
+   actually running the built image, not by reading the Dockerfile);
+   `POSTGRES_USER`/`POSTGRES_DB` are `${POSTGRES_USER}`/`${POSTGRES_DB}`
+   substitutions, not the hardcoded `justsayit` literal shown above (the
+   user configured these as their own GitHub secrets rather than
+   accepting a hardcoded value); and the compose file syncs to
+   `/home/deploy/justsayit/`, not `/opt/justsayit/`, on every CI run —
+   there is no separate manual first-time-setup step (see the revised
+   go-live checklist item 6).
 
 **Test:** `docker compose config` validates the file locally (no VM
 needed for this check — pure YAML/interpolation validation). Full
@@ -337,17 +352,17 @@ Postgres instance on this VM currently has no backup — Global Constraint
    set -e
    STAMP=$(date +%Y%m%d-%H%M%S)
    docker exec justsayit-db pg_dump -U justsayit justsayit \
-     | gzip > /opt/justsayit/backups/justsayit-$STAMP.sql.gz
+     | gzip > /home/deploy/justsayit/backups/justsayit-$STAMP.sql.gz
    # keep the last 14 daily dumps, prune anything older
-   find /opt/justsayit/backups -name 'justsayit-*.sql.gz' -mtime +14 -delete
+   find /home/deploy/justsayit/backups -name 'justsayit-*.sql.gz' -mtime +14 -delete
    ```
 2. Runs via a `deploy`-owned crontab entry on the VM host (not a
    long-running sidecar container — a plain daily cron calling
    `docker exec` is simplest and matches "no new instance-bound state"
    in spirit, since it's just periodically shelling into the already-
    running db container rather than adding another always-on process):
-   `0 3 * * * /opt/justsayit/backup.sh >> /opt/justsayit/backups/backup.log 2>&1`.
-3. `/opt/justsayit/backups/` created with `deploy` ownership during
+   `0 3 * * * /home/deploy/justsayit/backup.sh >> /home/deploy/justsayit/backups/backup.log 2>&1`.
+3. `/home/deploy/justsayit/backups/` created with `deploy` ownership during
    first-time VM setup (go-live checklist), not by CI on every deploy.
 
 **Test:** run `backup.sh` manually against a local `docker compose up`
@@ -387,21 +402,21 @@ and ships what they define.
 3. Job `deploy` (`needs: build-and-push`):
    - SSH via `appleboy/ssh-action@v1` (or equivalent), `host:
      158.179.25.78`, `username: deploy`, `key: ${{
-     secrets.JUSTSAYIT_DEPLOY_KEY }}` (Global Constraint 5 — this secret
+     secrets.SSH_PRIVATE_KEY }}` (Global Constraint 5 — this secret
      is new and scoped to this repo only).
    - **Revised — self-bootstrapping, no manual VM setup** (the user
      explicitly asked to remove every manual VM step so the first
      deploy is also the first CI run): an `appleboy/scp-action` step
      first stages `deploy/docker-compose.yml` and `deploy/backup.sh`
      into `/tmp` on the VM, then the SSH step's remote script does, in
-     order, every time: `mkdir -p /opt/justsayit/backups`; copy both
-     staged files into `/opt/justsayit/`; write `/opt/justsayit/.env`
+     order, every time: `mkdir -p /home/deploy/justsayit/backups`; copy both
+     staged files into `/home/deploy/justsayit/`; write `/home/deploy/justsayit/.env`
      (mode 600) from a heredoc populated by the job's own env (each
      value sourced from a GitHub secret via `appleboy/ssh-action`'s
      `envs:` passthrough — see step 5 below for the full secret list);
      idempotently append the backup cron line if it isn't already in
      `deploy`'s crontab; assert the `edge` network exists (fail loudly,
-     don't create one); then `cd /opt/justsayit && docker compose pull
+     don't create one); then `cd /home/deploy/justsayit && docker compose pull
      && docker compose up -d`. Overwriting `.env` on every run is
      deliberate — GitHub secrets are the single source of truth, not
      whatever's already on the VM.
@@ -426,7 +441,7 @@ and ships what they define.
    Actions) — **revised: all of the app's runtime secrets are now
    GitHub secrets**, not a hand-created VM `.env` (see the revision
    note in step 3 above and the go-live checklist's revised item 6):
-   `JUSTSAYIT_DEPLOY_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY`,
+   `SSH_PRIVATE_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY`,
    `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`,
    `REFRESH_TOKEN_ENCRYPTION_KEY`, `POSTGRES_PASSWORD`, and optionally
    `AI_DAILY_QUOTA` (defaults to 60 if absent). `GOOGLE_REDIRECT_URI` is
@@ -478,34 +493,33 @@ time, confirmed, per the operating constraint at the top of this plan.
 5. **DNS**: create an A/AAAA record for `justsayit.taoxiong.site`
    pointing at `158.179.25.78`, matching how the other three apps'
    subdomains are already set up on `taoxiong.site`.
-6. **Revised (no manual VM file setup)**: the `deploy` job in
-   `.github/workflows/deploy.yml` is self-bootstrapping — it creates
-   `/opt/justsayit/backups`, syncs `docker-compose.yml` and
-   `backup.sh` from the repo, writes `.env` fresh from GitHub secrets,
-   and sets up the backup cron line idempotently, all on every run.
-   There is no separate "first-time setup" step to do by hand for any
-   of that. **One thing CI genuinely cannot bootstrap: its own SSH
-   access.** `JUSTSAYIT_DEPLOY_KEY`'s public half has to already be in
-   the VM's `deploy` user's `~/.ssh/authorized_keys` before the
-   workflow can run at all — this has to happen once, outside CI, by
-   whoever already has access to the VM. Everything else below is a
-   GitHub secret to create, not a VM action:
-   - `JUSTSAYIT_DEPLOY_KEY` — a fresh ed25519 keypair generated
-     specifically for this repo (Global Constraint 5); private half is
-     the secret, public half goes on the VM per the note above.
-   - `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `GOOGLE_CLIENT_ID`,
-     `GOOGLE_CLIENT_SECRET` — real values from those consoles (not
-     generatable locally).
-   - `SESSION_SECRET` (`openssl rand -hex 32`),
-     `REFRESH_TOKEN_ENCRYPTION_KEY` (`openssl rand -hex 32` —
-     independently, never derived from `SESSION_SECRET`, per Global
-     Constraint 7), `POSTGRES_PASSWORD` (`openssl rand -hex 24` —
-     alphanumeric-only on purpose, so it never needs URL-escaping
-     inside the `DATABASE_URL` the workflow composes from it) — all
-     three are pure local entropy, no external account needed.
-   - `AI_DAILY_QUOTA` is optional (defaults to 60 in the workflow if
-     the secret doesn't exist).
-   - `GOOGLE_REDIRECT_URI` and `ALLOW_UNAUTHENTICATED_API` are not
+6. **Done — no manual VM file setup, self-bootstrapping CI.** Per the
+   user's explicit request, the `deploy` job in
+   `.github/workflows/deploy.yml` creates `/home/deploy/justsayit/backups`
+   (not `/opt` — this project deploys under the `deploy` user's home
+   directory), syncs `docker-compose.yml` and `backup.sh` from the repo,
+   writes `.env` fresh from GitHub secrets, and sets up the backup cron
+   line idempotently, all on every run. **The deploy key's public half
+   is already on the VM** (user confirmed) — the one step CI genuinely
+   can't bootstrap itself is done. The user configured the following in
+   the GitHub repo (Settings → Secrets and variables → Actions),
+   naming them differently than this plan originally sketched — the
+   workflow was written to match what's actually there rather than the
+   other way around:
+   - Secrets: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY` (the connection
+     details + the ed25519 keypair from Global Constraint 5),
+     `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `GOOGLE_CLIENT_ID`,
+     `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`,
+     `REFRESH_TOKEN_ENCRYPTION_KEY`, `POSTGRES_USER`,
+     `POSTGRES_PASSWORD`, `POSTGRES_DB` — note `POSTGRES_USER`/
+     `POSTGRES_DB` are now configurable secrets rather than the
+     hardcoded `justsayit` literal this plan originally assumed; the
+     compose file and `backup.sh` were both updated to read them
+     instead (the healthcheck's `pg_isready -U ${POSTGRES_USER}`
+     included).
+   - Repository **variable** (not secret — not sensitive):
+     `AI_DAILY_QUOTA` (set to 50).
+   - `GOOGLE_REDIRECT_URI` and `ALLOW_UNAUTHENTICATED_API` are still not
      secrets at all under this design — the workflow hardcodes the
      production redirect URL directly (it's not sensitive, it's a
      public callback URL), and simply never writes
@@ -516,13 +530,12 @@ time, confirmed, per the operating constraint at the top of this plan.
      this repo — the workflow checks for it and fails loudly if it's
      missing (it should already exist, owned by the edge-proxy stack).
 7. **First deploy is the first real CI run** — push to `main` (or
-   manually trigger the workflow) once the deploy key is on the VM and
-   every secret above exists, and watch it end to end: build, push,
-   bootstrap `/opt/justsayit`, up, Caddy sync. Confirm
+   manually trigger the workflow) and watch it end to end: build, push,
+   bootstrap `/home/deploy/justsayit`, up, Caddy sync. Confirm
    `https://justsayit.taoxiong.site` actually loads over HTTPS (the
    edge proxy handles TLS; nothing in this app's own config touches
    certificates) and that a real Google login round-trips correctly
-   against the production redirect URI.
+   against the production redirect URI. Not yet run as of this note.
 
 ---
 
