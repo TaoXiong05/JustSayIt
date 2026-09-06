@@ -555,6 +555,8 @@ structure(text: string, ctx: { localTime, timeZone, defaultCurrency }) → Trans
 
 **接入任何新 provider 前，必须先完成同等的条款查证。** 这是 §10.3 换 provider 流程中不可省略的一步——技术适配只要半天，条款不合规则整条路走不通。
 
+**Cerebras（结构化，2026-09-06 补查）：** `structure()` 实际走的是 Cerebras（`qwen-3.8-27b`，见 `src/lib/ai/index.ts`），但接入时未在本文档留下条款查证记录——本节这条规则本身被违反了一次。补查结果：Cerebras 官方支持文档明确声明其 Inference API **不保留** prompt 内容、API 请求/响应，"No user-generated content is stored"；[Does Cerebras retain my data?](https://support.cerebras.net/articles/1811589793-does-cerebras-retain-my-data)。该文档未明确说明是否用于训练——不像 Groq/Gemini 那样有专门条款可查，**不能据此断言"绝不用于训练"**，隐私政策措辞（见 `src/app/privacy/page.tsx`）据此只表述"不保留"，不做训练相关的断言。以后每次接入新 provider，查证结论要像这样直接写回本节，不要等事后补。
+
 ### 10.5 零内容日志（隐私承诺的技术落实）
 
 日志只记录 `userId`、模型名、token 数、耗时、成功/失败、错误类型。**永不记录 prompt 与 response 的内容。**

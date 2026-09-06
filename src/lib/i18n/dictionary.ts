@@ -21,6 +21,8 @@ export type DictKey =
   | 'logInDescription'
   | 'logInAction'
   | 'backToLedger'
+  | 'footerPrivacyPolicy'
+  | 'footerTermsOfService'
   | 'localeToggleLabel'
   | 'composerTitle'
   | 'composerSubtitle'
@@ -130,6 +132,8 @@ const en: Record<DictKey, DictValue> = {
   logInDescription: 'Your data stays on this device — sync runs through your own Google Drive.',
   logInAction: 'Continue with Google',
   backToLedger: 'Back (view local ledger)',
+  footerPrivacyPolicy: 'Privacy Policy',
+  footerTermsOfService: 'Terms of Service',
   localeToggleLabel: '中文',
   composerTitle: 'Record anytime, anywhere',
   composerSubtitle: 'Say it or type it — e.g. "spent 15 on noodles for lunch"',
@@ -241,6 +245,8 @@ const zh: Record<DictKey, DictValue> = {
   logInDescription: '数据都存在您的设备上，同步功能通过您自己的 Google Drive 实现。',
   logInAction: '使用 Google 登录',
   backToLedger: '返回（可查看本地账本）',
+  footerPrivacyPolicy: '隐私政策',
+  footerTermsOfService: '服务条款',
   localeToggleLabel: 'English',
   composerTitle: '随时随地，语音记账',
   composerSubtitle: '直接说出或输入消费，例如："中午吃面条花费15块"',
