@@ -181,17 +181,25 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
     expect((box as HTMLTextAreaElement).value).toBe('早餐麦当劳25');
   });
 
-  it('后端返回空数组时不新增账目', async () => {
+  it('后端返回空数组（没识别到任何账目）时不新增账目，且明确提示用户，不是静默无反馈（用户反馈原话：不知道是新增成功了还是失败了）', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ records: [] }) }),
     );
     const user = userEvent.setup();
     render(<Home />);
-    await user.type(screen.getByRole('textbox'), '今天天气不错');
+    const box = screen.getByRole('textbox');
+    await user.type(box, 'sdsadsdsafsdfgasdsad');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getByText(/No records yet/)).toBeDefined());
+    // 跟"接口失败"走同一条路径：占位行消失、原文还回输入框方便改写重试、
+    // 显示一条不同于"记账失败"的提示（这次调用其实成功了，只是没识别出
+    // 账目，措辞不该暗示是请求出错）。
+    await waitFor(() =>
+      expect(screen.getByText(/Couldn't find anything to record/)).toBeDefined(),
+    );
+    expect((box as HTMLInputElement).value).toBe('sdsadsdsafsdfgasdsad');
   });
 
   it('切换 UI 语言只改变展示文案，不改变已保存的账本数据（中英文支持 §7、§12 Case 6）', async () => {

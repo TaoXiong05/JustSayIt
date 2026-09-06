@@ -20,6 +20,7 @@ import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 import { randomUUID } from '@/lib/platform';
+import { ApiError } from '@/lib/apiError';
 import { LedgerSkeleton } from '@/components/LedgerSkeleton';
 
 const DEFAULT_CURRENCY = 'AUD';
@@ -72,8 +73,16 @@ export default function Home() {
         return; // 离线：不乐观插入账目，只排队等待联网后补跑（spec §9、§11.4）
       }
       const txs = await structureTextToTransactions(text, ctx);
+      // AI 调用本身成功，但一条账目都没识别出来（比如提交了一串无意义
+      // 字符）——跟真正的请求失败是两回事，但对用户来说同样需要反馈：
+      // 不能既不提示、也不把占位行的"记账中"变成"记成功了"，否则用户会
+      // 不知道这次提交到底算不算数（用户反馈原话）。复用 Composer 已有的
+      // 失败处理路径（把原文还回输入框、显示红字提示），不用重新画一套。
+      if (txs.length === 0) {
+        throw new ApiError('未识别到有效账目', 'NO_TRANSACTIONS');
+      }
       await addTransactions(txs);
-      if (txs.length > 0) setLastAdded(txs.map((tx) => tx.id));
+      setLastAdded(txs.map((tx) => tx.id));
     } finally {
       setPending((p) => p.filter((entry) => entry.id !== pendingId));
     }

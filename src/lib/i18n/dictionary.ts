@@ -48,6 +48,7 @@ export type DictKey =
   | 'errorQuotaExceeded'
   | 'errorInvalidRequest'
   | 'errorStructureFailed'
+  | 'errorNoTransactionsFound'
   | 'errorTranscribeFailed'
   | 'errorGeneric'
   | 'queuedOffline'
@@ -194,6 +195,7 @@ const en: Record<DictKey, DictValue> = {
   errorQuotaExceeded: 'Daily AI usage limit reached, please try again tomorrow',
   errorInvalidRequest: 'Request was invalid, please try again',
   errorStructureFailed: 'Failed to save, please retry',
+  errorNoTransactionsFound: "Couldn't find anything to record — try rephrasing",
   errorTranscribeFailed: 'Transcription failed, please retry',
   errorGeneric: 'Something went wrong, please retry',
   queuedOffline: 'Queued offline — will record once back online',
@@ -306,6 +308,7 @@ const zh: Record<DictKey, DictValue> = {
   errorQuotaExceeded: '今日 AI 调用次数已达上限，请明天再试',
   errorInvalidRequest: '请求参数不合法，请重试',
   errorStructureFailed: '记账失败，请重试',
+  errorNoTransactionsFound: '没有识别到可记录的账目，换个说法再试试',
   errorTranscribeFailed: '转写失败，请重试',
   errorGeneric: '出了点问题，请重试',
   queuedOffline: '离线待处理，联网后自动记账',
@@ -407,6 +410,11 @@ const ERROR_CODE_TO_KEY: Record<string, DictKey> = {
   UNAUTHENTICATED: 'errorUnauthenticated',
   QUOTA_EXCEEDED: 'errorQuotaExceeded',
   INVALID_REQUEST: 'errorInvalidRequest',
+  // 客户端本地抛出（见 ledger/page.tsx），不是服务端 code——AI 成功返回但
+  // 一条账目都没识别出来时（比如提交了一串无意义字符），跟"请求失败"是
+  // 两回事，需要一条不同的文案，不能落进 errorStructureFailed 那句
+  // "记账失败"（这次调用其实没有失败）。
+  NO_TRANSACTIONS: 'errorNoTransactionsFound',
 };
 
 export function errorCodeToKey(code: string | undefined, fallback: DictKey): DictKey {
