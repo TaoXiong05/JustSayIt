@@ -1,0 +1,3 @@
+justsayit.taoxiong.site {
+	reverse_proxy justsayit-web:3000
+}
