@@ -26,9 +26,12 @@ const EMPTY: SyncState = {
  *   （重试同步/导出备份）、按设计需要常驻到问题解决，塞进 6 秒自动消失的 toast 会
  *   丢失这个「持续提醒直到处理」的语义，故不强行迁移。
  *
- * A 类失败（authError）不看时间，直接给出跟 >72h 模态一样的两个动作——
- * "重试同步"这里是"重新走一次 syncNow，如果是授权问题会再次引导登录"
- * （真正的重新登录跳转留在设置页）。
+ * A 类失败（authError）不看时间，直接给出提示；但它的主动作不是"重试同步"——
+ * drive-token 返回 DRIVE_REAUTH_REQUIRED/DRIVE_NOT_LINKED 时，旧 refresh
+ * token 已经坏了（撤销/client 轮换/密钥轮换等），再跑一次 syncNow 只会
+ * 拿到同样的 401，白等一次网络往返。真正能修好的是跳到 /api/auth/login?
+ * reauth=1，强制走一遍 Google 的 consent 页换一个新 refresh token（见
+ * oauth.ts buildAuthorizeUrl 的 forceConsent 注释）。
  */
 export function SyncWarning() {
   const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
@@ -81,13 +84,22 @@ export function SyncWarning() {
         <p className="text-sm font-semibold text-ink">{t('syncWarningModalTitle')}</p>
         {nudgeInstall && <p className="mt-1 text-sm text-ink">{t('installNudgeUnsynced')}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void syncNow()}
-            className="rounded bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
-          >
-            {t('syncRetry')}
-          </button>
+          {state.authError ? (
+            <a
+              href="/api/auth/login?reauth=1"
+              className="rounded bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
+            >
+              {t('syncReconnect')}
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void syncNow()}
+              className="rounded bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90"
+            >
+              {t('syncRetry')}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void exportBackup()}

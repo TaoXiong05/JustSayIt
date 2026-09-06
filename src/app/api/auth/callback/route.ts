@@ -46,11 +46,16 @@ export async function GET(req: Request) {
       },
     });
   } catch (err) {
-    // 零内容日志（§10.5）：只记错误类型，不含 token/用户输入
+    // 零内容日志（§10.5）：只记错误类型/错误码等元数据，不含 token/用户输入
     console.error(
       JSON.stringify({
         route: 'auth/callback',
         ok: false,
+        errorName: err instanceof Error ? err.name : 'unknown',
+        errorCode:
+          typeof err === 'object' && err !== null && 'code' in err
+            ? (err as { code: unknown }).code
+            : undefined,
         error: err instanceof Error ? err.message : 'unknown',
       }),
     );

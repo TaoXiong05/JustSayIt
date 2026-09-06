@@ -10,7 +10,16 @@ vi.mock('@/lib/auth/client', () => ({
   }),
 }));
 
-describe('MobileHeader（移动端全局页眉：品牌 logo + 同步/语言/头像，不含导航）', () => {
+// 同步状态点已经挪去 ledger/page.tsx（"近期账单"标题旁），页眉这个位置
+// 换成了安装入口——这里只确认接线接对了，InstallNavButton 自己的平台
+// 判定逻辑见 InstallNavButton.test.tsx。
+vi.mock('@/lib/platform', () => ({ isIOS: vi.fn(() => false), isStandalone: vi.fn(() => false) }));
+vi.mock('@/lib/pwa/install', () => ({
+  canPromptInstall: vi.fn(() => true),
+  promptInstall: vi.fn(),
+}));
+
+describe('MobileHeader（移动端全局页眉：品牌 logo + 安装入口/语言/头像，不含导航）', () => {
   it('渲染品牌 logo 链接回主屏', () => {
     render(<MobileHeader />);
     expect(screen.getByRole('link', { name: 'JustSayIt' })).toHaveProperty(
@@ -19,9 +28,9 @@ describe('MobileHeader（移动端全局页眉：品牌 logo + 同步/语言/头
     );
   });
 
-  it('渲染同步状态、语言切换和头像', () => {
+  it('渲染安装入口、语言切换和头像', async () => {
     render(<MobileHeader />);
-    expect(screen.getByRole('status')).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Install' })).toBeDefined();
     expect(screen.getByRole('button', { name: '中文' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveProperty(
       'href',

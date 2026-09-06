@@ -77,7 +77,12 @@ describe('SyncWarning', () => {
   it('authError 时立刻渲染提示，不看时间阈值（A 类失败，spec §8.3）', () => {
     markAuthError();
     render(<SyncWarning />);
-    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeDefined();
+    // 授权失败时"重试同步"无法真正修好（旧 refresh token 已经坏了），
+    // 主动作是跳转到强制重新同意的登录链接，见 SyncWarning.tsx 的注释。
+    const link = screen.getByRole('link', { name: 'Reconnect Google Drive' });
+    expect(link).toBeDefined();
+    expect(link).toHaveProperty('href', 'http://localhost:3000/api/auth/login?reauth=1');
+    expect(screen.queryByRole('button', { name: 'Retry sync' })).toBeNull();
   });
 
   it('服务端渲染（renderToString，effect 永远不跑）不会调用 shouldPrioritizeInstallGuidance —— 回归：nudgeInstall 曾经在渲染体里直接算，SSR 输出跟真机客户端首次渲染不一致，触发 hydration mismatch（同 InstallBanner.tsx 那次的根因）', () => {
@@ -175,7 +180,7 @@ describe('SyncWarning 安装引导提权（spec §8.8）', () => {
     vi.mocked(isStandalone).mockReturnValue(false);
     markAuthError();
     render(<SyncWarning />);
-    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeDefined(); // 模态确实在显示
+    expect(screen.getByRole('link', { name: 'Reconnect Google Drive' })).toBeDefined(); // 模态确实在显示
     expect(screen.queryByText(NUDGE)).toBeNull();
     expect(shouldPrioritizeInstallGuidance).toHaveBeenCalledWith({ hasUnsyncedData: false });
   });

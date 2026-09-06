@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
 import { NAV_TABS } from '@/lib/navTabs';
-import { SyncStatusDot } from '@/components/SyncStatusDot';
+import { InstallNavButton } from '@/components/InstallNavButton';
 import { Logo } from '@/components/Logo';
 
 /**
@@ -14,10 +14,12 @@ import { Logo } from '@/components/Logo';
  * 但互斥（移动端保持底部 tab 栏不变，是用户自己选的，没有跟着这次改版走
  * brief 里的汉堡菜单方案）。
  *
- * 同步状态点/语言切换/头像原先只长在主屏（page.tsx）自己的 header 里，
- * 现在挪到这条全局顶栏——主屏自己的 header 相应地在桌面端隐藏
- * （lg:hidden），移动端不受影响，那三样还是靠主屏自己的 header 提供
- * （移动端没有等价的全局 header）。
+ * 语言切换/头像原先只长在主屏（page.tsx）自己的 header 里，现在挪到这条
+ * 全局顶栏——主屏自己的 header 相应地在桌面端隐藏（lg:hidden），移动端
+ * 不受影响，那两样还是靠主屏自己的 header 提供（移动端没有等价的全局
+ * header）。同步状态点原来也在这里，现在挪去主屏"近期账单"标题旁
+ * （ledger/page.tsx）——它是账本自己的健康度信号，跟全局导航是两回事；
+ * 腾出来的位置换成醒目的安装入口（InstallNavButton）。
  */
 export function TopNav() {
   const pathname = usePathname();
@@ -56,7 +58,7 @@ export function TopNav() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          <SyncStatusDot />
+          <InstallNavButton />
           <button
             type="button"
             onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}

@@ -3,19 +3,21 @@
 import Link from 'next/link';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
-import { SyncStatusDot } from '@/components/SyncStatusDot';
+import { InstallNavButton } from '@/components/InstallNavButton';
 import { Logo } from '@/components/Logo';
 
 /**
- * 移动端全局页眉：品牌 logo + 同步状态/语言切换/头像，不含导航链接——
+ * 移动端全局页眉：品牌 logo + 安装入口/语言切换/头像，不含导航链接——
  * 移动端导航已经由 BottomNav 的底部三个 tab 负责，页眉再放一遍会跟底部
  * tab 语义重复（用户明确要求：加页眉但不要导航栏）。跟 TopNav 共用同一批
  * 右侧控件，只是没有中间的导航区；lg: 起隐藏，交给 TopNav 接管。
  *
- * 这几样控件原先只长在主屏（page.tsx）自己的 header 里，其它页面
+ * 语言切换/头像原先只长在主屏（page.tsx）自己的 header 里，其它页面
  * （历史/统计/设置）在移动端完全没有——意味着从历史页想切语言或进设置，
  * 得先跳回主屏。挪成全局页眉之后，主屏不再需要自己单独维护这一份，
- * page.tsx 改成跟其它页面一样只有一个描述页面内容的 <h1>。
+ * page.tsx 改成跟其它页面一样只有一个描述页面内容的 <h1>。同步状态点
+ * 原来也在这里，现在挪去主屏"近期账单"标题旁（ledger/page.tsx）——挪出来
+ * 的这个位置留给醒目的 PWA 安装入口。
  */
 export function MobileHeader() {
   const { user } = useSession();
@@ -27,7 +29,7 @@ export function MobileHeader() {
         <Logo />
       </Link>
       <div className="ml-auto flex items-center gap-2">
-        <SyncStatusDot />
+        <InstallNavButton />
         <button
           type="button"
           onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}

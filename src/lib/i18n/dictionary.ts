@@ -57,6 +57,7 @@ export type DictKey =
   | 'syncWarningBannerIOS'
   | 'syncWarningModalTitle'
   | 'syncRetry'
+  | 'syncReconnect'
   | 'exportBackup'
   | 'editSave'
   | 'editCancel'
@@ -87,6 +88,7 @@ export type DictKey =
   | 'settingsExport'
   | 'settingsAvatarLabel'
   | 'installTitle'
+  | 'installNavButton'
   | 'installActionAndroid'
   | 'installInstructionsIOS'
   | 'installAlreadyInstalled'
@@ -165,6 +167,7 @@ const en: Record<DictKey, DictValue> = {
     'Not synced yet — Safari may clear this data after 7 days. Add to Home Screen to keep it safe.',
   syncWarningModalTitle: 'Some entries have been unsynced for a while.',
   syncRetry: 'Retry sync',
+  syncReconnect: 'Reconnect Google Drive',
   exportBackup: 'Export backup',
   editSave: 'Save',
   editCancel: 'Cancel',
@@ -202,6 +205,7 @@ const en: Record<DictKey, DictValue> = {
   settingsExport: 'Export backup',
   settingsAvatarLabel: 'Settings',
   installTitle: 'Install JustSayIt',
+  installNavButton: 'Install',
   installActionAndroid: 'Install',
   installInstructionsIOS: 'Tap the Share button, then "Add to Home Screen".',
   installAlreadyInstalled: 'Already installed to your home screen.',
@@ -275,6 +279,7 @@ const zh: Record<DictKey, DictValue> = {
   syncWarningBannerIOS: '尚未同步——Safari 可能在 7 天后清除这些数据，添加到主屏幕可以避免。',
   syncWarningModalTitle: '有些账目已经很久没同步了。',
   syncRetry: '重试同步',
+  syncReconnect: '重新连接 Google Drive',
   exportBackup: '导出备份',
   editSave: '保存',
   editCancel: '取消',
@@ -312,6 +317,7 @@ const zh: Record<DictKey, DictValue> = {
   settingsExport: '导出备份',
   settingsAvatarLabel: '设置',
   installTitle: '安装 JustSayIt',
+  installNavButton: '安装',
   installActionAndroid: '安装',
   installInstructionsIOS: '点击分享按钮，选择"添加到主屏幕"。',
   installAlreadyInstalled: '已经安装到主屏幕了。',

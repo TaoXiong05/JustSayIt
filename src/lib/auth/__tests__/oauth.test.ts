@@ -37,6 +37,17 @@ describe('oauth', () => {
     expect(decodeURIComponent(url)).toContain('http://localhost:3000/api/auth/callback');
   });
 
+  it('默认 prompt=select_account（普通登录，不强制重新同意）', () => {
+    const url = buildAuthorizeUrl('st', 'n1');
+    expect(url).toContain('prompt=select_account');
+  });
+
+  it('forceConsent=true 时 prompt=consent（旧 refresh token 失效后强制换新）', () => {
+    const url = buildAuthorizeUrl('st', 'n1', undefined, { forceConsent: true });
+    expect(url).toContain('prompt=consent');
+    expect(url).not.toContain('select_account');
+  });
+
   it('SCOPE 一次性请求全部 scope（§11.2）', () => {
     expect(SCOPE).toBe(
       'openid email profile https://www.googleapis.com/auth/drive.appdata',

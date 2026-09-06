@@ -59,6 +59,18 @@ describe('login route', () => {
     await loginGET(req);
     expect(vi.mocked(buildAuthorizeUrl).mock.calls[0][2]).toBe('http://192.168.1.50:3000');
   });
+
+  it('默认不强制 consent（forceConsent: false）', async () => {
+    const req = new Request('http://localhost:3000/api/auth/login');
+    await loginGET(req);
+    expect(vi.mocked(buildAuthorizeUrl).mock.calls[0][3]).toEqual({ forceConsent: false });
+  });
+
+  it('?reauth=1 时传 forceConsent: true（旧 refresh token 失效后的强制重新同意）', async () => {
+    const req = new Request('http://localhost:3000/api/auth/login?reauth=1');
+    await loginGET(req);
+    expect(vi.mocked(buildAuthorizeUrl).mock.calls[0][3]).toEqual({ forceConsent: true });
+  });
 });
 
 describe('callback route', () => {

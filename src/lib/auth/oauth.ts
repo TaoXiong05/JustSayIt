@@ -46,7 +46,21 @@ export type GoogleProfile = {
   picture: string | null;
 };
 
-export function buildAuthorizeUrl(state: string, nonce: string, requestOrigin?: string): string {
+/**
+ * forceConsent：Google 只在「这个 client+账号+scope 组合第一次授权」时才会
+ * 在 code 交换响应里带 refresh_token，之后的登录（哪怕 access_type=offline）
+ * 默认不会再给一次——除非用 prompt=consent 强制重新走一遍同意页。
+ * 这意味着一旦旧 refresh token 失效（用户在 Google 后台撤销、client 换了、
+ * 密钥轮换等），单纯"退出登录再登录"并不能自动换到新 token，必须走这条
+ * 强制同意的路径（由 /api/auth/login?reauth=1 触发，drive-token 返回
+ * DRIVE_REAUTH_REQUIRED 时 UI 引导用户点这里，见 SyncWarning.tsx）。
+ */
+export function buildAuthorizeUrl(
+  state: string,
+  nonce: string,
+  requestOrigin?: string,
+  options?: { forceConsent?: boolean },
+): string {
   const { id } = clientConfig();
   const params = new URLSearchParams({
     client_id: id,
@@ -54,7 +68,7 @@ export function buildAuthorizeUrl(state: string, nonce: string, requestOrigin?: 
     response_type: 'code',
     scope: SCOPE,
     access_type: 'offline',
-    prompt: 'select_account',
+    prompt: options?.forceConsent ? 'consent' : 'select_account',
     state,
     nonce,
   });

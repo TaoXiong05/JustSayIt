@@ -264,4 +264,14 @@ describe('主屏布局（用户明确要求：主输入区在最上面，近期�
       'http://localhost:3000/history',
     );
   });
+
+  it('同步状态点渲染在"近期账单"标题旁——原来长在全局页眉里，现在挪到这儿（页眉的位置换成了安装入口，见 TopNav/MobileHeader.test.tsx）', () => {
+    render(<Home />);
+    const recentHeading = screen.getByText('Recent transactions');
+    const statusDot = screen.getByRole('status');
+    // DOCUMENT_POSITION_FOLLOWING：statusDot 紧跟在标题后面，同一个 flex 容器里
+    expect(
+      recentHeading.compareDocumentPosition(statusDot) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

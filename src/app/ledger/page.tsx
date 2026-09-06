@@ -8,6 +8,7 @@ import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
 import { QueuedRow } from '@/components/QueuedRow';
 import { SyncWarning } from '@/components/SyncWarning';
+import { SyncStatusDot } from '@/components/SyncStatusDot';
 import { UndoToast } from '@/components/UndoToast';
 import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
 import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
@@ -175,11 +176,17 @@ export default function Home() {
       {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
           完整历史由 /history 承担——固定高度、超出内部滚动，不随条数把输入区
           挤到折叠线以下。"查看全部历史"链接只在首页出现：History 页本身已经
-          在这个链接的目的地里，再放一份纯属重复；首页则需要一条快捷路径。 */}
+          在这个链接的目的地里，再放一份纯属重复；首页则需要一条快捷路径。
+          同步状态点原来长在全局页眉里，现在挪到这儿——它描述的是"这份账本
+          有没有同步"，跟下面这份最近账单列表是同一件事，放在标题旁边比放在
+          导航栏里更贴题；页眉腾出来的位置换成了醒目的安装入口。 */}
       <div className="mb-1.5 flex items-center justify-between px-1">
-        <h2 className="font-display text-sm font-semibold text-ink">
-          {t('recentTransactionsTitle')}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-sm font-semibold text-ink">
+            {t('recentTransactionsTitle')}
+          </h2>
+          <SyncStatusDot />
+        </div>
         <Link
           href="/history"
           className="inline-flex items-center gap-0.5 text-sm font-medium text-brand hover:underline"
