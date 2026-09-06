@@ -10,17 +10,14 @@ import {
   type RawInputQueuedPayload,
 } from '@/lib/ledger/events';
 import type { Transaction } from '@/lib/ai/schema';
+import { createEmitter } from '@/lib/emitter';
 
 const EMPTY: Ledger = { transactions: [] };
 
 let events: LedgerEvent[] = [];
 let ledger: Ledger = EMPTY;
-const listeners = new Set<() => void>();
-
-export function subscribe(fn: () => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
+const { subscribe, emit } = createEmitter();
+export { subscribe };
 
 /**
  * 必须始终返回同一引用直到状态真正改变。
@@ -33,7 +30,7 @@ export function getSnapshot(): Ledger {
 
 function commit(): void {
   ledger = replay(events);
-  for (const fn of listeners) fn();
+  emit();
 }
 
 /** 从 IndexedDB 载入全部事件并重放。应用启动时调用一次。 */

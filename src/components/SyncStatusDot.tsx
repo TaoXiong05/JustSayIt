@@ -1,15 +1,8 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { subscribe, getSnapshot, type SyncState } from '@/lib/sync/status';
+import { subscribe, getSnapshot, EMPTY_SYNC_STATE } from '@/lib/sync/status';
 import { useLocale } from '@/lib/i18n/context';
-
-const EMPTY: SyncState = {
-  unsyncedIds: [],
-  firstUnsyncedAt: null,
-  authError: false,
-  lastSyncedAt: null,
-};
 
 /**
  * 主屏左上角全局唯一一处同步状态点（spec §13.1 第 3 条）：
@@ -17,7 +10,7 @@ const EMPTY: SyncState = {
  * 是单独的组件，只在超过阈值时才叠加出现，不在这里画。
  */
 export function SyncStatusDot() {
-  const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
+  const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_SYNC_STATE);
   const { t } = useLocale();
   const pending = state.unsyncedIds.length > 0;
   return (

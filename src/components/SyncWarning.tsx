@@ -1,20 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { subscribe, getSnapshot, classifyBTier, type BTier, type SyncState } from '@/lib/sync/status';
+import {
+  subscribe,
+  getSnapshot,
+  classifyBTier,
+  EMPTY_SYNC_STATE,
+  type BTier,
+} from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
 import { exportBackup } from '@/lib/sync/export';
 import { useLocale } from '@/lib/i18n/context';
 import { isIOS, isStandalone } from '@/lib/platform';
 import { shouldPrioritizeInstallGuidance } from '@/lib/pwa/install';
 import { useToast } from '@/lib/toast';
-
-const EMPTY: SyncState = {
-  unsyncedIds: [],
-  firstUnsyncedAt: null,
-  authError: false,
-  lastSyncedAt: null,
-};
 
 /**
  * B 类分级预警（spec §8.4）+ A 类失败提示（spec §8.3）。
@@ -34,7 +33,7 @@ const EMPTY: SyncState = {
  * oauth.ts buildAuthorizeUrl 的 forceConsent 注释）。
  */
 export function SyncWarning() {
-  const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
+  const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_SYNC_STATE);
   const { t } = useLocale();
   const { push } = useToast();
   const tier = classifyBTier(state);

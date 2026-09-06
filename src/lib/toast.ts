@@ -1,3 +1,5 @@
+import { createEmitter } from '@/lib/emitter';
+
 /**
  * Toast 系统——模块级 store（与 sync/status.ts、ledger/store.ts 同构的
  * 外部存储 + 订阅模式）。`useToast()` 只暴露稳定的 `push`；快照订阅方
@@ -28,16 +30,8 @@ export type ToastItem = ToastInput & { id: number };
 
 let toasts: ToastItem[] = [];
 let nextId = 1;
-const listeners = new Set<() => void>();
-
-function emit(): void {
-  for (const fn of listeners) fn();
-}
-
-export function subscribe(fn: () => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
+const { subscribe, emit } = createEmitter();
+export { subscribe };
 
 /** 不变更时必须返回同一引用（§6.6 对 getSnapshot 的既定规则）。 */
 export function getSnapshot(): ToastItem[] {

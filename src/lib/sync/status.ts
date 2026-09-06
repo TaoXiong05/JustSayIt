@@ -1,3 +1,5 @@
+import { createEmitter } from '@/lib/emitter';
+
 export type SyncState = {
   /** 已知写入本地、尚未确认同步到 Drive 的 transaction id 集合 */
   unsyncedIds: string[];
@@ -8,22 +10,21 @@ export type SyncState = {
   lastSyncedAt: string | null;
 };
 
-let state: SyncState = {
+/**
+ * 空/初始状态——同时是模块自己的初始值，也是组件消费方
+ * （SyncStatusDot/SyncWarning/TransactionRow）在 useSyncExternalStore
+ * 的服务端快照参数里要用到的同一个值，统一从这里导出，不要各自重复定义。
+ */
+export const EMPTY_SYNC_STATE: SyncState = {
   unsyncedIds: [],
   firstUnsyncedAt: null,
   authError: false,
   lastSyncedAt: null,
 };
-const listeners = new Set<() => void>();
 
-function emit(): void {
-  for (const fn of listeners) fn();
-}
-
-export function subscribe(fn: () => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
+let state: SyncState = EMPTY_SYNC_STATE;
+const { subscribe, emit } = createEmitter();
+export { subscribe };
 
 export function getSnapshot(): SyncState {
   return state;

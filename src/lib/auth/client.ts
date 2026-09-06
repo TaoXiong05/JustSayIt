@@ -2,24 +2,19 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import type { SessionUser } from '@/lib/server/session';
+import { createEmitter } from '@/lib/emitter';
 
 export type SessionState = {
   user: SessionUser | null;
   loading: boolean;
 };
 
-type Listener = () => void;
-
 let cached: SessionState = { user: null, loading: true };
-const listeners = new Set<Listener>();
+const { subscribe, emit } = createEmitter();
 
 // 稳定引用：SSR/hydration 期间 React 会反复调用 getServerSnapshot，
 // 每次都必须返回同一个对象，否则被判定为"每次渲染快照都变了"进而死循环。
 const SERVER_SNAPSHOT: SessionState = { user: null, loading: true };
-
-function emit(): void {
-  for (const l of listeners) l();
-}
 
 export function getSession(): SessionState {
   return cached;
@@ -57,16 +52,7 @@ export function useSession(): SessionState {
   useEffect(() => {
     if (cached.loading) void reloadSession();
   }, []);
-  return useSyncExternalStore(
-    (reactListener) => {
-      listeners.add(reactListener);
-      return () => {
-        listeners.delete(reactListener);
-      };
-    },
-    getSession,
-    () => SERVER_SNAPSHOT,
-  );
+  return useSyncExternalStore(subscribe, getSession, () => SERVER_SNAPSHOT);
 }
 
 /** 供测试/其他模块判断当前内存会话（不触发网络）。 */

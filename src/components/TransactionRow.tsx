@@ -7,16 +7,9 @@ import { CATEGORY_LABELS } from '@/lib/i18n/dictionary';
 import { CATEGORY_ICONS } from '@/lib/i18n/categoryIcons';
 import { CATEGORY_TINTS } from '@/lib/i18n/categoryTint';
 import { useSyncExternalStore } from 'react';
-import { subscribe, getSnapshot as getSyncSnapshot, type SyncState } from '@/lib/sync/status';
+import { subscribe, getSnapshot as getSyncSnapshot, EMPTY_SYNC_STATE } from '@/lib/sync/status';
 import { amendTransaction, removeTransaction } from '@/lib/ledger/store';
 import { EditDialog } from '@/components/EditDialog';
-
-const EMPTY_SYNC_STATE: SyncState = {
-  unsyncedIds: [],
-  firstUnsyncedAt: null,
-  authError: false,
-  lastSyncedAt: null,
-};
 
 /** 整数分 → 两位小数字符串。展示层唯一的金额格式化入口 */
 export function formatAmount(cents: number, _currency: string): string {
