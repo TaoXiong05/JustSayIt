@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@cerebras/cerebras_cloud_sdk": "^1.91.0",
+    "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-toast": "^1.2.23",
@@ -31,7 +32,6 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@prisma/adapter-pg": "^7.10.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
