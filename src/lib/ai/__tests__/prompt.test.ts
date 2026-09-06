@@ -33,4 +33,8 @@ describe('buildSystemPrompt', () => {
   it('明确要求无账目时返回空数组', () => {
     expect(buildSystemPrompt(ctx)).toContain('空');
   });
+
+  it('要求"数字+描述文字"组合默认记账，即使没有货币符号/量词/动词（用户反馈原话：3 for tennis court 应该能记上，不该因为太严格而拒绝）', () => {
+    expect(buildSystemPrompt(ctx)).toContain('tennis court');
+  });
 });

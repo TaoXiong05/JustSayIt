@@ -98,17 +98,6 @@ export default function Home() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">
-      {/* 品牌 logo/同步点/语言切换/头像现在是全局页眉（桌面 TopNav、移动
-          MobileHeader）提供的，不再是这个页面自己的东西——页面自己的
-          <h1> 不再是纯页面名（"Ledger"），换成一句話术标语，跟 History/
-          Stats 三页统一风格：居中、比原来单词标题小一号（text-lg/sm:text-xl）
-          + leading-snug，专为多行句子调过。用户明确要求纯话术、不加页面名
-          小标签——当前页面靠底部/顶部导航栏自身的高亮状态识别。 */}
-      <header className="mb-5">
-        <h1 className="text-center font-display text-lg font-bold leading-snug text-ink sm:text-xl">
-          {t('ledgerTagline')}
-        </h1>
-      </header>
       {/* 主输入区（已登录：Composer；访客：登录引导 banner）放在最前面——
           用户打开首页第一眼看到的应该是"能做什么"，而不是历史记录列表
           （用户明确要求：把 Ledger 列表挪到主输入区下面）。 */}
@@ -204,17 +193,15 @@ export default function Home() {
           <ChevronRight aria-hidden="true" className="size-4" />
         </Link>
       </div>
-      {/* 缩小高度那版改错方向了，退回 256px——用户真正想要的是"进入白色
-          卡片区域才能滚动"，不是把卡片缩小。真正的根因：这个滚动容器
-          原来是"裸"的（没有自己的背景/边框），日期标题用页面背景色
-          （bg-bg，不是白色）浮在卡片上方——鼠标只要落在这条非白色的
-          标题行上就已经算"进了滚动容器"，能滚动列表，但视觉上还没碰到
-          白色卡片，跟直觉不符。现在让这个滚动容器本身就是那张白色卡片
-          （border/bg-surface/shadow-card 直接搬到这一层），日期标题也
-          改用同色背景（见 LedgerList.tsx）——滚动容器的可见范围和可交互
-          范围完全重合，不再有"看着是外面、其实已经在里面"的灰色地带。
-          overscroll-contain 防止滑到顶/底之后继续被"接力"到页面滚动。 */}
-      <div className="max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface shadow-card">
+      {/* 这个滚动容器本身就是那张白色卡片（border/bg-surface/shadow-card
+          直接搬到这一层，日期标题也改用同色背景，见 LedgerList.tsx）——
+          滚动容器的可见范围和可交互范围完全重合，不会出现"看着是外面、
+          其实已经在里面"的灰色地带（回归：鼠标进白色卡片才能滚动）。
+          overscroll-contain 防止滑到顶/底之后继续被"接力"到页面滚动。
+          22rem（352px）约等于 5 条 TransactionRow（每条约 69px：
+          py-3.5 内边距 28px + size-10 分类头像 40px + 1px 分隔线）——
+          用户明确要求这个容器再高一点，大概能一次看到 5 条。 */}
+      <div className="max-h-[22rem] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface shadow-card">
         <LedgerList transactions={recentTransactions(transactions, 10)} />
       </div>
       <SyncWarning />

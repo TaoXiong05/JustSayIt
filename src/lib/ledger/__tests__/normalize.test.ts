@@ -45,4 +45,19 @@ describe('normalizeMerchant', () => {
     expect(normalizeMerchant('永辉', ['永辉'])).toBe('永辉');
     expect(normalizeMerchant('bp', ['BP'])).toBe('BP');
   });
+
+  it('澳洲常见连锁商户的缩写/俗称优先归并到官方名，哪怕用户历史里从没出现过（词典精确匹配，见 auMerchantAliases.ts）', () => {
+    expect(normalizeMerchant('woolies', [])).toBe('Woolworths');
+    expect(normalizeMerchant('JB', [])).toBe('JB Hi-Fi');
+  });
+
+  it('别名词典命中时优先于历史模糊匹配，不会被别的历史写法抢走', () => {
+    // "Woolys" 本该模糊匹配到历史里的 "Woolworth"，但词典精确匹配优先级更高，
+    // 应该直接给出官方名 "Woolworths"。
+    expect(normalizeMerchant('Woolys', ['Woolworth'])).toBe('Woolworths');
+  });
+
+  it('不在词典里的写法，词典不介入，照常走历史模糊匹配', () => {
+    expect(normalizeMerchant('Colse', ['Coles'])).toBe('Coles');
+  });
 });

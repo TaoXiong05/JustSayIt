@@ -41,6 +41,14 @@ type Status = 'idle' | 'recording' | 'transcribing' | 'unsupported';
 const WAVE_BAR_DELAYS_MS = [0, 120, 240, 360, 180, 60];
 
 /**
+ * 空闲态两侧声波竖线的高度：从两端到按钮渐高，做出"声音从话筒散开"的
+ * 层次感（左侧按此顺序排列，右侧镜像）。取代原来静止/扩散光环的空闲态
+ * 动效——用户提供的参考图就是这个样子。
+ */
+const IDLE_WAVE_BAR_HEIGHTS_PX = [8, 13, 18];
+const IDLE_WAVE_BAR_DELAYS_MS = [0, 200, 400];
+
+/**
  * 语音输入按钮：录音 → STT → 回填（spec §9）。
  * STT 只负责 Audio → Text；回填后由用户确认，走 Plan 1 既有提交管线。
  * 状态机：idle → recording（可停止/取消）→ transcribing → 回填 / 错误。
@@ -74,10 +82,17 @@ export function VoiceButton({
     recorderRef.current = null;
     setStatus('transcribing');
     try {
-      const audio = await rec.stop();
+      const { blob, hadSound } = await rec.stop();
+      // 全程没检测到声音（用户点了麦克风但什么都没说）：不发 STT 请求，
+      // 省一次注定拿不到有效结果的 AI 调用（用户反馈原话）。
+      if (!hadSound) {
+        setError(t('voiceNoSoundDetected'));
+        setStatus('idle');
+        return;
+      }
       // 商户词表偏置（§16.3）：历史出现过写法的商户更容易被听对
       const vocab = knownMerchants();
-      const { text } = await transcribeViaApi(audio, vocab);
+      const { text } = await transcribeViaApi(blob, vocab);
       onTranscribed(text);
       setStatus('idle');
     } catch (err) {
@@ -146,37 +161,29 @@ export function VoiceButton({
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      {/* 外圈柔光环（参考设计的关键细节）：一开始是一个静止的 brand-soft
-          实心圆，用户反馈"不要固定这样，做成声波类型的动画效果"——改成
-          两圈持续向外扩散淡出的涟漪，错开半个周期各自循环，做出连续不断
-          的"呼吸"感，而不是一个死的光晕。只在真正空闲（能点击开始录音）
-          时才动——转写中按钮是禁用状态，继续播"邀请点击"的动画会自相
-          矛盾，那时只留脚下的实心 brand-soft 垫底、不做动效。空闲态不再
-          显示文字说明（原来"Record"），靠标题区的文案 + 按钮自带的
-          aria-label 提供上下文/无障碍名，视觉上更干净。转写态保留文字，
-          那是一个需要用户等待的过程，光看一个转圈图标不够明确。 */}
-      <div className="relative flex size-24 items-center justify-center">
-        {status === 'idle' ? (
-          <>
+      {/* 两侧声波竖线（参考设计的关键细节）：只在真正空闲（能点击开始
+          录音）时跳动，邀请用户点击——转写中按钮是禁用状态，继续播"邀请
+          点击"的动画会自相矛盾，那时两侧竖线收起，只留静止的按钮。
+          空闲态不再显示文字说明（原来"Record"），靠标题区的文案 + 按钮
+          自带的 aria-label 提供上下文/无障碍名，视觉上更干净。转写态保留
+          文字，那是一个需要用户等待的过程，光看一个转圈图标不够明确。 */}
+      <div className="flex items-center gap-2.5">
+        {status === 'idle' &&
+          IDLE_WAVE_BAR_HEIGHTS_PX.map((h, i) => (
             <span
+              key={`l${i}`}
               aria-hidden="true"
-              className="absolute inset-0 rounded-full bg-brand-soft [animation:mic-idle-ring_2.4s_ease-out_infinite]"
+              className="w-1 shrink-0 rounded-full bg-brand-soft [animation:voice-wave_1.2s_ease-in-out_infinite]"
+              style={{ height: `${h}px`, animationDelay: `${IDLE_WAVE_BAR_DELAYS_MS[i]}ms` }}
             />
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 rounded-full bg-brand-soft [animation:mic-idle-ring_2.4s_ease-out_infinite_1.2s]"
-            />
-          </>
-        ) : (
-          <span aria-hidden="true" className="absolute inset-0 rounded-full bg-brand-soft" />
-        )}
+          ))}
         <button
           type="button"
           onClick={() => void start()}
           disabled={status === 'transcribing'}
           aria-label={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
           title={status === 'transcribing' ? t('voiceTranscribing') : t('voiceStart')}
-          className="relative flex size-16 items-center justify-center rounded-full bg-brand text-brand-ink shadow-pop transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 [clip-path:circle(50%)]"
+          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-brand text-brand-ink shadow-pop transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 [clip-path:circle(50%)]"
         >
           {status === 'transcribing' ? (
             <span
@@ -189,6 +196,18 @@ export function VoiceButton({
             <Mic aria-hidden="true" className="size-7" />
           )}
         </button>
+        {status === 'idle' &&
+          [...IDLE_WAVE_BAR_HEIGHTS_PX].reverse().map((h, i) => (
+            <span
+              key={`r${i}`}
+              aria-hidden="true"
+              className="w-1 shrink-0 rounded-full bg-brand-soft [animation:voice-wave_1.2s_ease-in-out_infinite]"
+              style={{
+                height: `${h}px`,
+                animationDelay: `${[...IDLE_WAVE_BAR_DELAYS_MS].reverse()[i]}ms`,
+              }}
+            />
+          ))}
       </div>
       {status === 'transcribing' && (
         <span className="text-xs font-medium text-muted">{t('voiceTranscribing')}</span>

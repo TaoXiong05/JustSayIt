@@ -1,7 +1,5 @@
-/** 比较用的规范形式：去空格、转小写 */
-function canon(s: string): string {
-  return s.replace(/\s+/g, '').toLowerCase();
-}
+import { canon } from '@/lib/ledger/merchantCanon';
+import { resolveAuMerchantAlias } from '@/lib/ledger/auMerchantAliases';
 
 /**
  * 编辑距离（Damerau-Levenshtein 的受限变体，即 optimal string alignment）：
@@ -52,9 +50,16 @@ const MIN_FUZZY_LEN = 5;
  * 取模糊匹配阈值，能吸收 STT 的轻微错拼（woworths → Woolworths），又不会
  * 把 Coles 误并到 Woolworths。宁可漏并，不可错并——错并会静默污染历史
  * 数据，而漏并只是多一个待归并的写法。
+ *
+ * 澳洲连锁商户的缩写/俗称（如 "woolies"/"JB"）先查 auMerchantAliases.ts 的
+ * 词典——这是确定性的精确匹配，比编辑距离猜测更可信，且不依赖用户历史里
+ * 是否出现过官方写法（新用户第一次说"woolies"也能直接归并），所以排在
+ * 历史模糊匹配之前。
  */
 export function normalizeMerchant(input: string | null, known: string[]): string | null {
   if (input === null) return null;
+  const alias = resolveAuMerchantAlias(input);
+  if (alias !== null) return alias;
   const target = canon(input);
   if (!target) return input;
 

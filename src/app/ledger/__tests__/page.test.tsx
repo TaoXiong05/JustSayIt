@@ -189,7 +189,7 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
     const user = userEvent.setup();
     render(<Home />);
     const box = screen.getByRole('textbox');
-    await user.type(box, 'sdsadsdsafsdfgasdsad');
+    await user.type(box, 'sdsadsdsafsdfgasdsad 3');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getByText(/No records yet/)).toBeDefined());
@@ -199,7 +199,7 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
     await waitFor(() =>
       expect(screen.getByText(/Couldn't find anything to record/)).toBeDefined(),
     );
-    expect((box as HTMLInputElement).value).toBe('sdsadsdsafsdfgasdsad');
+    expect((box as HTMLInputElement).value).toBe('sdsadsdsafsdfgasdsad 3');
   });
 
   it('切换 UI 语言只改变展示文案，不改变已保存的账本数据（中英文支持 §7、§12 Case 6）', async () => {

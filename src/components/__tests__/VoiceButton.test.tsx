@@ -13,7 +13,7 @@ vi.mock('@/lib/voice/recorder', async (importOriginal) => {
   return { ...actual, initializeRecorder: vi.fn() };
 });
 
-type Rec = { stop(): Promise<Blob>; cancel(): void };
+type Rec = { stop(): Promise<{ blob: Blob; hadSound: boolean }>; cancel(): void };
 let currentRec: Rec | null;
 
 function stubStart(rec: Rec) {
@@ -25,7 +25,10 @@ function stubStart(rec: Rec) {
 beforeEach(() => {
   currentRec = null;
   vi.clearAllMocks();
-  stubStart({ stop: vi.fn().mockResolvedValue(new Blob(['x'], { type: 'audio/webm' })), cancel: vi.fn() });
+  stubStart({
+    stop: vi.fn().mockResolvedValue({ blob: new Blob(['x'], { type: 'audio/webm' }), hadSound: true }),
+    cancel: vi.fn(),
+  });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -78,6 +81,25 @@ describe('VoiceButton', () => {
         'Daily AI usage limit reached, please try again tomorrow',
       ),
     );
+  });
+
+  it('全程没检测到声音时不发起 STT 请求，直接提示重试（用户反馈：点了麦克风什么都没说，不该照样发请求）', async () => {
+    stubStart({
+      stop: vi.fn().mockResolvedValue({ blob: new Blob(['x'], { type: 'audio/webm' }), hadSound: false }),
+      cancel: vi.fn(),
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const onTranscribed = vi.fn();
+    render(<VoiceButton onTranscribed={onTranscribed} />);
+    fireEvent.click(screen.getByRole('button', { name: /Record/ }));
+    await waitFor(() => expect(currentRec).not.toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(screen.getByRole('alert').textContent).toBe('No sound detected, please try again');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(onTranscribed).not.toHaveBeenCalled();
   });
 
   it('录音中可取消，不触发转写', async () => {

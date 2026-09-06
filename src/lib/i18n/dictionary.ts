@@ -37,6 +37,7 @@ export type DictKey =
   | 'voiceUnsupported'
   | 'voiceInsecureContext'
   | 'voicePermissionDenied'
+  | 'voiceNoSoundDetected'
   | 'pendingLabel'
   | 'pageLoading'
   | 'emptyLedger'
@@ -49,6 +50,7 @@ export type DictKey =
   | 'errorInvalidRequest'
   | 'errorStructureFailed'
   | 'errorNoTransactionsFound'
+  | 'errorMissingAmount'
   | 'errorTranscribeFailed'
   | 'errorGeneric'
   | 'queuedOffline'
@@ -78,7 +80,6 @@ export type DictKey =
   | 'statsMonthSummary'
   | 'navLedger'
   | 'navStats'
-  | 'ledgerTagline'
   | 'historyTagline'
   | 'statsTagline'
   | 'settingsTitle'
@@ -139,7 +140,7 @@ const en: Record<DictKey, DictValue> = {
   footerTermsOfService: 'Terms of Service',
   localeToggleLabel: '中文',
   composerTitle: 'Record anytime, anywhere',
-  composerSubtitle: 'Say it or type it — e.g. "spent 15 on noodles for lunch"',
+  composerSubtitle: 'Say it or type it — e.g. "spent 15 at KFC for lunch"',
   composerPlaceholder: "What's on your mind…",
   submit: 'Submit',
   submitting: 'Submitting…',
@@ -153,6 +154,7 @@ const en: Record<DictKey, DictValue> = {
     'Voice recording needs a secure connection (HTTPS). This page was opened over plain HTTP.',
   voicePermissionDenied:
     'Microphone access was denied. Allow it in your browser settings and try again.',
+  voiceNoSoundDetected: 'No sound detected, please try again',
   pendingLabel: 'Processing…',
   pageLoading: 'Loading…',
   emptyLedger: 'No records yet — try saying something.',
@@ -188,7 +190,6 @@ const en: Record<DictKey, DictValue> = {
   statsMonthSummary: 'Monthly overview',
   navLedger: 'Ledger',
   navStats: 'Stats',
-  ledgerTagline: 'Speak your expenses, master your money.',
   historyTagline: 'Effortless tracking for a clearer financial future.',
   statsTagline: "Let's see what's been stealing your money…",
   errorUnauthenticated: 'Please log in first',
@@ -196,6 +197,7 @@ const en: Record<DictKey, DictValue> = {
   errorInvalidRequest: 'Request was invalid, please try again',
   errorStructureFailed: 'Failed to save, please retry',
   errorNoTransactionsFound: "Couldn't find anything to record — try rephrasing",
+  errorMissingAmount: 'Add an amount, e.g. "lunch 15"',
   errorTranscribeFailed: 'Transcription failed, please retry',
   errorGeneric: 'Something went wrong, please retry',
   queuedOffline: 'Queued offline — will record once back online',
@@ -255,7 +257,7 @@ const zh: Record<DictKey, DictValue> = {
   footerTermsOfService: '服务条款',
   localeToggleLabel: 'English',
   composerTitle: '随时随地，语音记账',
-  composerSubtitle: '直接说出或输入消费，例如："中午吃面条花费15块"',
+  composerSubtitle: '直接说出或输入消费，例如："中午吃肯德基花费15块"',
   composerPlaceholder: '说点什么…',
   submit: '提交',
   submitting: '提交中…',
@@ -267,6 +269,7 @@ const zh: Record<DictKey, DictValue> = {
   voiceUnsupported: '当前浏览器不支持录音',
   voiceInsecureContext: '语音录制需要安全连接（HTTPS）——当前页面是通过普通 HTTP 打开的。',
   voicePermissionDenied: '麦克风权限被拒绝，请在浏览器设置里允许后重试。',
+  voiceNoSoundDetected: '没有检测到声音，请重试',
   pendingLabel: '处理中…',
   pageLoading: '加载中…',
   emptyLedger: '还没有记录，说点什么试试。',
@@ -301,7 +304,6 @@ const zh: Record<DictKey, DictValue> = {
   statsMonthSummary: '本月总览',
   navLedger: '记账',
   navStats: '统计',
-  ledgerTagline: '说出你的消费，掌控你的财富。',
   historyTagline: '轻松记录每一笔，让财务未来更清晰。',
   statsTagline: '我们来看看，是什么抢走了你的财富~',
   errorUnauthenticated: '请先登录',
@@ -309,6 +311,7 @@ const zh: Record<DictKey, DictValue> = {
   errorInvalidRequest: '请求参数不合法，请重试',
   errorStructureFailed: '记账失败，请重试',
   errorNoTransactionsFound: '没有识别到可记录的账目，换个说法再试试',
+  errorMissingAmount: '请包含具体金额，比如"午饭 15"',
   errorTranscribeFailed: '转写失败，请重试',
   errorGeneric: '出了点问题，请重试',
   queuedOffline: '离线待处理，联网后自动记账',

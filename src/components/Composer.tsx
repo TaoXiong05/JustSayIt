@@ -5,6 +5,7 @@ import { VoiceButton } from '@/components/VoiceButton';
 import { useLocale } from '@/lib/i18n/context';
 import { ApiError } from '@/lib/apiError';
 import { errorCodeToKey } from '@/lib/i18n/dictionary';
+import { hasAmountSignal } from '@/lib/ledger/textValidation';
 
 export function Composer({
   onSubmit,
@@ -38,6 +39,13 @@ export function Composer({
   async function handleSubmit() {
     if (!canSubmit) return;
     const submittedText = text.trim();
+    // 前端最基础的校验（省一次注定失败的 AI 请求，见 textValidation.ts）：
+    // 没有任何数字信号时直接在本地拦下，不清空输入框、不发请求——用户
+    // 反馈原话："同样的文字输入能不能在前端先做一个基础的校验"。
+    if (!hasAmountSignal(submittedText)) {
+      setError(t('errorMissingAmount'));
+      return;
+    }
     const submittedViaVoice = viaVoice;
     // 提交瞬间就清空，而非等成功后才清空：乐观插入的占位行已经是用户的
     // "回执"，没有理由继续占着输入框——占着的话，用户趁在途时继续输入的

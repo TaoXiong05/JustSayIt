@@ -25,9 +25,34 @@ const getUserMedia = vi.fn().mockResolvedValue({
   getTracks: () => [{ stop: vi.fn() }],
 });
 
+/**
+ * 受控的假 AnalyserNode：测试用例通过给 `nextData` 赋值来决定下一次
+ * `getByteTimeDomainData` 该填什么样的采样（静音=全 128，有声=有偏离）。
+ */
+class FakeAnalyser {
+  fftSize = 2048;
+  frequencyBinCount = 1024;
+  nextData: number[] | null = null;
+  getByteTimeDomainData(arr: Uint8Array) {
+    const src = this.nextData ?? new Array(arr.length).fill(128);
+    for (let i = 0; i < arr.length; i++) arr[i] = src[i % src.length];
+  }
+}
+
+let fakeAnalyser: FakeAnalyser;
+const audioContextCtor = vi.fn().mockImplementation(function F() {
+  fakeAnalyser = new FakeAnalyser();
+  return {
+    createMediaStreamSource: () => ({ connect: vi.fn() }),
+    createAnalyser: () => fakeAnalyser,
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 beforeEach(() => {
   vi.stubGlobal('MediaRecorder', mediaRecorderCtor);
   vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia } });
+  vi.stubGlobal('AudioContext', audioContextCtor);
   // jsdom 的默认测试 origin 不是安全上下文（isSecureContext 默认 false），
   // 这里显式钉成 true——这组用例测的是"MediaRecorder 存在与否""getUserMedia
   // 成功/失败"，不是安全上下文本身，钉死它才能把两件事分开测，不然所有用例
@@ -36,6 +61,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe('startRecording', () => {
@@ -45,11 +71,12 @@ describe('startRecording', () => {
     expect(mediaRecorderCtor).toHaveBeenCalledTimes(1);
   });
 
-  it('stop() 返回拼接的 Blob', async () => {
+  it('stop() 返回拼接的 Blob 与 hadSound 标记', async () => {
     const handle = await startRecording();
-    const blob = await handle.stop();
+    const { blob, hadSound } = await handle.stop();
     expect(blob.type).toBe('audio/webm');
     expect(blob.size).toBeGreaterThan(0);
+    expect(typeof hadSound).toBe('boolean');
   });
 
   it('不支持 MediaRecorder 时抛 RecorderError(unsupported)', async () => {
@@ -90,5 +117,37 @@ describe('startRecording', () => {
     const handle = await rec.start();
     expect(handle.stop).toBeInstanceOf(Function);
     expect(handle.cancel).toBeInstanceOf(Function);
+  });
+
+  describe('静音检测（hadSound）', () => {
+    it('全程静音（采样一直落在中点附近）时 hadSound 为 false', async () => {
+      vi.useFakeTimers();
+      const handle = await startRecording();
+      fakeAnalyser.nextData = new Array(1024).fill(128); // 静音：时域采样钉在中点
+      await vi.advanceTimersByTimeAsync(500);
+      const { hadSound } = await handle.stop();
+      expect(hadSound).toBe(false);
+    });
+
+    it('录音期间任意一刻音量超过阈值，hadSound 就变为 true（哪怕之后又安静下来）', async () => {
+      vi.useFakeTimers();
+      const handle = await startRecording();
+      fakeAnalyser.nextData = new Array(1024).fill(128);
+      await vi.advanceTimersByTimeAsync(200);
+      // 中途说了一句话：采样明显偏离中点
+      fakeAnalyser.nextData = [40, 210, 30, 220];
+      await vi.advanceTimersByTimeAsync(200);
+      fakeAnalyser.nextData = new Array(1024).fill(128); // 说完又安静下来
+      await vi.advanceTimersByTimeAsync(200);
+      const { hadSound } = await handle.stop();
+      expect(hadSound).toBe(true);
+    });
+
+    it('当前环境没有 AudioContext（不支持静音检测）时，安全默认为 hadSound=true，不阻断正常发送', async () => {
+      vi.stubGlobal('AudioContext', undefined);
+      const handle = await startRecording();
+      const { hadSound } = await handle.stop();
+      expect(hadSound).toBe(true);
+    });
   });
 });

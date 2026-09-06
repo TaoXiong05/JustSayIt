@@ -1,6 +1,25 @@
-export type RecorderHandle = { stop(): Promise<Blob>; cancel(): void };
+export type RecorderHandle = {
+  stop(): Promise<{ blob: Blob; hadSound: boolean }>;
+  cancel(): void;
+};
 
 export const DEFAULT_MAX_MS = 60_000; // §9、§10.3a：客户端录音上限 60 秒
+
+const SILENCE_POLL_MS = 100;
+// 时域采样以 128 为静音中点，±10 以内视为噪声/静音，超出才算"有声音"——
+// 用户反馈：点了麦克风什么都没说就点结束，不该照样发一次 STT 请求。
+const SILENCE_AMPLITUDE_THRESHOLD = 10;
+
+function isLoudEnough(analyser: AnalyserNode, buffer: Uint8Array<ArrayBuffer>): boolean {
+  analyser.getByteTimeDomainData(buffer);
+  let min = 255;
+  let max = 0;
+  for (const v of buffer) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return max - min > SILENCE_AMPLITUDE_THRESHOLD;
+}
 
 /**
  * 携带具体原因的录音失败——UI 层据此选择精确文案，而不是把"这浏览器压根
@@ -60,21 +79,55 @@ export async function startRecording(opts?: {
     if (e.data.size > 0) chunks.push(e.data);
   };
 
+  // 静音检测：默认 true（安全默认——检测本身是增强项，不可用/出错时不该
+  // 阻断正常发送，退回今天的行为）。只有真的能起 AnalyserNode 监测时才
+  // 切到"等待证实有声音"的模式。不接到 destination，避免用户听到回声。
+  let hadSound = true;
+  let audioCtx: AudioContext | null = null;
+  let soundPollTimer: ReturnType<typeof setInterval> | null = null;
+  const AudioContextCtor =
+    typeof window !== 'undefined'
+      ? (window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext)
+      : undefined;
+  if (AudioContextCtor) {
+    try {
+      hadSound = false;
+      audioCtx = new AudioContextCtor();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      const buffer = new Uint8Array(analyser.frequencyBinCount);
+      soundPollTimer = setInterval(() => {
+        if (!hadSound && isLoudEnough(analyser, buffer)) hadSound = true;
+      }, SILENCE_POLL_MS);
+    } catch {
+      hadSound = true; // 检测本身失败——安全默认，别拖累正常录音流程
+    }
+  }
+
+  const cleanupSoundDetection = () => {
+    if (soundPollTimer) clearInterval(soundPollTimer);
+    void audioCtx?.close();
+  };
+
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const stop = () =>
-    new Promise<Blob>((resolve) => {
+    new Promise<{ blob: Blob; hadSound: boolean }>((resolve) => {
       if (stopped) {
-        resolve(new Blob(chunks, { type: recorder.mimeType }));
+        resolve({ blob: new Blob(chunks, { type: recorder.mimeType }), hadSound });
         return;
       }
       stopped = true;
       if (timer) clearTimeout(timer);
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
+        cleanupSoundDetection();
         const type = recorder.mimeType || 'audio/webm';
-        resolve(new Blob(chunks, { type }));
+        resolve({ blob: new Blob(chunks, { type }), hadSound });
       };
       if (recorder.state !== 'inactive') recorder.stop();
     });
@@ -87,6 +140,7 @@ export async function startRecording(opts?: {
     // 但让 recorder 尽快真正停下来，别处于说不清的中间状态。
     if (recorder.state !== 'inactive') recorder.stop();
     stream.getTracks().forEach((t) => t.stop());
+    cleanupSoundDetection();
     if (timer) clearTimeout(timer);
   };
 

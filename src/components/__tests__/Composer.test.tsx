@@ -8,7 +8,7 @@ import { ApiError } from '@/lib/apiError';
 // Mock VoiceButton：隔离录音链路，聚焦 Composer 的「回填→输入框」逻辑。
 vi.mock('@/components/VoiceButton', () => ({
   VoiceButton: (props: { onTranscribed: (t: string) => void }) => (
-    <button type="button" onClick={() => props.onTranscribed('Woolworths 买菜')}>
+    <button type="button" onClick={() => props.onTranscribed('Woolworths 买菜 25')}>
       voice-mock
     </button>
   ),
@@ -128,12 +128,12 @@ describe('Composer', () => {
 
     // 触发 mocked VoiceButton 的 onTranscribed
     await user.click(screen.getByRole('button', { name: /voice-mock/ }));
-    expect(box.value).toBe('Woolworths 买菜');
+    expect(box.value).toBe('Woolworths 买菜 25');
 
     // 回填后由用户点击提交，复用既有流程
     await user.click(screen.getByRole('button', { name: 'Submit' }));
     // 这次输入用了语音回填，第二个参数（viaVoice）应为 true
-    expect(onSubmit).toHaveBeenCalledWith('Woolworths 买菜', true);
+    expect(onSubmit).toHaveBeenCalledWith('Woolworths 买菜 25', true);
   });
 
   it('已有文本时语音回填追加到末尾并以空格分隔', async () => {
@@ -144,6 +144,34 @@ describe('Composer', () => {
 
     await user.type(box, '买菜');
     await user.click(screen.getByRole('button', { name: /voice-mock/ }));
-    expect(box.value).toBe('买菜 Woolworths 买菜');
+    expect(box.value).toBe('买菜 Woolworths 买菜 25');
+  });
+
+  it('没有任何数字信号时前端直接拦下，不发请求、不清空输入框（用户反馈：省一次注定失败的 AI 请求）', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<Composer onSubmit={onSubmit} />);
+
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.type(box, 'sdsadsdsafsdfgasdsad');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Add an amount, e.g. "lunch 15"',
+    );
+    expect(box.value).toBe('sdsadsdsafsdfgasdsad');
+  });
+
+  it('含中文数字字符（不含阿拉伯数字）也能通过前端校验正常提交', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<Composer onSubmit={onSubmit} />);
+
+    await user.type(screen.getByRole('textbox'), '午饭十五块');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(onSubmit).toHaveBeenCalledWith('午饭十五块', false);
   });
 });
