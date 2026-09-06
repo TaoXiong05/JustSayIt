@@ -1,6 +1,10 @@
 import { subscribe, getEventsSnapshot, hydrate } from '@/lib/ledger/store';
 import { getDeviceId, type LedgerEvent } from '@/lib/ledger/events';
-import { markUnsynced, getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
+import {
+  markUnsynced,
+  reconcileUnsynced,
+  getSnapshot as getSyncSnapshot,
+} from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
 
 // 兜底重试间隔（回归：用户反馈"提交记录，不刷新页面就一直显示等待
@@ -28,6 +32,25 @@ function newlyCreatedOrAmendedTxIds(events: LedgerEvent[]): string[] {
   for (const e of events) {
     if (seenEventIds.has(e.eventId)) continue;
     seenEventIds.add(e.eventId);
+    if (
+      e.deviceId === deviceId &&
+      (e.kind === 'transaction_created' || e.kind === 'transaction_amended')
+    ) {
+      ids.push(e.payload.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * 本设备产生的全部账目 id——未同步集合的校准基准。
+ * 只认本设备的：engine.ts 上传时按 deviceId 过滤，别的设备的账目
+ * 永远不会出现在 markSynced 的清除列表里（同上面那条注释的道理）。
+ */
+function ownTxIds(events: LedgerEvent[]): string[] {
+  const deviceId = getDeviceId();
+  const ids: string[] = [];
+  for (const e of events) {
     if (
       e.deviceId === deviceId &&
       (e.kind === 'transaction_created' || e.kind === 'transaction_amended')
@@ -70,6 +93,11 @@ export function initSync(): () => void {
   void hydrate().then(() => {
     if (cancelled) return;
     seenEventIds = new Set(getEventsSnapshot().map((e) => e.eventId));
+    // 未同步集合是从上一次会话恢复出来的，可能指向本地已经不存在的账目
+    // （清过 IndexedDB 等）——那种 id 永远等不到 markSynced，在这里一次性
+    // 清掉（见 status.ts 的 reconcileUnsynced）。必须在水合之后：此刻
+    // getEventsSnapshot() 才是本地事件的全集。
+    reconcileUnsynced(ownTxIds(getEventsSnapshot()));
     unsubscribe = subscribe(() => {
       const newIds = newlyCreatedOrAmendedTxIds(getEventsSnapshot());
       if (newIds.length > 0) markUnsynced(newIds);

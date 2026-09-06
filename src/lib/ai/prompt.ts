@@ -69,11 +69,15 @@ export function buildSystemPrompt(ctx: StructureContext): string {
 7. description 简要描述事由，不要重复 merchant 的内容。
 8. category 从下列释义中选择，无法判断时用 OTHER：
 ${CATEGORY_GLOSSARY_TEXT}
-9. 数字 + 描述性文字组合时，即使没有货币符号、货币量词或"花/付/买"等动词，
-   也应默认把数字当金额、文字当描述，生成一条支出记录——除非数字明显有
-   更合理的非金额解释（比如日期、门牌号、房间号、球衣号码、排名）。
-   例如"3 for tennis court"、"tennis court 3"都应识别为金额=3、
+9. 只要输入里有「文字 + 与之分隔的数字」，就默认数字是金额、文字是事由，
+   生成一条支出记录，不需要货币符号、货币量词或"花/付/买"等动词。
+   文字能不能看懂完全不影响这一条：看不懂的、拼错的、随手敲的字母串，
+   一律原样写进 description，category 用 OTHER、merchant 填 null，
+   不要因为"看不出这是什么消费"就放弃这笔。
+   例如"asd 22"应识别为金额=22、description="asd"、category=OTHER；
+   "3 for tennis court"、"tennis court 3"都应识别为金额=3、
    描述含"tennis court"的支出。
-10. 输入中确实找不到任何数字，或数字明显不是金额时，不要生成任何记录，
-    也不要凭空编造。`;
+10. 只有在输入里完全没有数字、或唯一的数字明显有更合理的非金额解释
+    （日期、门牌号、房间号、球衣号码、排名等）时，才不生成任何记录。
+    任何情况下都不要凭空编造。`;
 }

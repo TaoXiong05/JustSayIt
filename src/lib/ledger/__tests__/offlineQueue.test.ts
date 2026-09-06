@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('@/lib/ledger/store', () => ({
   pendingRawInputs: vi.fn(),
   resolveRawInput: vi.fn(),
+  // 真实实现是从 IndexedDB 异步读——这里 mock 成"立刻 resolve"，但仍然是
+  // 一次真正的 Promise，测试里要等一轮微任务它才落地。
+  hydrate: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('@/lib/ledger/structureAndSave', () => ({
   structureTextToTransactions: vi.fn(),
@@ -70,11 +73,49 @@ describe('retryPendingInputs', () => {
 });
 
 describe('initOfflineQueueAutoRetry', () => {
+  /** 等 initOfflineQueueAutoRetry() 内部那次 hydrate() 落地 */
+  const flushHydrate = () => new Promise((r) => setTimeout(r, 0));
+
   it('注册 online 事件监听，触发时调用补跑', async () => {
     vi.mocked(pendingRawInputs).mockReturnValue([]);
     const addSpy = vi.spyOn(window, 'addEventListener');
     const cleanup = initOfflineQueueAutoRetry();
     expect(addSpy).toHaveBeenCalledWith('online', expect.any(Function));
     cleanup();
+  });
+
+  it('启动时先等水合完成再读队列（回归：曾经在 mount 时同步补跑，那一刻 IndexedDB 还没读回来、队列恒为空，于是什么都没补跑；此后只要浏览器一直在线，online 事件就永远不触发，排队项再也等不到任何重试——用户反馈原话："一直 queued，没有重试"）', async () => {
+    vi.mocked(pendingRawInputs).mockReturnValue([item]);
+    vi.mocked(structureTextToTransactions).mockResolvedValue([]);
+
+    const cleanup = initOfflineQueueAutoRetry();
+    // 水合还没落地，此时读到的队列一定是空的，不能在这个时机读
+    expect(pendingRawInputs).not.toHaveBeenCalled();
+
+    await flushHydrate();
+    expect(structureTextToTransactions).toHaveBeenCalledWith('买菜50块', {
+      localTime: item.localTime,
+      timeZone: item.timeZone,
+      defaultCurrency: item.defaultCurrency,
+    });
+    expect(resolveRawInput).toHaveBeenCalledWith('q1', []);
+    cleanup();
+  });
+
+  it('离线时启动不补跑（等 online 事件）', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    vi.mocked(pendingRawInputs).mockReturnValue([item]);
+    const cleanup = initOfflineQueueAutoRetry();
+    await flushHydrate();
+    expect(structureTextToTransactions).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it('cleanup 早于水合落地时不再补跑（组件已经卸载了）', async () => {
+    vi.mocked(pendingRawInputs).mockReturnValue([item]);
+    const cleanup = initOfflineQueueAutoRetry();
+    cleanup();
+    await flushHydrate();
+    expect(structureTextToTransactions).not.toHaveBeenCalled();
   });
 });

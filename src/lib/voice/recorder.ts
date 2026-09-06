@@ -3,7 +3,7 @@ export type RecorderHandle = {
   cancel(): void;
 };
 
-export const DEFAULT_MAX_MS = 60_000; // §9、§10.3a：客户端录音上限 60 秒
+export const DEFAULT_MAX_MS = 30_000; // §9、§10.3a：客户端录音上限（一条账目的口述用不了这么久）
 
 const SILENCE_POLL_MS = 100;
 // 时域采样以 128 为静音中点，±10 以内视为噪声/静音，超出才算"有声音"——
@@ -155,7 +155,15 @@ export async function startRecording(opts?: {
 
 export type VoiceRecorder = { start(): Promise<RecorderHandle> };
 
-/** 惰性工厂：真正启动前不触碰 getUserMedia，便于组件测试注入。 */
-export function initializeRecorder(): VoiceRecorder {
-  return { start: () => startRecording() };
+export type RecorderOptions = { maxMs?: number; onAutoStop?: () => void };
+
+/**
+ * 惰性工厂：真正启动前不触碰 getUserMedia，便于组件测试注入。
+ *
+ * opts 必须透传下去（回归：这里曾经不接收任何参数，于是 onAutoStop 永远
+ * 是 undefined——录满上限时只有录音器自己停了，组件完全不知情，界面一直
+ * 停在"录音中"，等于这个上限对用户来说不存在）。
+ */
+export function initializeRecorder(opts?: RecorderOptions): VoiceRecorder {
+  return { start: () => startRecording(opts) };
 }

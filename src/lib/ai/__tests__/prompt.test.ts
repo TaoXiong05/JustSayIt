@@ -37,4 +37,10 @@ describe('buildSystemPrompt', () => {
   it('要求"数字+描述文字"组合默认记账，即使没有货币符号/量词/动词（用户反馈原话：3 for tennis court 应该能记上，不该因为太严格而拒绝）', () => {
     expect(buildSystemPrompt(ctx)).toContain('tennis court');
   });
+
+  it('文字看不懂也要照记——只要"文字 + 分隔的数字"就成立（用户反馈原话："只要有文字加分隔数字就可以记录"；"asd 22" 曾经被判成"找不到可记录的内容"，因为规则里写的是"描述性文字"，模型认定 asd 不算描述）', () => {
+    const p = buildSystemPrompt(ctx);
+    expect(p).toContain('asd 22');
+    expect(p).toContain('看不懂');
+  });
 });

@@ -11,8 +11,9 @@ const JWKS_URI = 'https://www.googleapis.com/oauth2/v3/certs';
  * invalid_scope（实测：短别名报错时 Google 只把 email/profile 展开进
  * valid 列表，drive.appdata 会原样出现在 invalid 里）。
  */
-export const SCOPE =
-  'openid email profile https://www.googleapis.com/auth/drive.appdata';
+export const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+
+export const SCOPE = `openid email profile ${DRIVE_APPDATA_SCOPE}`;
 
 function clientConfig() {
   const id = process.env.GOOGLE_CLIENT_ID;
@@ -131,7 +132,7 @@ export async function exchangeCode(
  */
 export async function refreshAccessToken(
   refreshToken: string,
-): Promise<{ accessToken: string; expiresIn: number }> {
+): Promise<{ accessToken: string; expiresIn: number; scope: string | null }> {
   const { id, secret } = clientConfig();
   const res = await fetch(TOKEN_ENDPOINT, {
     method: 'POST',
@@ -144,7 +145,18 @@ export async function refreshAccessToken(
     }),
   });
   if (!res.ok) throw new Error(`Google token 刷新失败：HTTP ${res.status}`);
-  const data = (await res.json()) as { access_token?: string; expires_in?: number };
+  const data = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+    scope?: string;
+  };
   if (!data.access_token) throw new Error('Google 刷新响应缺少 access_token');
-  return { accessToken: data.access_token, expiresIn: data.expires_in ?? 3600 };
+  // scope 是刷新响应里 Google 实际授予的权限清单——它反映的是这个 refresh
+  // token 当初被签发时同意过的范围，跟后来在 Cloud Console 里改成什么无关
+  // （见 drive-token 路由里的校验）。字段本身是可选的，拿不到就是 null。
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in ?? 3600,
+    scope: data.scope ?? null,
+  };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import { VoiceButton } from '@/components/VoiceButton';
 import { initializeRecorder } from '@/lib/voice/recorder';
@@ -100,6 +100,51 @@ describe('VoiceButton', () => {
     expect(screen.getByRole('alert').textContent).toBe('No sound detected, please try again');
     expect(fetchMock).not.toHaveBeenCalled();
     expect(onTranscribed).not.toHaveBeenCalled();
+  });
+
+  it('取消是麦克风下方一个带可见文案的按钮，不再是一个只有 aria-label 的 X 图标（原来那个 X 紧挨着大圆，按钮的可点击范围是方形包围盒、不是看起来的圆形，瞄 X 很容易落进麦克风热区）', async () => {
+    render(<VoiceButton onTranscribed={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Record/ }));
+    const cancel = await screen.findByRole('button', { name: /Cancel/ });
+    expect(cancel.textContent).toBe('Cancel');
+  });
+
+  it('录到 30 秒上限时自动收尾：UI 离开录音态并照常走转写，而不是停在"录音中"（回归：录音器的自动停止回调一直没接到组件上，上限只停了录音器、界面还留在录音态）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ text: '录满自动收尾' }) }),
+    );
+    const onTranscribed = vi.fn();
+    render(<VoiceButton onTranscribed={onTranscribed} />);
+    fireEvent.click(screen.getByRole('button', { name: /Record/ }));
+    await waitFor(() => expect(currentRec).not.toBeNull());
+
+    // 取组件实际传给录音器的那个回调，模拟录音器到点触发它
+    const onAutoStop = vi.mocked(initializeRecorder).mock.calls.at(-1)?.[0]?.onAutoStop;
+    expect(onAutoStop).toBeInstanceOf(Function);
+    onAutoStop?.();
+
+    await waitFor(() => expect(onTranscribed).toHaveBeenCalledWith('录满自动收尾'));
+    expect(screen.getByRole('button', { name: /Record/ })).toBeDefined(); // 回到空闲态
+  });
+
+  it('录音一开始就从 30 秒倒计时，随时间递减', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<VoiceButton onTranscribed={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /Record/ }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0); // 让 recorder.start() 的 promise 落地
+      });
+      expect(screen.getByText('30s')).toBeDefined();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_000);
+      });
+      expect(screen.getByText('27s')).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('录音中可取消，不触发转写', async () => {

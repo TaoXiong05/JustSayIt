@@ -37,7 +37,13 @@ describe('主屏 · 离线队列', () => {
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getByText(/Queued offline/)).toBeDefined());
-    expect(screen.getByText('买菜50块')).toBeDefined();
+    // 用 selector 限定在排队行内部：受控 <textarea> 会把值镜像成自己的
+    // 文本节点（用户看到的输入框其实已经清空了，清的是 value），裸的
+    // getByText 会同时命中排队行和输入框，取决于清空提交在哪一刻落地，
+    // 整套跑起来时会间歇性地报"找到多个元素"。同 optimistic.test.tsx。
+    expect(
+      screen.getByText('买菜50块', { selector: 'li[aria-live="polite"] span' }),
+    ).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

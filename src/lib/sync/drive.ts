@@ -6,6 +6,29 @@ const BOUNDARY = 'justsayit-sync-boundary';
 
 export type DriveFile = { id: string; name: string };
 
+/**
+ * 失败时把 Google 的错误响应体一并带进错误信息。
+ *
+ * 只带一个状态码在排查时几乎没用：同一个 403 既可能是"这个 access token
+ * 没有 drive.appdata 授权"（body 里是 Insufficient Permission），也可能是
+ * "这个 Cloud 项目压根没启用 Drive API"（body 里是 has not been used in
+ * project ... or it is disabled），两者的修法完全不同，而 body 里写得很清楚
+ * （用户反馈：一直 403，只能靠猜，来回试了两轮才定位到是 scope）。
+ * 读 body 本身失败时保留原始状态码，不能让诊断信息反而变少。
+ */
+async function requestFailed(res: Response, action: string): Promise<Error> {
+  let detail = '';
+  try {
+    // 500 而不是更短：Google 的错误体里 message 很长，机器可读的
+    // reason（accessNotConfigured / insufficientPermissions 等）排在它后面，
+    // 截太短正好把最有分辨力的那个字段丢掉。
+    detail = (await res.text()).slice(0, 500).replace(/\s+/g, ' ').trim();
+  } catch {
+    // 读不到 body 就只报状态码
+  }
+  return new Error(`${action}失败：HTTP ${res.status}${detail ? ` — ${detail}` : ''}`);
+}
+
 /** 事件序列 → JSONL（一行一个事件），供写入 Drive 文件。 */
 export function serializeEvents(events: LedgerEvent[]): string {
   return events.map((e) => JSON.stringify(e)).join('\n');
@@ -29,7 +52,7 @@ export async function listOwnAppFiles(accessToken: string): Promise<DriveFile[]>
   const res = await fetch(`${FILES_ENDPOINT}?${params.toString()}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error(`Drive 列表请求失败：HTTP ${res.status}`);
+  if (!res.ok) throw await requestFailed(res, 'Drive 列表请求');
   const data = (await res.json()) as { files?: DriveFile[] };
   return data.files ?? [];
 }
@@ -38,7 +61,7 @@ export async function downloadFile(accessToken: string, fileId: string): Promise
   const res = await fetch(`${FILES_ENDPOINT}/${fileId}?alt=media`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error(`Drive 下载失败：HTTP ${res.status}`);
+  if (!res.ok) throw await requestFailed(res, 'Drive 下载');
   return res.text();
 }
 
@@ -64,7 +87,7 @@ async function createFile(
     },
     body,
   });
-  if (!res.ok) throw new Error(`Drive 创建文件失败：HTTP ${res.status}`);
+  if (!res.ok) throw await requestFailed(res, 'Drive 创建文件');
 }
 
 async function updateFile(
@@ -80,7 +103,7 @@ async function updateFile(
     },
     body: content,
   });
-  if (!res.ok) throw new Error(`Drive 更新文件失败：HTTP ${res.status}`);
+  if (!res.ok) throw await requestFailed(res, 'Drive 更新文件');
 }
 
 /**

@@ -60,8 +60,40 @@ describe('listOwnAppFiles', () => {
   });
 
   it('HTTP 失败时抛错', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => '' }),
+    );
     await expect(listOwnAppFiles('at-1')).rejects.toThrow(/401/);
+  });
+
+  it('把 Google 的错误响应体带进错误信息——只有状态码分不出 403 到底是"没授予 drive.appdata"还是"这个 Cloud 项目没启用 Drive API"，两者修法完全不同（用户反馈：一直 403，查了两轮才定位到 scope）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: async () =>
+          JSON.stringify({
+            error: { code: 403, message: 'Insufficient Permission', status: 'PERMISSION_DENIED' },
+          }),
+      }),
+    );
+    await expect(listOwnAppFiles('at-1')).rejects.toThrow(/Insufficient Permission/);
+  });
+
+  it('读取错误响应体本身失败时，不能盖掉原来的状态码信息', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => {
+          throw new Error('body 已被消费');
+        },
+      }),
+    );
+    await expect(listOwnAppFiles('at-1')).rejects.toThrow(/500/);
   });
 });
 
@@ -74,7 +106,10 @@ describe('downloadFile', () => {
   });
 
   it('HTTP 失败时抛错', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => '' }),
+    );
     await expect(downloadFile('at-1', 'missing')).rejects.toThrow(/404/);
   });
 });

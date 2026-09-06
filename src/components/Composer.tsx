@@ -7,6 +7,9 @@ import { ApiError } from '@/lib/apiError';
 import { errorCodeToKey } from '@/lib/i18n/dictionary';
 import { hasAmountSignal } from '@/lib/ledger/textValidation';
 
+/** 输入上限：一笔账目的口述/打字描述本来就是短句，80 字足够且能兜住 AI 请求体积。 */
+const MAX_INPUT_LENGTH = 80;
+
 export function Composer({
   onSubmit,
 }: {
@@ -28,8 +31,12 @@ export function Composer({
 
   // STT 结果回填：追加到现有输入末尾（已有文本则在尾部补空格分隔）。
   // 不自动提交——复用「用户在输入框确认 → 提交」的既有流程（spec §9 关键决定）。
+  // 同样按 MAX_INPUT_LENGTH 截断：textarea 的 maxLength 只管键盘输入，
+  // 程序化写入绕得过去，不在这里截一刀的话上限就只生效一半。
   const appendText = (t: string) => {
-    setText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t));
+    setText((prev) =>
+      (prev.trim() ? `${prev.trim()} ${t}` : t).slice(0, MAX_INPUT_LENGTH),
+    );
     setViaVoice(true);
     setVoicePulseSeq((s) => s + 1);
   };
@@ -101,7 +108,7 @@ export function Composer({
           没有引入"回车换行、按钮才提交"的新操作习惯。移动端整体比桌面端
           大一圈（py/text/px），跟 VoiceButton 的放大同一个理由——半屏高度
           的卡片需要同比放大的内容去填满，lg: 断点还原回桌面端原尺寸。 */}
-      <div className="relative flex shrink-0 items-end gap-2 rounded-2xl border border-border bg-surface py-2.5 pl-5 pr-2 focus-within:border-brand lg:py-1.5 lg:pl-4 lg:pr-1.5">
+      <div className="relative flex shrink-0 items-center gap-2 rounded-2xl border border-border bg-surface py-2.5 pl-5 pr-2 focus-within:border-brand lg:py-1.5 lg:pl-4 lg:pr-1.5">
         {/* 语音回填的一次性涟漪提示（改善方向 #3）：key 用递增序号强制
             重新挂载，保证连续多次语音回填都能各自完整播完一遍动画。 */}
         {voicePulseSeq > 0 && (
@@ -113,6 +120,7 @@ export function Composer({
         )}
         <textarea
           rows={2}
+          maxLength={MAX_INPUT_LENGTH}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -126,13 +134,14 @@ export function Composer({
           placeholder={t('composerPlaceholder')}
           className="min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base text-ink placeholder:text-muted focus:outline-none lg:text-sm"
         />
-        {/* Submit 按钮缩小一档（用户反馈：太大了），self-end 贴着输入框底部对齐，
-            不随文本行数增多而跟着垂直居中漂移。 */}
+        {/* Submit 按钮在这一行里垂直居中（外层 items-center）：文本框固定
+            两行高、字数也封顶 80，不会长到把按钮拖偏，居中比之前贴底对齐
+            更端正（用户反馈：上下不居中）。 */}
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="mb-1.5 shrink-0 self-end rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 lg:px-3 lg:py-1 lg:text-xs"
+          className="shrink-0 rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 lg:px-3 lg:py-1 lg:text-xs"
         >
           {submitting ? t('submitting') : t('submit')}
         </button>

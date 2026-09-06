@@ -72,6 +72,22 @@ describe('Composer', () => {
     expect(box.value).toBe('午餐30');
   });
 
+  it('输入框限制最大字数 80', () => {
+    render(<Composer onSubmit={vi.fn()} />);
+    expect(screen.getByRole('textbox')).toHaveProperty('maxLength', 80);
+  });
+
+  it('语音回填也受 80 字上限约束——maxLength 只管键盘输入，程序化写入绕得过去', async () => {
+    const user = userEvent.setup();
+    render(<Composer onSubmit={vi.fn()} />);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    await user.type(box, 'x'.repeat(70));
+    // mocked VoiceButton 回填 'Woolworths 买菜 25'（17 字），70+1+17 会超出 80
+    await user.click(screen.getByRole('button', { name: /voice-mock/ }));
+    expect(box.value).toHaveLength(80);
+  });
+
   it('空输入时提交按钮禁用', () => {
     render(<Composer onSubmit={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Submit' })).toHaveProperty('disabled', true);

@@ -111,6 +111,37 @@ describe('startRecording', () => {
     expect(recorderInstance.state).toBe('inactive');
   });
 
+  it('录满上限（30 秒）自动停止录音并回调 onAutoStop', async () => {
+    vi.useFakeTimers();
+    try {
+      const onAutoStop = vi.fn();
+      await startRecording({ onAutoStop });
+      const recorderInstance = mediaRecorderCtor.mock.results[0].value as FakeMediaRecorder;
+
+      await vi.advanceTimersByTimeAsync(29_000);
+      expect(onAutoStop).not.toHaveBeenCalled();
+      expect(recorderInstance.state).toBe('recording');
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(onAutoStop).toHaveBeenCalledTimes(1);
+      expect(recorderInstance.state).toBe('inactive');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('initializeRecorder 把 onAutoStop 透传给 startRecording——不透传的话到点只有录音器自己停了，UI 还停在"录音中"，上限等于没有（回归：这个回调一直没接上）', async () => {
+    vi.useFakeTimers();
+    try {
+      const onAutoStop = vi.fn();
+      await initializeRecorder({ onAutoStop }).start();
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(onAutoStop).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('initializeRecorder 返回可 start 的工厂', async () => {
     const rec = initializeRecorder();
     expect(typeof rec.start).toBe('function');

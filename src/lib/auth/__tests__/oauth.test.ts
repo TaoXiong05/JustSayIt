@@ -116,13 +116,21 @@ describe('refreshAccessToken', () => {
   it('用 refresh_token grant 换取 access token', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ access_token: 'at-1', expires_in: 3599 }),
+      json: async () => ({
+        access_token: 'at-1',
+        expires_in: 3599,
+        scope: 'openid email https://www.googleapis.com/auth/drive.appdata',
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const { refreshAccessToken } = await import('@/lib/auth/oauth');
     const out = await refreshAccessToken('rt-1');
-    expect(out).toEqual({ accessToken: 'at-1', expiresIn: 3599 });
+    expect(out).toEqual({
+      accessToken: 'at-1',
+      expiresIn: 3599,
+      scope: 'openid email https://www.googleapis.com/auth/drive.appdata',
+    });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://oauth2.googleapis.com/token');
@@ -137,6 +145,18 @@ describe('refreshAccessToken', () => {
     const { refreshAccessToken } = await import('@/lib/auth/oauth');
     await expect(refreshAccessToken('secret-rt')).rejects.toThrow(/400/);
     await expect(refreshAccessToken('secret-rt')).rejects.not.toThrow(/secret-rt/);
+  });
+
+  it('响应没带 scope 字段时返回 null（不能据此判定"授权缺失"，那会把好用的 token 也拦掉）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ access_token: 'at-1', expires_in: 3599 }),
+      }),
+    );
+    const { refreshAccessToken } = await import('@/lib/auth/oauth');
+    expect((await refreshAccessToken('rt-1')).scope).toBeNull();
   });
 
   it('响应缺少 access_token 时抛错', async () => {

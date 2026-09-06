@@ -33,7 +33,58 @@ export const EMPTY_SYNC_STATE: SyncState = {
   lastError: null,
 };
 
-let state: SyncState = EMPTY_SYNC_STATE;
+const PERSIST_KEY = 'justsayit.sync';
+
+/**
+ * 持久化的字段（回归：整个状态原来只活在内存里，刷新一律归零——不管有没有
+ * 真的传上去都会显示"已同步"，把同步失败彻底藏起来；24h/72h 的升级预警也
+ * 因为计时起点每次刷新重置而实际上永远触发不了）。
+ *
+ * 只存这三个"事实"，不存 authError / lastError：后两者描述的是最近一次
+ * 尝试的即时状况，刷新后 initSync() 立刻会跑一次新的同步重新给出结论，
+ * 留着旧值只会在界面上显示一条可能已经不成立的报错。
+ *
+ * 用 localStorage 而不是账本所在的 IndexedDB：getSnapshot() 要满足
+ * useSyncExternalStore 的同步契约（异步存储得先经历一次"空 → 有值"的
+ * 落地，等于把刷新后那一瞬间的错误状态又演一遍），而这里的数据量只是
+ * 一串 id、也不是真相来源（真相是 IndexedDB 里的事件日志，这里只是
+ * "哪些还没传上去"的记账）。
+ */
+type PersistedSyncState = Pick<SyncState, 'unsyncedIds' | 'firstUnsyncedAt' | 'lastSyncedAt'>;
+
+function loadPersisted(): SyncState {
+  // 服务端渲染时没有 localStorage；读坏数据也不能把整个模块带崩——
+  // 这份数据是可重建的记账，任何异常都退回空状态，下一次同步会重新算出来。
+  try {
+    const raw = globalThis.localStorage?.getItem(PERSIST_KEY);
+    if (!raw) return EMPTY_SYNC_STATE;
+    const parsed = JSON.parse(raw) as Partial<PersistedSyncState>;
+    if (!Array.isArray(parsed.unsyncedIds)) return EMPTY_SYNC_STATE;
+    return {
+      ...EMPTY_SYNC_STATE,
+      unsyncedIds: parsed.unsyncedIds.filter((id): id is string => typeof id === 'string'),
+      firstUnsyncedAt: typeof parsed.firstUnsyncedAt === 'string' ? parsed.firstUnsyncedAt : null,
+      lastSyncedAt: typeof parsed.lastSyncedAt === 'string' ? parsed.lastSyncedAt : null,
+    };
+  } catch {
+    return EMPTY_SYNC_STATE;
+  }
+}
+
+function persist(next: SyncState): void {
+  const toStore: PersistedSyncState = {
+    unsyncedIds: next.unsyncedIds,
+    firstUnsyncedAt: next.firstUnsyncedAt,
+    lastSyncedAt: next.lastSyncedAt,
+  };
+  try {
+    globalThis.localStorage?.setItem(PERSIST_KEY, JSON.stringify(toStore));
+  } catch {
+    // 隐私模式/配额满等——写不进去就退化回原来的内存行为，不影响本次会话
+  }
+}
+
+let state: SyncState = loadPersisted();
 const { subscribe, emit } = createEmitter();
 export { subscribe };
 
@@ -41,53 +92,74 @@ export function getSnapshot(): SyncState {
   return state;
 }
 
+/** 所有状态变更的唯一出口：写内存 → 落盘 → 通知订阅者。 */
+function commit(next: SyncState): void {
+  state = next;
+  persist(state);
+  emit();
+}
+
 export function markUnsynced(ids: string[]): void {
   if (ids.length === 0) return;
   const next = new Set(state.unsyncedIds);
   for (const id of ids) next.add(id);
-  state = {
+  commit({
     ...state,
     unsyncedIds: [...next],
     firstUnsyncedAt: state.firstUnsyncedAt ?? new Date().toISOString(),
-  };
-  emit();
+  });
 }
 
 export function markSynced(ids: string[]): void {
   if (ids.length === 0) return;
   const next = new Set(state.unsyncedIds);
   for (const id of ids) next.delete(id);
-  state = {
+  commit({
     ...state,
     unsyncedIds: [...next],
     firstUnsyncedAt: next.size === 0 ? null : state.firstUnsyncedAt,
     authError: false, // 一次成功同步说明授权是好的
     lastSyncedAt: new Date().toISOString(),
-  };
-  emit();
+  });
+}
+
+/**
+ * 用账本里真实存在的（本设备的）账目 id 校准未同步集合，丢掉对不上的。
+ *
+ * 未同步集合现在跨刷新存活，就有了它指向的账目在本地已经不存在的可能
+ * （清过 IndexedDB、导入了别的设备的数据等）。这类 id 永远等不到
+ * markSynced——engine.ts 是从事件日志算"这次上传了哪些 id"的，日志里没有
+ * 就永远不会被清掉——留着会让徽标永久停在"待同步"，兜底重试也会每 15 秒
+ * 白跑一次。由 initSync() 在水合完成后调用一次（见 sync/init.ts）。
+ */
+export function reconcileUnsynced(knownTxIds: string[]): void {
+  const known = new Set(knownTxIds);
+  const kept = state.unsyncedIds.filter((id) => known.has(id));
+  if (kept.length === state.unsyncedIds.length) return; // 没有对不上的，不做无意义的通知
+  commit({
+    ...state,
+    unsyncedIds: kept,
+    firstUnsyncedAt: kept.length === 0 ? null : state.firstUnsyncedAt,
+  });
 }
 
 export function markAuthError(): void {
-  state = { ...state, authError: true };
-  emit();
+  commit({ ...state, authError: true });
 }
 
 export function clearAuthError(): void {
-  state = { ...state, authError: false };
-  emit();
+  commit({ ...state, authError: false });
 }
 
 /** 记下最近一次同步尝试为什么失败（见 SyncState.lastError 的说明）。 */
 export function markSyncFailed(message: string): void {
-  state = { ...state, lastError: message };
-  emit();
+  commit({ ...state, lastError: message });
 }
 
 /** 一次成功的同步尝试之后调用。本来就没有失败记录时不做无意义的通知。 */
 export function clearSyncError(): void {
   if (state.lastError === null) return;
-  state = { ...state, lastError: null };
-  emit();
+  commit({ ...state, lastError: null });
 }
 
 export type BTier = 'ok' | 'lt24h' | '24to72h' | 'gt72h';

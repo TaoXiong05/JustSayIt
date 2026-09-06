@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   subscribe,
   getSnapshot,
@@ -8,15 +8,18 @@ import {
   clearAuthError,
   markSyncFailed,
   clearSyncError,
+  reconcileUnsynced,
   classifyBTier,
 } from '@/lib/sync/status';
 
 beforeEach(() => {
+  localStorage.clear();
   // 每个用例前重置到干净状态——直接把已知的未同步 id 全部标记为已同步
   markSynced(getSnapshot().unsyncedIds);
   clearAuthError();
   clearSyncError();
 });
+afterEach(() => vi.useRealTimers());
 
 describe('markUnsynced / markSynced', () => {
   // 本用例必须第一个跑：它断言 lastSyncedAt 初始为 null，而后续用例的
@@ -91,6 +94,79 @@ describe('markSyncFailed / clearSyncError', () => {
     const listener = vi.fn();
     const unsubscribe = subscribe(listener);
     clearSyncError();
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+});
+
+describe('跨刷新持久化', () => {
+  /** 模拟一次页面刷新：丢掉模块实例，重新 import 一份从存储里恢复的 */
+  async function reload() {
+    vi.resetModules();
+    return import('@/lib/sync/status');
+  }
+
+  it('未同步集合与计时起点跨刷新存活（回归：状态只在内存里，刷新一律归零——不管有没有真的传上去都显示"已同步"，把同步失败藏了起来；24h/72h 的升级预警也因为计时每次刷新重置而永远不会触发）', async () => {
+    vi.useFakeTimers().setSystemTime(new Date('2026-09-01T00:00:00Z'));
+    markUnsynced(['tx1', 'tx2']);
+
+    const reloaded = await reload();
+    expect(reloaded.getSnapshot().unsyncedIds).toEqual(['tx1', 'tx2']);
+    expect(reloaded.getSnapshot().firstUnsyncedAt).toBe('2026-09-01T00:00:00.000Z');
+  });
+
+  it('同步成功后的清空同样跨刷新存活', async () => {
+    markUnsynced(['tx1']);
+    markSynced(['tx1']);
+
+    const reloaded = await reload();
+    expect(reloaded.getSnapshot().unsyncedIds).toEqual([]);
+    expect(reloaded.getSnapshot().firstUnsyncedAt).toBeNull();
+  });
+
+  it('authError / lastError 不持久化——它们描述的是"最近一次尝试"的即时状况，刷新后马上会有一次新的同步重新给出结论，留着旧值只会显示已经不成立的报错', async () => {
+    markUnsynced(['tx1']);
+    markAuthError();
+    markSyncFailed('Drive 列表请求失败：HTTP 403');
+
+    const reloaded = await reload();
+    expect(reloaded.getSnapshot().unsyncedIds).toEqual(['tx1']); // 这个要留下
+    expect(reloaded.getSnapshot().authError).toBe(false);
+    expect(reloaded.getSnapshot().lastError).toBeNull();
+  });
+
+  it('存储里是坏数据时回退到空状态，不把整个模块带崩', async () => {
+    localStorage.setItem('justsayit.sync', '{ 不是合法 JSON');
+    const reloaded = await reload();
+    expect(reloaded.getSnapshot().unsyncedIds).toEqual([]);
+  });
+
+  it('存储里的形状不对（比如 unsyncedIds 不是数组）时同样回退到空状态', async () => {
+    localStorage.setItem('justsayit.sync', JSON.stringify({ unsyncedIds: 'tx1' }));
+    const reloaded = await reload();
+    expect(reloaded.getSnapshot().unsyncedIds).toEqual([]);
+  });
+});
+
+describe('reconcileUnsynced', () => {
+  it('丢掉账本里已经不存在的 id——这类 id 永远等不到 markSynced（同步靠事件日志算"已上传哪些"），留着会让徽标永久停在待同步、兜底重试无休止地跑', () => {
+    markUnsynced(['tx-alive', 'tx-gone']);
+    reconcileUnsynced(['tx-alive']);
+    expect(getSnapshot().unsyncedIds).toEqual(['tx-alive']);
+  });
+
+  it('全部丢掉后计时起点一并重置', () => {
+    markUnsynced(['tx-gone']);
+    reconcileUnsynced([]);
+    expect(getSnapshot().unsyncedIds).toEqual([]);
+    expect(getSnapshot().firstUnsyncedAt).toBeNull();
+  });
+
+  it('没有需要丢弃的 id 时不做无意义的通知', () => {
+    markUnsynced(['tx1']);
+    const listener = vi.fn();
+    const unsubscribe = subscribe(listener);
+    reconcileUnsynced(['tx1']);
     expect(listener).not.toHaveBeenCalled();
     unsubscribe();
   });

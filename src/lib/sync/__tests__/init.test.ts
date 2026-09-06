@@ -24,11 +24,12 @@ vi.mock('@/lib/ledger/events', () => ({ getDeviceId: vi.fn(() => 'this-device') 
 let unsyncedIds: string[] = [];
 vi.mock('@/lib/sync/status', () => ({
   markUnsynced: vi.fn(),
+  reconcileUnsynced: vi.fn(),
   getSnapshot: vi.fn(() => ({ unsyncedIds })),
 }));
 vi.mock('@/lib/sync/engine', () => ({ syncNow: vi.fn().mockResolvedValue(undefined) }));
 
-import { markUnsynced } from '@/lib/sync/status';
+import { markUnsynced, reconcileUnsynced } from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
 import { hydrate } from '@/lib/ledger/store';
 
@@ -198,6 +199,27 @@ describe('initSync', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('水合完成后用本设备的账目 id 校准持久化下来的未同步集合——待同步状态现在跨刷新存活，万一它指向的账目在本地已经不存在了（清过 IndexedDB、换了设备等），不清掉就永远清不掉', async () => {
+    vi.resetModules();
+    const { initSync } = await import('@/lib/sync/init');
+    eventsSnapshot = [
+      { eventId: 'e1', deviceId: 'this-device', kind: 'transaction_created', payload: { id: 'tx1' } },
+      {
+        eventId: 'e2',
+        deviceId: 'other-device',
+        kind: 'transaction_created',
+        payload: { id: 'tx-from-other-device' },
+      },
+      { eventId: 'e3', deviceId: 'this-device', kind: 'raw_input_queued', payload: { id: 'q1' } },
+    ];
+    initSync();
+    await flushHydrate();
+
+    // 只有本设备产生的账目事件才可能被 markSynced 清掉（engine.ts 按
+    // deviceId 过滤上传），所以校准的基准也只能是这一批
+    expect(reconcileUnsynced).toHaveBeenCalledWith(['tx1']);
   });
 
   it('cleanup 会清掉兜底定时器，卸载后不再继续调用 syncNow', async () => {

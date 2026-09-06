@@ -63,7 +63,10 @@ describe('乐观 UI', () => {
 
     release({ ok: true, json: async () => ({ records: [oneRecord] }) });
     await waitFor(() => expect(screen.getByText('麦当劳')).toBeDefined());
-    expect(screen.queryByText(/Processing/)).toBeNull();
+    // 占位行的消失是另一次独立的 React 提交（账本行来自 store 的外部订阅，
+    // 占位行来自 handleSubmit finally 里的 setPending），两者先后顺序不保证——
+    // 等到账本行就同步断言占位行已经没了，会间歇性抢跑（整套跑时约四次挂一次）。
+    await waitFor(() => expect(screen.queryByText(/Processing/)).toBeNull());
   });
 
   it('结果落地后显示飞入确认动画，不再有撤销按钮（用户反馈：改成纯视觉确认，去掉撤销入口）', async () => {

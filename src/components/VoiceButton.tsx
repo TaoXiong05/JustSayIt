@@ -1,9 +1,9 @@
 'use client';
 
-import { Mic, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Mic } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { knownMerchants } from '@/lib/ledger/store';
-import { initializeRecorder, RecorderError } from '@/lib/voice/recorder';
+import { initializeRecorder, RecorderError, DEFAULT_MAX_MS } from '@/lib/voice/recorder';
 import type { RecorderHandle } from '@/lib/voice/recorder';
 import { useLocale } from '@/lib/i18n/context';
 import { errorCodeToKey, type DictKey } from '@/lib/i18n/dictionary';
@@ -62,11 +62,29 @@ export function VoiceButton({
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
+  const [remainingMs, setRemainingMs] = useState(DEFAULT_MAX_MS);
+
+  // 录音上限的倒计时。按"开始时刻 + 当前时刻"算剩余，而不是每次 tick 自减：
+  // setInterval 本身有漂移，页面切到后台时还会被浏览器降频，自减会越走越
+  // 偏，跟录音器那个真正决定何时停的 setTimeout 对不上。上限值直接取
+  // recorder.ts 的 DEFAULT_MAX_MS，两边不会各写一个数字然后走散。
+  useEffect(() => {
+    if (status !== 'recording') return;
+    const startedAt = Date.now();
+    setRemainingMs(DEFAULT_MAX_MS);
+    const id = setInterval(() => {
+      setRemainingMs(Math.max(0, DEFAULT_MAX_MS - (Date.now() - startedAt)));
+    }, 250);
+    return () => clearInterval(id);
+  }, [status]);
 
   async function start() {
     setError(null);
     try {
-      const recorder = initializeRecorder();
+      // 录满上限（recorder.ts 的 DEFAULT_MAX_MS）时录音器会自己停下来，
+      // 但只有接上这个回调，组件才知道该离开录音态、照常去转写——否则
+      // 界面会一直停在"录音中"，上限对用户等于不存在。
+      const recorder = initializeRecorder({ onAutoStop: () => void stop() });
       recorderRef.current = await recorder.start();
       setStatus('recording');
     } catch (err) {
@@ -115,47 +133,32 @@ export function VoiceButton({
       // overflow-y-auto 的容器，录音态内容一旦比这块可用空间高就会被
       // 裁切/挤压——用户反馈原话"不要让它被遮挡"。fixed + z-50（盖过
       // BottomNav 的 z-40）让录音 UI 悬浮在整个页面之上，不再受 Composer
-      // 卡片自身高度的约束；半透明+模糊的背景把它和底下的页面内容区分
-      // 开，读出来就是"浮在当前页面层之上"。桌面端 Composer 高度宽松
-      // （h-96），lg: 还原回原来嵌在卡片里的居中布局，不需要悬浮。
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:backdrop-blur-none">
+      // 卡片自身高度的约束。桌面端 Composer 高度宽松（h-96），lg: 还原回
+      // 原来嵌在卡片里的居中布局，不需要悬浮。
+      //
+      // items-end + pb-10：整栈锚在屏幕底部，而不是垂直居中——拇指够得到
+      // 的范围本来就是相对屏幕底边的，锚底边在各种屏幕高度上都成立，不用
+      // 维护一串跟 Composer 高度耦合的百分比计算（用户要求：红色麦克风
+      // 下移到最好操作的位置）。盖住底部 tab 栏是有意的：录音期间不该误触导航。
+      //
+      // bg-bg/40 + backdrop-blur-md：底色只留一层薄压暗，保证红色麦克风和
+      // 文案在任意背景上都读得清，主要靠模糊做出毛玻璃感——原来是 bg-bg/80，
+      // 等于把下面盖死了，模糊反而看不出来（用户反馈："不要现在这种完全
+      // 不透明的感觉"）。
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-bg/40 pb-10 backdrop-blur-md lg:static lg:inset-auto lg:z-auto lg:items-center lg:bg-transparent lg:pb-0 lg:backdrop-blur-none">
         <div className="flex flex-col items-center gap-2.5">
-          {/* size-11（44px，移动端最小可靠点按尺寸）+ gap-7（28px）：36px 按钮
-              紧挨 96px 大圆时，手指目标是"取消"但触点落进大圆矩形热区（按钮
-              的可点击范围是它的方形包围盒，不是看起来的圆形）的概率很高——
-              这正是用户反馈"点 X 还是回填到输入框"最可能的成因，不是取消
-              逻辑本身的 bug（已有测试覆盖：取消不会触发转写）。 */}
-          <div className="flex items-center gap-7">
-            <button
-              type="button"
-              onClick={cancel}
-              aria-label={t('voiceCancel')}
-              title={t('voiceCancel')}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink [clip-path:circle(50%)] lg:size-11"
-            >
-              <X aria-hidden="true" className="size-5" />
-            </button>
-            {/* 移动端点击录音只比空闲态大一圈（size-14→size-16，+8px），不是
-                大跳变（回归：之前录音态在移动端固定 42dvh 的 Composer 卡片
-                里跳得太高，把标题/输入胶囊挤变形——用户反馈原话，"点击变红色
-                不要变大那么多，变大一点点就行"）。桌面端 Composer 是宽松的
-                h-96，维持原来更明显的放大（lg:size-24）作为"正在录音"的
-                视觉强调。 */}
-            <button
-              type="button"
-              onClick={() => void stop()}
-              aria-label={t('voiceStop')}
-              title={t('voiceStop')}
-              className="relative flex size-16 items-center justify-center rounded-full bg-danger text-white shadow-pop [clip-path:circle(50%)] lg:size-24"
-            >
-              {/* ping 波纹圈：跟下面的竖线声波是两种视觉语言的同一个意思——
-                  "正在录音"，圈负责外围的呼吸感，竖线负责"像声音在跳动"。 */}
-              <span className="absolute inset-0 animate-ping rounded-full bg-danger/50" />
-              <Mic aria-hidden="true" className="relative size-7 lg:size-9" />
-            </button>
-            {/* 占位元素，抵消左边取消按钮的宽度，让大圆图标视觉居中而不是偏右 */}
-            <span className="size-11 shrink-0" aria-hidden="true" />
-          </div>
+          <button
+            type="button"
+            onClick={() => void stop()}
+            aria-label={t('voiceStop')}
+            title={t('voiceStop')}
+            className="relative flex size-20 items-center justify-center rounded-full bg-danger text-white shadow-pop [clip-path:circle(50%)] lg:size-24"
+          >
+            {/* ping 波纹圈：跟下面的竖线声波是两种视觉语言的同一个意思——
+                "正在录音"，圈负责外围的呼吸感，竖线负责"像声音在跳动"。 */}
+            <span className="absolute inset-0 animate-ping rounded-full bg-danger/50" />
+            <Mic aria-hidden="true" className="relative size-8 lg:size-9" />
+          </button>
           <div className="flex h-5 items-end gap-1" aria-hidden="true">
             {WAVE_BAR_DELAYS_MS.map((delay, i) => (
               <span
@@ -165,9 +168,33 @@ export function VoiceButton({
               />
             ))}
           </div>
-          <span aria-live="polite" className="text-xs font-medium text-danger">
-            {t('voiceRecording')}
-          </span>
+          {/* 倒计时单独放在一个 aria-hidden 的元素里，不塞进上面那个
+              aria-live 区域——那样读屏器会每秒播报一次剩余秒数。文案本身
+              只在进入录音态时播报一次就够了。
+              font-mono + tabular-nums：数字等宽，秒数变化时这一行不会抖。 */}
+          <div className="flex items-baseline gap-1.5">
+            <span aria-live="polite" className="text-xs font-medium text-danger">
+              {t('voiceRecording')}
+            </span>
+            <span
+              aria-hidden="true"
+              className="font-mono text-xs font-semibold tabular-nums text-danger"
+            >
+              {Math.ceil(remainingMs / 1000)}s
+            </span>
+          </div>
+          {/* 取消从"大圆左边的 X 图标"改成"大圆下方一个带文案的胶囊"：
+              按钮的可点击范围是它的方形包围盒、不是看起来的圆形，紧挨大圆
+              的小 X 很容易在瞄准时把触点落进麦克风热区（用户反馈"点 X 还是
+              回填到输入框"最可能的成因）。改成垂直方向分开的宽胶囊之后这个
+              隐患自然消失；mt-2 额外拉开间距，py-3 保证约 44px 的可靠点按高度。 */}
+          <button
+            type="button"
+            onClick={cancel}
+            className="mt-2 rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
+          >
+            {t('voiceCancel')}
+          </button>
         </div>
       </div>
     );
