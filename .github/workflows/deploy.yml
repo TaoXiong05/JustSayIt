@@ -1,9 +1,16 @@
 name: Deploy
 
 # Plan 6 Task 5. Push to main builds+pushes an arm64 image, deploys it to
-# the shared Oracle VM, then syncs the Caddy site file. `concurrency`
-# prevents two pushes in quick succession from racing each other's
-# deploy/Caddy-sync steps against the same shared VM.
+# the shared Oracle VM, then syncs the Caddy site file. Fully
+# self-bootstrapping — no manual first-time VM setup: the deploy job
+# creates /opt/justsayit, writes .env from GitHub secrets, and sets up
+# the backup cron on every run (all idempotent), so the very first real
+# run is also the first deploy. The one thing this workflow genuinely
+# cannot bootstrap is its own SSH access — JUSTSAYIT_DEPLOY_KEY's public
+# half has to already be in the VM's `deploy` user's authorized_keys
+# before this can run at all; that's a one-time action outside CI.
+# `concurrency` prevents two pushes in quick succession from racing each
+# other's deploy/Caddy-sync steps against the same shared VM.
 on:
   push:
     branches: [main]
@@ -63,19 +70,81 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      # Compose file itself is not touched here — it already exists at
-      # /opt/justsayit/docker-compose.yml from first-time VM setup, and
-      # every deploy after that just pulls the new image and recreates
-      # the container against the same file. Keeps .env/volume state
-      # stable across image updates.
-      - name: Pull and restart on the VM
-        uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      # No manual first-time VM setup — every run syncs the compose file
+      # and backup script fresh from the repo, so the very first deploy
+      # bootstraps /opt/justsayit from nothing and every later deploy
+      # picks up any change to either file automatically. Staged in /tmp
+      # first, same reasoning as the Caddy sync below: never give the
+      # transfer step itself write access to /opt/justsayit directly.
+      - name: Stage compose file and backup script on the VM
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.JUSTSAYIT_DEPLOY_KEY }}
+          source: "deploy/docker-compose.yml,deploy/backup.sh"
+          target: /tmp/justsayit-incoming
+          strip_components: 1
+
+      # Writes /opt/justsayit/.env fresh from GitHub secrets on every
+      # run — GitHub secrets are the single source of truth for these
+      # values, not whatever's already on the VM. Don't hand-edit .env
+      # on the VM expecting it to stick; update the GitHub secret and
+      # redeploy instead, or a future run will silently overwrite it.
+      - name: Bootstrap /opt/justsayit and (re)deploy
+        uses: appleboy/ssh-action@v1
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          REFRESH_TOKEN_ENCRYPTION_KEY: ${{ secrets.REFRESH_TOKEN_ENCRYPTION_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          AI_DAILY_QUOTA: ${{ secrets.AI_DAILY_QUOTA }}
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.JUSTSAYIT_DEPLOY_KEY }}
+          envs: GROQ_API_KEY,CEREBRAS_API_KEY,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,SESSION_SECRET,REFRESH_TOKEN_ENCRYPTION_KEY,POSTGRES_PASSWORD,AI_DAILY_QUOTA
           script: |
             set -e
+
+            mkdir -p /opt/justsayit/backups
+            cp /tmp/justsayit-incoming/docker-compose.yml /opt/justsayit/docker-compose.yml
+            cp /tmp/justsayit-incoming/backup.sh /opt/justsayit/backup.sh
+            chmod +x /opt/justsayit/backup.sh
+
+            cat > /opt/justsayit/.env <<ENVEOF
+            GROQ_API_KEY=${GROQ_API_KEY}
+            CEREBRAS_API_KEY=${CEREBRAS_API_KEY}
+            GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+            GOOGLE_REDIRECT_URI=https://justsayit.taoxiong.site/api/auth/callback
+            SESSION_SECRET=${SESSION_SECRET}
+            REFRESH_TOKEN_ENCRYPTION_KEY=${REFRESH_TOKEN_ENCRYPTION_KEY}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            DATABASE_URL=postgresql://justsayit:${POSTGRES_PASSWORD}@justsayit-db:5432/justsayit
+            AI_DAILY_QUOTA=${AI_DAILY_QUOTA:-60}
+            ENVEOF
+            chmod 600 /opt/justsayit/.env
+
+            # Idempotent — only appends the backup cron line if it isn't
+            # already there, so redeploys don't pile up duplicate entries.
+            CRON_LINE="0 3 * * * /opt/justsayit/backup.sh >> /opt/justsayit/backups/backup.log 2>&1"
+            (crontab -l 2>/dev/null | grep -Fq "$CRON_LINE") || { (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -; }
+
+            # `edge` is owned by the existing edge-proxy stack — this
+            # project only ever joins it, never creates it. Fail loudly
+            # here instead of silently `docker network create`-ing a new
+            # one that wouldn't match the real edge-proxy's network.
+            docker network inspect edge >/dev/null 2>&1 || {
+              echo "edge network not found on the VM — it should already exist (created by the edge-proxy stack), not something this workflow creates" >&2
+              exit 1
+            }
+
             cd /opt/justsayit
             docker compose pull
             docker compose up -d

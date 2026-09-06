@@ -389,8 +389,22 @@ and ships what they define.
      158.179.25.78`, `username: deploy`, `key: ${{
      secrets.JUSTSAYIT_DEPLOY_KEY }}` (Global Constraint 5 — this secret
      is new and scoped to this repo only).
-   - Remote script: `cd /opt/justsayit && docker compose pull &&
-     docker compose up -d`.
+   - **Revised — self-bootstrapping, no manual VM setup** (the user
+     explicitly asked to remove every manual VM step so the first
+     deploy is also the first CI run): an `appleboy/scp-action` step
+     first stages `deploy/docker-compose.yml` and `deploy/backup.sh`
+     into `/tmp` on the VM, then the SSH step's remote script does, in
+     order, every time: `mkdir -p /opt/justsayit/backups`; copy both
+     staged files into `/opt/justsayit/`; write `/opt/justsayit/.env`
+     (mode 600) from a heredoc populated by the job's own env (each
+     value sourced from a GitHub secret via `appleboy/ssh-action`'s
+     `envs:` passthrough — see step 5 below for the full secret list);
+     idempotently append the backup cron line if it isn't already in
+     `deploy`'s crontab; assert the `edge` network exists (fail loudly,
+     don't create one); then `cd /opt/justsayit && docker compose pull
+     && docker compose up -d`. Overwriting `.env` on every run is
+     deliberate — GitHub secrets are the single source of truth, not
+     whatever's already on the VM.
 4. Job `sync-caddy` (`needs: deploy`, or folded into the same SSH step
    sequence — implementer's call, document the choice):
    - SCP `deploy/justsayit.caddy` to
@@ -409,19 +423,16 @@ and ships what they define.
      Global Constraint 9, this must never leave the shared edge proxy in
      a broken state for the other three apps.
 5. Repo secrets to create (GitHub → Settings → Secrets and variables →
-   Actions), enumerated so nothing is discovered mid-workflow-write:
-   `JUSTSAYIT_DEPLOY_KEY` (new keypair, private half here, public half
-   appended to `deploy`'s `~/.ssh/authorized_keys` on the VM during
-   go-live). The app's own runtime secrets (`GROQ_API_KEY`, Google OAuth
-   credentials, `SESSION_SECRET`, `REFRESH_TOKEN_ENCRYPTION_KEY`,
-   `POSTGRES_PASSWORD`) do **not** need to be GitHub secrets at all under
-   this design — they live only in the VM's `/opt/justsayit/.env`,
-   created once by hand during go-live (Task 4 step 3), and CI never
-   touches them. This is simpler than piping them through Actions
-   secrets on every deploy and matches "secrets injected via Actions
-   secrets, stored as a 600 `.env` on the VM" from the spec — the
-   injection happens once at setup time, not per-deploy, since the app
-   image itself carries no secrets baked in.
+   Actions) — **revised: all of the app's runtime secrets are now
+   GitHub secrets**, not a hand-created VM `.env` (see the revision
+   note in step 3 above and the go-live checklist's revised item 6):
+   `JUSTSAYIT_DEPLOY_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY`,
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`,
+   `REFRESH_TOKEN_ENCRYPTION_KEY`, `POSTGRES_PASSWORD`, and optionally
+   `AI_DAILY_QUOTA` (defaults to 60 if absent). `GOOGLE_REDIRECT_URI` is
+   hardcoded in the workflow instead of a secret (it's a public callback
+   URL, not sensitive), and `ALLOW_UNAUTHENTICATED_API` is simply never
+   written into `.env` at all (equivalent to unset/false).
 
 **Test:** this is inherently only testable end-to-end against the real
 VM (Global Constraint / operating-constraint territory — see the note
@@ -467,39 +478,51 @@ time, confirmed, per the operating constraint at the top of this plan.
 5. **DNS**: create an A/AAAA record for `justsayit.taoxiong.site`
    pointing at `158.179.25.78`, matching how the other three apps'
    subdomains are already set up on `taoxiong.site`.
-6. **First-time VM setup** (as `ubuntu`, or `deploy` where it already
-   has the needed permissions):
-   - `mkdir -p /opt/justsayit/backups`, owned by `deploy`.
-   - Copy `deploy/docker-compose.yml` from this repo to
-     `/opt/justsayit/docker-compose.yml`.
-   - Create `/opt/justsayit/.env` (mode 600, owned by `deploy`) with
-     real values for `GROQ_API_KEY`, `CEREBRAS_API_KEY` (confirmed still
-     live — `src/lib/ai/providers/cerebras.ts` is an active provider,
-     not dead code), `GOOGLE_CLIENT_ID`,
-     `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (the production
-     callback URL from step 4), `SESSION_SECRET` (`openssl rand -hex
-     32`), `REFRESH_TOKEN_ENCRYPTION_KEY` (32-byte hex, generated
-     independently from the session secret), `DATABASE_URL`
-     (`postgresql://justsayit:<POSTGRES_PASSWORD>@justsayit-db:5432/justsayit`),
-     `POSTGRES_PASSWORD` (referenced by the compose file's db service),
-     `AI_DAILY_QUOTA`, and **`ALLOW_UNAUTHENTICATED_API` either absent
-     or explicitly `false`** — this is the escape-hatch flag that must
-     never be `true` in production (per its own inline comment in
-     `.env.example`).
-   - Generate the `justsayit_deploy_key` keypair, add the public half to
-     `deploy`'s `~/.ssh/authorized_keys`, add the private half as the
-     `JUSTSAYIT_DEPLOY_KEY` GitHub secret.
-   - Confirm the `edge` Docker network already exists
-     (`docker network inspect edge`) — it should, created by the
-     existing edge-proxy stack; this project only joins it, never
-     creates it.
-   - Set up the `deploy`-owned crontab entry for Task 6's `backup.sh`.
-7. **First deploy**: push to `main` (or manually trigger the workflow)
-   and watch it end to end — build, push, pull, up, Caddy sync — before
-   considering this plan done. Confirm `https://justsayit.taoxiong.site`
-   actually loads over HTTPS (the edge proxy handles TLS; nothing in
-   this app's own config touches certificates) and that a real Google
-   login round-trips correctly against the production redirect URI.
+6. **Revised (no manual VM file setup)**: the `deploy` job in
+   `.github/workflows/deploy.yml` is self-bootstrapping — it creates
+   `/opt/justsayit/backups`, syncs `docker-compose.yml` and
+   `backup.sh` from the repo, writes `.env` fresh from GitHub secrets,
+   and sets up the backup cron line idempotently, all on every run.
+   There is no separate "first-time setup" step to do by hand for any
+   of that. **One thing CI genuinely cannot bootstrap: its own SSH
+   access.** `JUSTSAYIT_DEPLOY_KEY`'s public half has to already be in
+   the VM's `deploy` user's `~/.ssh/authorized_keys` before the
+   workflow can run at all — this has to happen once, outside CI, by
+   whoever already has access to the VM. Everything else below is a
+   GitHub secret to create, not a VM action:
+   - `JUSTSAYIT_DEPLOY_KEY` — a fresh ed25519 keypair generated
+     specifically for this repo (Global Constraint 5); private half is
+     the secret, public half goes on the VM per the note above.
+   - `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `GOOGLE_CLIENT_ID`,
+     `GOOGLE_CLIENT_SECRET` — real values from those consoles (not
+     generatable locally).
+   - `SESSION_SECRET` (`openssl rand -hex 32`),
+     `REFRESH_TOKEN_ENCRYPTION_KEY` (`openssl rand -hex 32` —
+     independently, never derived from `SESSION_SECRET`, per Global
+     Constraint 7), `POSTGRES_PASSWORD` (`openssl rand -hex 24` —
+     alphanumeric-only on purpose, so it never needs URL-escaping
+     inside the `DATABASE_URL` the workflow composes from it) — all
+     three are pure local entropy, no external account needed.
+   - `AI_DAILY_QUOTA` is optional (defaults to 60 in the workflow if
+     the secret doesn't exist).
+   - `GOOGLE_REDIRECT_URI` and `ALLOW_UNAUTHENTICATED_API` are not
+     secrets at all under this design — the workflow hardcodes the
+     production redirect URL directly (it's not sensitive, it's a
+     public callback URL), and simply never writes
+     `ALLOW_UNAUTHENTICATED_API` into `.env` at all, which is
+     equivalent to it being unset/false (the escape-hatch flag per
+     `.env.example` must never be `true` in production).
+   - The `edge` Docker network is still never created by anything in
+     this repo — the workflow checks for it and fails loudly if it's
+     missing (it should already exist, owned by the edge-proxy stack).
+7. **First deploy is the first real CI run** — push to `main` (or
+   manually trigger the workflow) once the deploy key is on the VM and
+   every secret above exists, and watch it end to end: build, push,
+   bootstrap `/opt/justsayit`, up, Caddy sync. Confirm
+   `https://justsayit.taoxiong.site` actually loads over HTTPS (the
+   edge proxy handles TLS; nothing in this app's own config touches
+   certificates) and that a real Google login round-trips correctly
+   against the production redirect URI.
 
 ---
 
