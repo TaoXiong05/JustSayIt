@@ -179,6 +179,28 @@ textarea {
   }
 }
 
+/* 提交成功确认动画（AddedFlash.tsx）：原地淡入 → 短暂停留 → 向上飘移
+   淡出，做出"刚记的这笔账飞向上方近期账单区域"的观感（用户反馈原话）。
+   不追求精确落点——纯装饰性的一次性动效，跟 voice-pulse-once 同一类。 */
+@keyframes record-fly-up {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(-4.5rem);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6rem);
+  }
+}
+
 /* EditDialog（Radix Dialog）的淡入淡出/缩放——Radix 的 Presence 会在
    [data-state=closed] 动画播完后才真正把节点从 DOM 卸载，所以这两组
    keyframes 配合 Radix 自动打的 data-state 属性，就能同时做到"关闭时有

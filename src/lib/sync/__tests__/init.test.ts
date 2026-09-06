@@ -21,7 +21,11 @@ vi.mock('@/lib/ledger/store', () => ({
   hydrate: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('@/lib/ledger/events', () => ({ getDeviceId: vi.fn(() => 'this-device') }));
-vi.mock('@/lib/sync/status', () => ({ markUnsynced: vi.fn() }));
+let unsyncedIds: string[] = [];
+vi.mock('@/lib/sync/status', () => ({
+  markUnsynced: vi.fn(),
+  getSnapshot: vi.fn(() => ({ unsyncedIds })),
+}));
 vi.mock('@/lib/sync/engine', () => ({ syncNow: vi.fn().mockResolvedValue(undefined) }));
 
 import { markUnsynced } from '@/lib/sync/status';
@@ -32,6 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   listeners.clear();
   eventsSnapshot = [];
+  unsyncedIds = [];
 });
 
 /** initSync() 内部先 await 一次 hydrate() 才建立基线——等这次微任务落地。 */
@@ -167,5 +172,49 @@ describe('initSync', () => {
 
     // 历史事件不该被当成"新事件"标记未同步——它在基线建立之前就已经存在
     expect(markUnsynced).not.toHaveBeenCalled();
+  });
+
+  it('回归：兜底定时重试——账本变化触发的那次同步没追上（比如一次性网络抖动）之后，即使再也没有别的账本变化，只要还有未同步项，也会定期自动补跑，不需要用户刷新页面（用户反馈原话："提交记录，不刷新页面就一直显示等待同步"）', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.resetModules();
+      const { initSync } = await import('@/lib/sync/init');
+      initSync();
+      await flushHydrate();
+      vi.mocked(syncNow).mockClear(); // 只关心 hydrate 落地之后、兜底定时器触发的那次调用
+
+      // 模拟：这笔账目一直没能同步掉（不管什么原因），且此后没有任何
+      // 别的账本变化——没有 markUnsynced/syncNow 的新触发点
+      unsyncedIds = ['tx-stuck'];
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(syncNow).toHaveBeenCalledTimes(1);
+
+      // 假设这次补跑成功了，追上后不该继续没意义地反复调用
+      unsyncedIds = [];
+      vi.mocked(syncNow).mockClear();
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(syncNow).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cleanup 会清掉兜底定时器，卸载后不再继续调用 syncNow', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.resetModules();
+      const { initSync } = await import('@/lib/sync/init');
+      const cleanup = initSync();
+      await flushHydrate();
+      cleanup();
+      vi.mocked(syncNow).mockClear();
+
+      unsyncedIds = ['tx-stuck'];
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(syncNow).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

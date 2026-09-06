@@ -6,6 +6,8 @@ import {
   markSynced,
   markAuthError,
   clearAuthError,
+  markSyncFailed,
+  clearSyncError,
   classifyBTier,
 } from '@/lib/sync/status';
 
@@ -13,6 +15,7 @@ beforeEach(() => {
   // 每个用例前重置到干净状态——直接把已知的未同步 id 全部标记为已同步
   markSynced(getSnapshot().unsyncedIds);
   clearAuthError();
+  clearSyncError();
 });
 
 describe('markUnsynced / markSynced', () => {
@@ -68,8 +71,33 @@ describe('markAuthError / clearAuthError', () => {
   });
 });
 
+describe('markSyncFailed / clearSyncError', () => {
+  it('记录失败原因并通知订阅者', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribe(listener);
+    markSyncFailed('Drive 更新文件失败：HTTP 401');
+    expect(getSnapshot().lastError).toBe('Drive 更新文件失败：HTTP 401');
+    expect(listener).toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it('clearSyncError 清掉上一次的失败原因', () => {
+    markSyncFailed('boom');
+    clearSyncError();
+    expect(getSnapshot().lastError).toBeNull();
+  });
+
+  it('本来就没有失败记录时 clearSyncError 不做无意义的通知', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribe(listener);
+    clearSyncError();
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+});
+
 describe('classifyBTier', () => {
-  const base = { unsyncedIds: ['tx1'], authError: false, lastSyncedAt: null };
+  const base = { unsyncedIds: ['tx1'], authError: false, lastSyncedAt: null, lastError: null };
 
   it('没有未同步项时是 ok', () => {
     expect(classifyBTier({ ...base, unsyncedIds: [], firstUnsyncedAt: null })).toBe('ok');

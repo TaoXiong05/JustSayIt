@@ -1,7 +1,6 @@
 import './globals.css';
 import { Outfit, IBM_Plex_Sans, IBM_Plex_Mono, Noto_Sans_SC } from 'next/font/google';
 import { LocaleProvider } from '@/lib/i18n/context';
-import { Toaster } from '@/components/Toaster';
 import { TopNav } from '@/components/TopNav';
 import { MobileHeader } from '@/components/MobileHeader';
 import { BottomNav } from '@/components/BottomNav';
@@ -74,7 +73,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileHeader />
           {children}
           <Footer />
-          <Toaster />
           <BottomNav />
         </LocaleProvider>
       </body>

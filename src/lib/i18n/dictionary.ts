@@ -44,7 +44,6 @@ export type DictKey =
   | 'recentTransactionsTitle'
   | 'viewAllHistory'
   | 'undoneCount'
-  | 'undo'
   | 'errorUnauthenticated'
   | 'errorQuotaExceeded'
   | 'errorInvalidRequest'
@@ -56,8 +55,7 @@ export type DictKey =
   | 'queuedOffline'
   | 'syncPendingCount'
   | 'syncedUpToDate'
-  | 'syncWarningBanner'
-  | 'syncWarningBannerIOS'
+  | 'syncLastError'
   | 'syncWarningModalTitle'
   | 'syncRetry'
   | 'syncReconnect'
@@ -162,12 +160,9 @@ const en: Record<DictKey, DictValue> = {
   viewAllHistory: 'View all history',
   undoneCount: ({ count, unsynced }) =>
     `Recorded ${count} item${count === 1 ? '' : 's'}${Number(unsynced) > 0 ? ' · pending sync' : ''}`,
-  undo: 'Undo',
   syncPendingCount: ({ count }) => `${count} pending sync`,
   syncedUpToDate: 'Synced',
-  syncWarningBanner: 'Not backed up to the cloud yet — check your connection.',
-  syncWarningBannerIOS:
-    'Not synced yet — Safari may clear this data after 7 days. Add to Home Screen to keep it safe.',
+  syncLastError: ({ message }) => `Last sync failed: ${message}`,
   syncWarningModalTitle: 'Some entries have been unsynced for a while.',
   syncRetry: 'Retry sync',
   syncReconnect: 'Reconnect Google Drive',
@@ -277,11 +272,9 @@ const zh: Record<DictKey, DictValue> = {
   viewAllHistory: '查看全部历史',
   undoneCount: ({ count, unsynced }) =>
     `已记录 ${count} 笔${Number(unsynced) > 0 ? ' · 待同步' : ''}`,
-  undo: '撤销',
   syncPendingCount: ({ count }) => `${count} 笔待同步`,
   syncedUpToDate: '已同步',
-  syncWarningBanner: '尚未备份到云端，检查一下网络。',
-  syncWarningBannerIOS: '尚未同步——Safari 可能在 7 天后清除这些数据，添加到主屏幕可以避免。',
+  syncLastError: ({ message }) => `上次同步失败：${message}`,
   syncWarningModalTitle: '有些账目已经很久没同步了。',
   syncRetry: '重试同步',
   syncReconnect: '重新连接 Google Drive',

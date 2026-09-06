@@ -20,6 +20,7 @@ vi.mock('@/lib/ledger/db', () => ({
 
 import { addTransactions } from '@/lib/ledger/store';
 import { appendEvents, readAllEvents } from '@/lib/ledger/db';
+import { upsertOwnFile } from '@/lib/sync/drive';
 import { getSnapshot as getSyncSnapshot, markSynced } from '@/lib/sync/status';
 import { initSync } from '@/lib/sync/init';
 import type { Transaction } from '@/lib/ai/schema';
@@ -79,6 +80,40 @@ describe('sync/init.ts 与 sync/engine.ts 的 id 契约', () => {
 
     // initSync 的订阅回调是 fire-and-forget 的 syncNow()，轮询等它跑完
     await waitUntil(() => getSyncSnapshot().unsyncedIds.length === 0);
+
+    cleanup();
+  });
+
+  it('回归：新账目恰好在上一次同步仍在飞行中时提交（典型场景：页面刚加载，initSync() 那次无条件同步还没跑完用户就提交了一笔），也能在这次同步跑完后自动补跑一次同步掉，不需要刷新页面（用户反馈原话："提交记录，不刷新页面就一直显示等待同步"）', async () => {
+    // 卡住第一次 upsertOwnFile，模拟"上一次同步仍在进行中"
+    let releaseFirstUpload: () => void = () => {};
+    const firstUploadGate = new Promise<void>((resolve) => {
+      releaseFirstUpload = resolve;
+    });
+    let uploadCallCount = 0;
+    vi.mocked(upsertOwnFile).mockImplementation(async () => {
+      uploadCallCount++;
+      if (uploadCallCount === 1) await firstUploadGate;
+    });
+
+    const cleanup = initSync();
+    // initSync() 建立基线后发起的那次无条件 syncNow() 此刻正卡在
+    // upsertOwnFile 里等 firstUploadGate——也就是"上一次同步仍在飞行中"
+    await new Promise((r) => setTimeout(r, 0));
+
+    // 新账目恰好在这次同步还没跑完时提交
+    await addTransactions([tx]);
+    expect(getSyncSnapshot().unsyncedIds).toEqual(['tx-integration-1']);
+
+    const appended = vi.mocked(appendEvents).mock.calls[0][0];
+    vi.mocked(readAllEvents).mockResolvedValue(appended);
+
+    // 放行第一次上传——飞行中的这次同步跑完后应该自动补跑一次，把刚才
+    // 提交的账目也同步掉，不需要任何额外触发（比如刷新页面重新走一遍
+    // initSync）
+    releaseFirstUpload();
+    await waitUntil(() => getSyncSnapshot().unsyncedIds.length === 0);
+    expect(uploadCallCount).toBeGreaterThanOrEqual(2);
 
     cleanup();
   });

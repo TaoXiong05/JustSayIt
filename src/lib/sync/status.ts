@@ -8,6 +8,16 @@ export type SyncState = {
   /** A 类失败标记（spec §8.3）：授权失效/撤销、Drive API 拒绝等，不看时间，立刻提示 */
   authError: boolean;
   lastSyncedAt: string | null;
+  /**
+   * 最近一次同步尝试的失败原因（成功一次就清空）。
+   *
+   * 加这个字段的原因（用户反馈原话："后端日志没有报错，网络返回都是 200，
+   * 为什么前端一直显示待同步"）：上传是客户端直接打 googleapis.com、不经过
+   * 本项目后端，所以后端日志和自家 API 的 200 都证明不了同步成功；而
+   * engine.ts 抛出的错误一路被调用方的 `.catch(() => {})` 吞掉，既不写状态
+   * 也不打日志——界面上"还没试"和"试了但失败"长得完全一样，无从判断。
+   */
+  lastError: string | null;
 };
 
 /**
@@ -20,6 +30,7 @@ export const EMPTY_SYNC_STATE: SyncState = {
   firstUnsyncedAt: null,
   authError: false,
   lastSyncedAt: null,
+  lastError: null,
 };
 
 let state: SyncState = EMPTY_SYNC_STATE;
@@ -63,6 +74,19 @@ export function markAuthError(): void {
 
 export function clearAuthError(): void {
   state = { ...state, authError: false };
+  emit();
+}
+
+/** 记下最近一次同步尝试为什么失败（见 SyncState.lastError 的说明）。 */
+export function markSyncFailed(message: string): void {
+  state = { ...state, lastError: message };
+  emit();
+}
+
+/** 一次成功的同步尝试之后调用。本来就没有失败记录时不做无意义的通知。 */
+export function clearSyncError(): void {
+  if (state.lastError === null) return;
+  state = { ...state, lastError: null };
   emit();
 }
 

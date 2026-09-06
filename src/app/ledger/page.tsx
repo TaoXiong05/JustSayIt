@@ -9,9 +9,9 @@ import { PendingRow } from '@/components/PendingRow';
 import { QueuedRow } from '@/components/QueuedRow';
 import { SyncWarning } from '@/components/SyncWarning';
 import { SyncStatusDot } from '@/components/SyncStatusDot';
-import { UndoToast } from '@/components/UndoToast';
+import { AddedFlash } from '@/components/AddedFlash';
 import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
-import { addTransactions, removeTransaction, queueRawInput } from '@/lib/ledger/store';
+import { addTransactions, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { recentTransactions } from '@/lib/ledger/history';
 import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
@@ -52,11 +52,6 @@ export default function Home() {
   const [lastAdded, setLastAdded] = useState<string[]>([]);
 
   const clearToast = useCallback(() => setLastAdded([]), []);
-
-  const undo = useCallback(async () => {
-    for (const id of lastAdded) await removeTransaction(id);
-    setLastAdded([]);
-  }, [lastAdded]);
 
   async function handleSubmit(text: string, viaVoice: boolean) {
     const pendingId = randomUUID();
@@ -217,19 +212,17 @@ export default function Home() {
         )}
       </div>
       {lastAdded.length > 0 && (
-        // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
-        // 触发一次新的 push()。「同 length 的连续两批单笔提交」也会被区分开——
-        // Radix 每条 toast 持有独立的自动关闭计时器，但 effect 只在重新挂载
-        // （或 count/unsyncedCount 变化）时才会跑；仅靠 props 变化驱动，
-        // 两批同 count 的提交就没法各自产生一条新 toast。
-        <UndoToast
+        // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 AddedFlash，
+        // 各自重新播一遍飞入动画、各自计时。「同 length 的连续两批单笔
+        // 提交」也会被区分开——仅靠 props 变化驱动，两批同 count 的提交
+        // 会被判定成"同一条"，动画不会重新播放。
+        <AddedFlash
           key={lastAdded.join(',')}
           count={lastAdded.length}
           unsyncedCount={
             lastAdded.filter((id) => getSyncSnapshot().unsyncedIds.includes(id)).length
           }
-          onUndo={undo}
-          onDismiss={clearToast}
+          onDone={clearToast}
         />
       )}
     </main>

@@ -94,37 +94,45 @@ export function Composer({
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
         <VoiceButton onTranscribed={appendText} />
       </div>
-      {/* 输入框+按钮合成一行胶囊——参考设计的另一个关键点：不再是"输入框
-          一行、按钮单独居中一行"两段式。原来的多行 textarea 换成单行
-          input：这一行本身就矮，装不下换行内容，且账目描述本来就以
-          短句为主。移动端整体比桌面端大一圈（py/text/px），跟 VoiceButton
-          的放大同一个理由——半屏高度的卡片需要同比放大的内容去填满，
-          lg: 断点还原回桌面端原尺寸。 */}
-      <div className="relative flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface py-2.5 pl-5 pr-2 focus-within:border-brand lg:py-1.5 lg:pl-4 lg:pr-1.5">
+      {/* 输入框+按钮：容器从胶囊（rounded-full）改成圆角矩形（rounded-2xl）——
+          input 换成了会自动换行的 textarea（用户反馈：账目描述有时一行装不
+          下，希望能在框内换行看到完整内容），多行撑高后胶囊形状会变形，
+          矩形更合适。回车键仍然直接提交（preventDefault 拦掉默认换行），
+          没有引入"回车换行、按钮才提交"的新操作习惯。移动端整体比桌面端
+          大一圈（py/text/px），跟 VoiceButton 的放大同一个理由——半屏高度
+          的卡片需要同比放大的内容去填满，lg: 断点还原回桌面端原尺寸。 */}
+      <div className="relative flex shrink-0 items-end gap-2 rounded-2xl border border-border bg-surface py-2.5 pl-5 pr-2 focus-within:border-brand lg:py-1.5 lg:pl-4 lg:pr-1.5">
         {/* 语音回填的一次性涟漪提示（改善方向 #3）：key 用递增序号强制
             重新挂载，保证连续多次语音回填都能各自完整播完一遍动画。 */}
         {voicePulseSeq > 0 && (
           <span
             key={voicePulseSeq}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-full [animation:voice-pulse-once_0.6s_ease-out_forwards]"
+            className="pointer-events-none absolute inset-0 rounded-2xl [animation:voice-pulse-once_0.6s_ease-out_forwards]"
           />
         )}
-        <input
-          type="text"
+        <textarea
+          rows={2}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSubmit();
+            // 回车直接提交、不换行——保持跟原单行 input 一致的操作习惯，
+            // "自动换行"只是文本超出宽度时的视觉效果，不是"回车能手动换行"。
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
           }}
           placeholder={t('composerPlaceholder')}
-          className="min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-muted focus:outline-none lg:text-sm"
+          className="min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base text-ink placeholder:text-muted focus:outline-none lg:text-sm"
         />
+        {/* Submit 按钮缩小一档（用户反馈：太大了），self-end 贴着输入框底部对齐，
+            不随文本行数增多而跟着垂直居中漂移。 */}
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-base font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 lg:px-4 lg:py-2 lg:text-sm"
+          className="mb-1.5 shrink-0 self-end rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 lg:px-3 lg:py-1 lg:text-xs"
         >
           {submitting ? t('submitting') : t('submit')}
         </button>

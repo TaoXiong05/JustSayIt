@@ -3,8 +3,6 @@ import { screen, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
 import userEvent from '@testing-library/user-event';
 import Home from '@/app/ledger/page';
-import { Toaster } from '@/components/Toaster';
-import { resetToastStoreForTests, getSnapshot } from '@/lib/toast';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
@@ -33,20 +31,9 @@ const oneRecord = {
 
 beforeEach(async () => {
   localStorage.clear();
-  resetToastStoreForTests();
   await clearAllEvents();
   await hydrate();
 });
-
-/** UndoToast 现在把数据交给全局 <Toaster /> 渲染，页面测试需一并挂载 */
-function renderHome() {
-  return render(
-    <>
-      <Home />
-      <Toaster />
-    </>,
-  );
-}
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -59,7 +46,7 @@ describe('乐观 UI', () => {
     );
 
     const user = userEvent.setup();
-    renderHome();
+    render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -79,42 +66,21 @@ describe('乐观 UI', () => {
     expect(screen.queryByText(/Processing/)).toBeNull();
   });
 
-  it('结果落地后显示已记录 N 笔与撤销按钮', async () => {
+  it('结果落地后显示飞入确认动画，不再有撤销按钮（用户反馈：改成纯视觉确认，去掉撤销入口）', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ records: [oneRecord] }) }),
     );
     const user = userEvent.setup();
-    renderHome();
+    render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     expect(await screen.findByText(/Recorded 1 item/)).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 
-  it('点击撤销移除刚记的账目', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ records: [oneRecord] }) }),
-    );
-    const user = userEvent.setup();
-    renderHome();
-    await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
-    await user.click(screen.getByRole('button', { name: 'Submit' }));
-
-    await screen.findByText('麦当劳');
-    // getByRole（同步）在这里会偶发抢跑：账本行的更新来自 ledger store 的
-    // 外部订阅提交，Undo 按钮来自另一条独立链路（setLastAdded → UndoToast
-    // 挂载 → effect → toast store push → <Toaster/> 重渲染），两者是两次
-    // 独立的 React commit，先后顺序不保证——必须用 findByRole 等它真正出现。
-    await user.click(await screen.findByRole('button', { name: 'Undo' }));
-
-    await waitFor(() => expect(screen.queryByText('麦当劳')).toBeNull());
-    expect(screen.getByText(/No records yet/)).toBeDefined();
-  });
-
-  it('连续两次提交时，两批各自产生一条独立 toast（key 重挂载 → 每次重新 push）', async () => {
+  it('连续两次提交时，第二批的确认动画重新挂载（key 变化），不会残留两份', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ records: [oneRecord] }) })
@@ -122,26 +88,16 @@ describe('乐观 UI', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const user = userEvent.setup();
-    renderHome();
+    render(<Home />);
     await user.type(screen.getByRole('textbox'), '早餐麦当劳25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    // 断言直接等 toast store 的快照，而不是数 DOM 里匹配到的文案节点数：
-    // Radix Toast 会为每条 toast 额外渲染一份视觉隐藏的副本供屏幕阅读器
-    // 播报（见 node_modules/@radix-ui/react-toast 的 ToastAnnounce，带一次
-    // 延迟渲染），同一条 toast 短暂地就能在 DOM 里产生 2 个匹配文本节点——
-    // 用 getAllByText(...).toHaveLength(2) 来判断"有几条 toast"会在只有
-    // 1 条真实 toast 时就误判为满足条件，导致间歇性失败。
-    await waitFor(() => expect(getSnapshot()).toHaveLength(1));
     await screen.findByText(/Recorded 1 item/);
 
-    // 第二批：同 count 的连续提交。若 UndoToast 不因 key 变化重新挂载，
-    // effect 依赖（count/unsyncedCount）未变就不会重新 push——key 强制
-    // 重挂载保证每批各推进一条 toast。Radix 给每条 toast 独立自动关闭
-    // 计时器，两批互不干扰（替代旧实现里手动 setTimeout 的等价语义）。
+    // 第二批：lastAdded 换成新一批 id，key 变化强制 AddedFlash 重新挂载——
+    // 不是在原有那份基础上叠加，旧的应该被替换掉而不是残留。
     await user.type(screen.getByRole('textbox'), '午餐麦当劳30');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    await waitFor(() => expect(getSnapshot()).toHaveLength(2));
-    expect(screen.getAllByText(/Recorded 1 item/).length).toBeGreaterThanOrEqual(2);
+    await waitFor(() => expect(screen.getAllByText(/Recorded 1 item/)).toHaveLength(1));
   });
 
   it('失败时占位行消失且输入内容保留', async () => {

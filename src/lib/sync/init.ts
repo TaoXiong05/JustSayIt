@@ -1,7 +1,15 @@
 import { subscribe, getEventsSnapshot, hydrate } from '@/lib/ledger/store';
 import { getDeviceId, type LedgerEvent } from '@/lib/ledger/events';
-import { markUnsynced } from '@/lib/sync/status';
+import { markUnsynced, getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
+
+// 兜底重试间隔（回归：用户反馈"提交记录，不刷新页面就一直显示等待
+// 同步"）。账本变化触发的那次 syncNow() 偶尔会因为一次性的瞬时失败
+// （网络抖动等 B 类错误）没能追上，如果此后再也没有别的账本变化，
+// 待同步项就永远等不到下一次尝试——之前唯一的补救是用户手动刷新页面，
+// 重新走一遍 initSync() 那次无条件同步。定期检查一次，只要还有未同步项
+// 就补跑一次；追上后 unsyncedIds 变空，这里自然就没有实际同步动作。
+const RETRY_INTERVAL_MS = 15_000;
 
 let seenEventIds = new Set<string>();
 
@@ -57,6 +65,7 @@ function newlyCreatedOrAmendedTxIds(events: LedgerEvent[]): string[] {
 export function initSync(): () => void {
   let cancelled = false;
   let unsubscribe: (() => void) | null = null;
+  let retryTimer: ReturnType<typeof setInterval> | null = null;
 
   void hydrate().then(() => {
     if (cancelled) return;
@@ -73,10 +82,15 @@ export function initSync(): () => void {
     // 一条记录都看不到）。这里的基线一旦建立就主动同步一次，不管本地
     // 有没有变化，新设备首次登录也能立刻把远端历史账目拉下来。
     void syncNow().catch(() => {});
+
+    retryTimer = setInterval(() => {
+      if (getSyncSnapshot().unsyncedIds.length > 0) void syncNow().catch(() => {});
+    }, RETRY_INTERVAL_MS);
   });
 
   return () => {
     cancelled = true;
     unsubscribe?.();
+    if (retryTimer) clearInterval(retryTimer);
   };
 }
