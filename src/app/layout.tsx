@@ -5,6 +5,7 @@ import { Toaster } from '@/components/Toaster';
 import { TopNav } from '@/components/TopNav';
 import { MobileHeader } from '@/components/MobileHeader';
 import { BottomNav } from '@/components/BottomNav';
+import { Footer } from '@/components/Footer';
 import { PersistStorageOnMount } from '@/components/PersistStorageOnMount';
 
 // Plan 5 字体体系：display=Outfit、body=IBM Plex Sans、numerals=IBM Plex Mono。
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TopNav />
           <MobileHeader />
           {children}
+          <Footer />
           <Toaster />
           <BottomNav />
         </LocaleProvider>

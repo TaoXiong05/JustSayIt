@@ -29,25 +29,15 @@ export default function LoginPage() {
       <Hero />
       <StatStrip />
       <FeatureGrid />
-      <footer className="flex flex-col items-center gap-3 px-6 pb-10 pt-2 text-center">
+      {/* 隐私政策/服务条款链接现在是全局页脚（components/Footer.tsx，
+          layout.tsx 里每个页面都有），这里不用再重复一份。 */}
+      <footer className="px-6 pb-10 pt-2 text-center">
         <a
           href="/ledger"
           className="text-sm font-medium text-muted transition-colors hover:text-ink"
         >
           {t('backToLedger')}
         </a>
-        {/* Google OAuth consent screen 要求提供隐私政策/服务条款的公开链接
-            （发布到 In production 的前置条件，design spec §11.1）——放在
-            营销首页的页脚，是新访客最先落地、且不需要登录就能看到的地方。 */}
-        <div className="flex items-center gap-3 text-xs text-muted">
-          <a href="/privacy" className="underline-offset-2 hover:text-ink hover:underline">
-            {t('footerPrivacyPolicy')}
-          </a>
-          <span aria-hidden="true">·</span>
-          <a href="/terms" className="underline-offset-2 hover:text-ink hover:underline">
-            {t('footerTermsOfService')}
-          </a>
-        </div>
       </footer>
     </main>
   );
