@@ -1,0 +1,54 @@
+# Plan 6 Task 4 — checked into the repo as a template. The VM's actual
+# copy lives at /opt/justsayit/docker-compose.yml, owned by `deploy`.
+# CI (Task 5) only ever runs `docker compose pull && up -d` against the
+# already-present file on the VM — it does not overwrite this file on
+# every deploy, so .env/volume state stays stable across image updates.
+#
+# No `ports:` on either service (Global Constraint 2) — /opt/edge-proxy
+# owns host 80/443 exclusively; justsayit-web is reached only via the
+# shared `edge` network, and justsayit-db only from justsayit-web over
+# the `internal` network.
+
+services:
+  justsayit-web:
+    image: ghcr.io/taoxiong05/justsayit:latest
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      justsayit-db:
+        condition: service_healthy
+    networks:
+      edge:
+        aliases: [justsayit-web]
+      internal: {}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  justsayit-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: justsayit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: justsayit
+    volumes:
+      - justsayit-pg-data:/var/lib/postgresql/data
+    networks:
+      internal: {}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U justsayit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  edge:
+    external: true
+  internal: {}
+
+volumes:
+  justsayit-pg-data:
