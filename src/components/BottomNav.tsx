@@ -16,8 +16,8 @@ export function BottomNav() {
   const pathname = usePathname();
   const { t } = useLocale();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/90 backdrop-blur lg:hidden">
-      <ul className="mx-auto flex max-w-md items-stretch justify-around">
+    <nav className="fixed inset-x-0 bottom-0 z-40 h-16 border-t border-border bg-surface/90 backdrop-blur lg:hidden">
+      <ul className="mx-auto flex h-full max-w-md items-stretch justify-around">
         {NAV_TABS.map(({ href, key, icon: Icon }) => {
           const active = pathname === href;
           return (
@@ -25,7 +25,7 @@ export function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${
+                className={`flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors ${
                   active ? 'text-brand' : 'text-muted hover:text-ink'
                 }`}
               >

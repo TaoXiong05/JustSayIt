@@ -20,6 +20,22 @@ const { subscribe, emit } = createEmitter();
 export { subscribe };
 
 /**
+ * 跨标签页/跨窗口同步（用户反馈：浏览器标签页和已安装的 PWA 窗口是两个
+ * 独立进程，各自只在内存里持有自己的账本状态，共享的只有 IndexedDB——
+ * 一边删了账目，另一边不重新读一次 IndexedDB 就永远不知道，得手动刷新）。
+ * 用 BroadcastChannel 广播"账本变了"，不广播具体内容——收到通知的一方
+ * 自己重新 hydrate() 去读真相来源（IndexedDB），避免两边对"发生了什么"
+ * 理解不一致。只在 push() 里广播，hydrate() 本身不广播，否则收到广播的
+ * 一方重新 hydrate 会再广播一次，形成乒乓循环。
+ */
+const CROSS_TAB_CHANNEL_NAME = 'justsayit-ledger-sync';
+const crossTabChannel =
+  typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(CROSS_TAB_CHANNEL_NAME) : null;
+if (crossTabChannel) {
+  crossTabChannel.onmessage = () => void hydrate();
+}
+
+/**
  * 必须始终返回同一引用直到状态真正改变。
  * 切勿在此做筛选或映射——每次返回新数组会让 React 判定状态持续变化，
  * 进入无限重渲染(spec §6.6)。派生一律在组件里用 useMemo。
@@ -44,6 +60,12 @@ async function push(newEvents: LedgerEvent[]): Promise<void> {
   await appendEvents(newEvents);
   events = [...events, ...newEvents];
   commit();
+  // 广播推迟到下一个 microtask，不跟 commit()/emit() 挤在同一个执行栈——
+  // 这条广播是给其它标签页/窗口看的，不该影响本地这次提交自己的 React
+  // 批量更新/渲染时序（回归：曾经同步 postMessage 导致本地乐观 UI 的
+  // 过渡态偶发被 waitFor 捕捉到，一份不该跟这次提交产生任何关联的
+  // 副作用，不能挤在同一个调度窗口里）。
+  if (crossTabChannel) queueMicrotask(() => crossTabChannel.postMessage('changed'));
 }
 
 export async function addTransactions(txs: Transaction[]): Promise<void> {

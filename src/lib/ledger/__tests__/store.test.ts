@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { clearAllEvents } from '@/lib/ledger/db';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { clearAllEvents, appendEvents } from '@/lib/ledger/db';
+import { createTransactionCreated } from '@/lib/ledger/events';
 import {
   subscribe,
   getSnapshot,
@@ -180,5 +181,32 @@ describe('amendTransaction', () => {
     await addTransactions([txData]);
     await amendTransaction('tx-amend-2', { merchant: 'Costco' });
     expect(knownMerchants()).toContain('Costco');
+  });
+});
+
+describe('跨标签页/窗口同步（用户反馈：浏览器标签页和已安装的 PWA 窗口各自独立，一边改了账目另一边不刷新就看不到）', () => {
+  it('本地写入（push）后广播通知，另一个"标签页"（独立的 BroadcastChannel 实例）能收到', async () => {
+    const otherTab = new BroadcastChannel('justsayit-ledger-sync');
+    const received = new Promise<void>((resolve) => {
+      otherTab.onmessage = () => resolve();
+    });
+    await addTransactions([tx('tx-broadcast-1')]);
+    await received; // 不超时即通过；挂起会被 vitest 的用例超时兜底
+    otherTab.close();
+  });
+
+  it('收到其它标签页的广播后，重新从 IndexedDB 读取最新状态（不是单纯清空/瞎猜）', async () => {
+    // 模拟"另一个标签页"：绕过这个模块的 push()，直接往 IndexedDB 写一条
+    // 这个模块从未见过的事件，再广播——验证收到通知那一方确实重新读了
+    // 真相来源，而不是本地状态没变就误以为"没有更新"。
+    const newEvent = createTransactionCreated(tx('tx-from-other-tab'));
+    await appendEvents([newEvent]);
+    const otherTab = new BroadcastChannel('justsayit-ledger-sync');
+    otherTab.postMessage('changed');
+    otherTab.close();
+
+    await vi.waitFor(() => {
+      expect(getSnapshot().transactions.some((t) => t.id === 'tx-from-other-tab')).toBe(true);
+    });
   });
 });

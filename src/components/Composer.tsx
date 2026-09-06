@@ -75,19 +75,32 @@ export function Composer({
     // shadow-pop（而不是列表/数据类卡片统一用的 shadow-card）：这是页面上
     // 唯一的主操作入口，材质上应该比历史记录、统计面板这些"数据展示"卡片
     // 更"实体化"一点，建立当前扁平卡片系统里缺失的层级（改善方向 #6）。
-    <div className="rounded-2xl border border-border bg-surface p-6 shadow-pop">
-      <div className="text-center">
+    // flex h-full flex-col：输入区现在是页面底部的定高区块（移动端约半屏，
+    // 见 ledger/page.tsx），标题/输入胶囊保持自身高度（shrink-0），中间的
+    // VoiceButton 用 flex-1 + justify-center 吃掉多出来的高度——按钮因此
+    // 自然落在卡片竖直方向的中段，而卡片本身贴着屏幕底部（紧邻底部 tab
+    // 栏），这正好是单手持机时拇指最容易够到的区域，不需要额外的绝对定位。
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-surface p-6 shadow-pop">
+      <div className="shrink-0 text-center">
         <h2 className="font-display text-lg font-bold text-ink">{t('composerTitle')}</h2>
         <p className="mt-1 text-sm text-muted">{t('composerSubtitle')}</p>
       </div>
-      <div className="mt-5 flex justify-center">
+      {/* min-h-0 让这个 flex-1 区域能真的收缩到比内容矮（flex item 默认
+          min-height:auto 会顶住内容撑开父容器）；overflow-y-auto 是安全网——
+          万一某台设备上录音态内容（大圆+声波+文案）还是比这块可用空间高，
+          让它自己内部滚动，而不是把标题/输入胶囊挤出卡片本身的高度
+          （回归：录音态一度比空闲态明显更高，在 42dvh 的卡片里挤变形了，
+          见 VoiceButton.tsx 两态尺寸的调整）。 */}
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
         <VoiceButton onTranscribed={appendText} />
       </div>
       {/* 输入框+按钮合成一行胶囊——参考设计的另一个关键点：不再是"输入框
           一行、按钮单独居中一行"两段式。原来的多行 textarea 换成单行
           input：这一行本身就矮，装不下换行内容，且账目描述本来就以
-          短句为主。 */}
-      <div className="relative mt-5 flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 pl-4 pr-1.5 focus-within:border-brand">
+          短句为主。移动端整体比桌面端大一圈（py/text/px），跟 VoiceButton
+          的放大同一个理由——半屏高度的卡片需要同比放大的内容去填满，
+          lg: 断点还原回桌面端原尺寸。 */}
+      <div className="relative flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface py-2.5 pl-5 pr-2 focus-within:border-brand lg:py-1.5 lg:pl-4 lg:pr-1.5">
         {/* 语音回填的一次性涟漪提示（改善方向 #3）：key 用递增序号强制
             重新挂载，保证连续多次语音回填都能各自完整播完一遍动画。 */}
         {voicePulseSeq > 0 && (
@@ -105,19 +118,19 @@ export function Composer({
             if (e.key === 'Enter') handleSubmit();
           }}
           placeholder={t('composerPlaceholder')}
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-muted focus:outline-none lg:text-sm"
         />
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-base font-semibold text-brand-ink transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 lg:px-4 lg:py-2 lg:text-sm"
         >
           {submitting ? t('submitting') : t('submit')}
         </button>
       </div>
       {error && (
-        <p role="alert" className="mt-3 text-center text-sm font-medium text-danger">
+        <p role="alert" className="mt-3 shrink-0 text-center text-sm font-medium text-danger">
           {error}
         </p>
       )}

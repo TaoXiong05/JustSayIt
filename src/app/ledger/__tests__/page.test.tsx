@@ -253,14 +253,14 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
   });
 });
 
-describe('主屏布局（用户明确要求：主输入区在最上面，近期账单在下面）', () => {
-  it('Composer 在 DOM 里排在近期账单列表前面', () => {
+describe('主屏布局（用户明确要求：近期账单在上面，主输入区在下面，输入区占约半屏）', () => {
+  it('近期账单列表在 DOM 里排在 Composer 前面', () => {
     render(<Home />);
     const composerHeading = screen.getByText('Record anytime, anywhere');
     const recentHeading = screen.getByText('Recent transactions');
-    // DOCUMENT_POSITION_FOLLOWING：recentHeading 在 composerHeading 之后
+    // DOCUMENT_POSITION_FOLLOWING：composerHeading 在 recentHeading 之后
     expect(
-      composerHeading.compareDocumentPosition(recentHeading) &
+      recentHeading.compareDocumentPosition(composerHeading) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLocale } from '@/lib/i18n/context';
 
 /**
@@ -16,6 +17,10 @@ import { useLocale } from '@/lib/i18n/context';
  */
 export function Footer() {
   const { locale, t } = useLocale();
+  const pathname = usePathname();
+  // /ledger 改成了不滞动的定高布局（页眉+近期账单+输入区正好占满视口），
+  // 没有多余的滚动空间留给页脚——只在这一个页面隐藏，其它页面不受影响。
+  if (pathname === '/ledger') return null;
   return (
     <footer className="mx-auto w-full max-w-2xl px-4 pb-24 pt-8 text-center lg:max-w-5xl lg:pb-8">
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted">

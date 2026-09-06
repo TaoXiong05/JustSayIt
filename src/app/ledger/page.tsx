@@ -97,15 +97,73 @@ export default function Home() {
   if (loading) return <LedgerSkeleton />;
 
   return (
-    <main className="mx-auto w-full max-w-xl px-4 pb-28 pt-6 lg:max-w-2xl lg:pb-6">
-      {/* 主输入区（已登录：Composer；访客：登录引导 banner）放在最前面——
-          用户打开首页第一眼看到的应该是"能做什么"，而不是历史记录列表
-          （用户明确要求：把 Ledger 列表挪到主输入区下面）。 */}
-      {authed ? (
-        <section className="mb-6">
+    // 整页改成定高不滞动布局（用户明确要求）：main 自身高度 = 视口
+    // 减去页眉（MobileHeader/TopNav 都是 h-14）和移动端底部 tab 栏
+    // （BottomNav h-16，桌面端没有故不减）。近期账单区占满剩余空间自己
+    // 滚动，输入区固定在底部——不再依赖整页滚动+pb-28 避让底部 tab 栏
+    // 的老办法。
+    <main className="mx-auto flex h-[calc(100dvh-3.5rem-4rem)] w-full max-w-xl flex-col overflow-hidden px-4 pb-3 pt-4 lg:h-[calc(100dvh-3.5rem)] lg:max-w-2xl lg:pb-6 lg:pt-6">
+      {/* 近期账单区（用户明确要求：挪到输入区上面）：flex-1 吃掉除输入区
+          外的所有剩余高度，min-h-0 是让 flex 子项的 overflow-y-auto 真正
+          生效的关键（没有它，flex item 默认不会收缩到比内容更矮，滚动条
+          永远不会出现）。 */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
+            完整历史由 /history 承担。"查看全部历史"链接只在首页出现：History
+            页本身已经在这个链接的目的地里，再放一份纯属重复；首页则需要一条
+            快捷路径。同步状态点原来长在全局页眉里，现在挪到这儿——它描述的
+            是"这份账本有没有同步"，跟下面这份最近账单列表是同一件事。 */}
+        <div className="mb-1.5 flex shrink-0 items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-sm font-semibold text-ink">
+              {t('recentTransactionsTitle')}
+            </h2>
+            <SyncStatusDot />
+          </div>
+          <Link
+            href="/history"
+            className="inline-flex items-center gap-0.5 text-sm font-medium text-brand hover:underline"
+          >
+            {t('viewAllHistory')}
+            <ChevronRight aria-hidden="true" className="size-4" />
+          </Link>
+        </div>
+        {/* 这个滚动容器本身就是那张白色卡片（border/bg-surface/shadow-card
+            直接搬到这一层，日期标题也改用同色背景，见 LedgerList.tsx）——
+            滚动容器的可见范围和可交互范围完全重合，不会出现"看着是外面、
+            其实已经在里面"的灰色地带。overscroll-contain 防止滑到顶/底之后
+            继续被"接力"到页面滚动。pending/queued 占位行并入这同一张滚动
+            卡片顶部（原来是各自独立的卡片）——它们本来就是"即将变成账单"
+            的条目，跟着历史记录一起滚动更自然，也不再挤占输入区的空间。 */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface shadow-card">
+          {pending.length > 0 && (
+            <ul className="border-b border-border">
+              {pending.map((entry) => (
+                <PendingRow key={entry.id} text={entry.text} viaVoice={entry.viaVoice} />
+              ))}
+            </ul>
+          )}
+          {pendingRawInputs.length > 0 && (
+            <ul className="border-b border-border">
+              {pendingRawInputs.map((item) => (
+                <QueuedRow key={item.id} text={item.text} />
+              ))}
+            </ul>
+          )}
+          <LedgerList transactions={recentTransactions(transactions, 10)} />
+        </div>
+      </div>
+      <SyncWarning />
+      {/* 输入区（已登录：Composer；访客：登录引导 banner）挪到最下面
+          （用户明确要求：近期账单在上、输入区在下）。移动端 h-[42dvh]——
+          紧贴底部 tab 栏之上，是单手持机时拇指最容易够到的区域；用户反馈
+          最初的 50dvh 挤占了近期账单区，调小几个百分点把空间还给列表。
+          桌面端原来是 lg:h-auto（内容自适应），用户反馈那样太窄、组件显挤，
+          改成显式 lg:h-96，给 Composer 内部留出跟移动端类似的呼吸感。 */}
+      <div className="mt-3 flex h-[42dvh] shrink-0 flex-col justify-center lg:mt-6 lg:h-96 lg:block">
+        {authed ? (
           <Composer onSubmit={handleSubmit} />
-        </section>
-      ) : (
+        ) : (
         // 之前是满版品牌渐变+白字的"招牌 CTA"卡片——跟 Logo/CTA/Hero 用的
         // 是同一个渐变，导致"重要"的东西全用同一招表达，互相抵消层级感
         // （改善方向 #2：渐变收窄到一个真正的签名时刻，这里改用跟其它
@@ -116,7 +174,7 @@ export default function Home() {
         // Composer 同一个位置（两者互斥），所以也用 shadow-pop 跟 Composer
         // 同一个"主操作入口"层级，而不是列表/数据卡片的 shadow-card
         // （改善方向 #6）。
-        <div className="mb-6 rounded-2xl border border-border bg-surface p-5 shadow-pop">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-pop">
           <div className="flex items-start gap-3.5">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
               <RefreshCw aria-hidden="true" className="size-5" />
@@ -156,55 +214,8 @@ export default function Home() {
             </a>
           </div>
         </div>
-      )}
-      {pending.length > 0 && (
-        <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-          {pending.map((entry) => (
-            <PendingRow key={entry.id} text={entry.text} viaVoice={entry.viaVoice} />
-          ))}
-        </ul>
-      )}
-      {pendingRawInputs.length > 0 && (
-        <ul className="mb-4 overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-          {pendingRawInputs.map((item) => (
-            <QueuedRow key={item.id} text={item.text} />
-          ))}
-        </ul>
-      )}
-      {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
-          完整历史由 /history 承担——固定高度、超出内部滚动，不随条数把输入区
-          挤到折叠线以下。"查看全部历史"链接只在首页出现：History 页本身已经
-          在这个链接的目的地里，再放一份纯属重复；首页则需要一条快捷路径。
-          同步状态点原来长在全局页眉里，现在挪到这儿——它描述的是"这份账本
-          有没有同步"，跟下面这份最近账单列表是同一件事，放在标题旁边比放在
-          导航栏里更贴题；页眉腾出来的位置换成了醒目的安装入口。 */}
-      <div className="mb-1.5 flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-sm font-semibold text-ink">
-            {t('recentTransactionsTitle')}
-          </h2>
-          <SyncStatusDot />
-        </div>
-        <Link
-          href="/history"
-          className="inline-flex items-center gap-0.5 text-sm font-medium text-brand hover:underline"
-        >
-          {t('viewAllHistory')}
-          <ChevronRight aria-hidden="true" className="size-4" />
-        </Link>
+        )}
       </div>
-      {/* 这个滚动容器本身就是那张白色卡片（border/bg-surface/shadow-card
-          直接搬到这一层，日期标题也改用同色背景，见 LedgerList.tsx）——
-          滚动容器的可见范围和可交互范围完全重合，不会出现"看着是外面、
-          其实已经在里面"的灰色地带（回归：鼠标进白色卡片才能滚动）。
-          overscroll-contain 防止滑到顶/底之后继续被"接力"到页面滚动。
-          22rem（352px）约等于 5 条 TransactionRow（每条约 69px：
-          py-3.5 内边距 28px + size-10 分类头像 40px + 1px 分隔线）——
-          用户明确要求这个容器再高一点，大概能一次看到 5 条。 */}
-      <div className="max-h-[22rem] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface shadow-card">
-        <LedgerList transactions={recentTransactions(transactions, 10)} />
-      </div>
-      <SyncWarning />
       {lastAdded.length > 0 && (
         // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 UndoToast，
         // 触发一次新的 push()。「同 length 的连续两批单笔提交」也会被区分开——

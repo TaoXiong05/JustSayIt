@@ -24,7 +24,7 @@ export function MobileHeader() {
   const { locale, setLocale, t } = useLocale();
 
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
+    <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur lg:hidden">
       <Link href="/ledger" className="shrink-0">
         <Logo />
       </Link>
