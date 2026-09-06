@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.github
+.claude
+docs
+*.md
+.env
+.env.*
+.vscode
+.idea
+coverage
