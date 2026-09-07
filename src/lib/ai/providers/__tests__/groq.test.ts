@@ -62,6 +62,45 @@ describe('groqTranscribe', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  // 回归：手机端口述"65"回填成 "sixty five"。Whisper 的 prompt 是**上文**
+  // 不是指令，它模仿上文的数字写法；而 prompt 原来只由 knownMerchants() 组成，
+  // 本机没有商户历史（新装/清缓存/访客）时就是空串，Whisper 失去数字写法的
+  // 先验，短句会被拼成英文单词——而拼出来的数字不含阿拉伯数字，会被
+  // Composer 的 hasAmountSignal 直接拦下，那笔账根本提交不了。
+  it('词表为空时 prompt 仍带阿拉伯数字的风格样例', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: '65' }),
+    } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await groqTranscribe(audio, []);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const prompt = String((init.body as FormData).get('prompt'));
+    expect(prompt).toMatch(/\d/);
+    // 样例里不能出现品牌名：prompt 里的词会被偏置，凭空提高某个商户被听成
+    // 的概率是 vocab 的职责，不该由风格样例夹带。
+    expect(prompt).not.toMatch(/Woolworths|Coles|Uber/i);
+  });
+
+  // MediaRecorder 的默认输出是平台相关的（桌面 Chrome 给 WebM/Opus，
+  // iOS Safari 给 MP4/AAC），扩展名写死 webm 等于把 MP4 谎报成 WebM。
+  it('上传文件名的扩展名跟随音频真实容器', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: 'ok' }),
+    } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await groqTranscribe(new Blob(['fake-mp4'], { type: 'audio/mp4' }), []);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(((init.body as FormData).get('file') as File).name).toBe('recording.m4a');
+  });
+
   it('错误消息不带响应体内容', async () => {
     vi.stubGlobal(
       'fetch',
