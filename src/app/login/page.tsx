@@ -33,10 +33,10 @@ export default function LoginPage() {
           layout.tsx 里每个页面都有），这里不用再重复一份。 */}
       <footer className="px-6 pb-10 pt-2 text-center">
         <a
-          href="/ledger"
+          href="/history"
           className="text-sm font-medium text-muted transition-colors hover:text-ink"
         >
-          {t('backToLedger')}
+          {t('backToHistory')}
         </a>
       </footer>
     </main>

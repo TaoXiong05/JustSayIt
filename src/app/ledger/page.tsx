@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { RefreshCw, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
@@ -28,11 +28,19 @@ const DEFAULT_CURRENCY = 'AUD';
 export default function Home() {
   const ledger = useLedger();
   const transactions = ledger.transactions;   // 稳定引用，无需 memo（见 Task 14）
-  // §11.4 local-first：账本不因登录状态而隐藏；登录仅用于调用 AI / 语音
+  // 账本页现在要求登录：未登录用户访问 /ledger 直接送去 /login（他们不需要
+  // 这个页面来登录；要看本地账本历史去 /history，那是未登录可访问的）。
+  // 登录仅额外解锁 AI / 语音能力。
   const { user, loading } = useSession();
   const authed = !loading && user != null;
   const { t } = useLocale();
   const pendingRawInputs = usePendingRawInputs();
+
+  // 未登录 → 跳登录页。用 window.location（跟 app/page.tsx、settings/page.tsx
+  // 的既有跳转同一个写法，测试里只断言 href 赋值）。
+  useEffect(() => {
+    if (!loading && !authed) window.location.href = '/login';
+  }, [loading, authed]);
 
   useEffect(() => {
     return initOfflineQueueAutoRetry();
@@ -83,13 +91,12 @@ export default function Home() {
     }
   }
 
-  // session 状态是"待定"而不是"未登录"这段时间，不能提前画出访客态——
-  // authed 在 loading 时恒为 false，之前会先闪一下访客登录卡片，等
-  // useSession() 落定才翻成 Composer，对已登录用户是一次明显的内容跳变
-  // （用户明确要求：页面加载时不展示未确定内容，统一换成标准过渡动画）。
-  // 这跟 §11.4 local-first 不冲突——账本不因"确定未登录"而隐藏，这里挡的
-  // 只是"还不知道算不算登录"的过渡瞬间。
-  if (loading) return <LedgerSkeleton />;
+  // session 待定或确定未登录都要先经过统一过渡态：authed 在 loading 时恒为
+  // false，不能提前画出完整页面又撤掉（已登录用户在加载瞬间会闪一下跟最终
+  // 不一致的内容，用户明确要求：页面加载时不展示未确定内容，统一换成标准
+  // 过渡动画）。未登录的情况这里会再被上面的 effect 送去 /login，骨架页是
+  // 跳转前那一瞬的过渡。
+  if (loading || !authed) return <LedgerSkeleton />;
 
   return (
     // 整页改成定高不滞动布局（用户明确要求）：main 自身高度 = 视口
@@ -149,67 +156,15 @@ export default function Home() {
         </div>
       </div>
       <SyncWarning />
-      {/* 输入区（已登录：Composer；访客：登录引导 banner）挪到最下面
-          （用户明确要求：近期账单在上、输入区在下）。移动端 h-[42dvh]——
-          紧贴底部 tab 栏之上，是单手持机时拇指最容易够到的区域；用户反馈
-          最初的 50dvh 挤占了近期账单区，调小几个百分点把空间还给列表。
-          桌面端原来是 lg:h-auto（内容自适应），用户反馈那样太窄、组件显挤，
-          改成显式 lg:h-96，给 Composer 内部留出跟移动端类似的呼吸感。 */}
+      {/* 输入区（本页只在已登录时渲染——未登录被上面的 effect 送去 /login，
+          因此这里永远是 Composer，不存在访客分支）挪到最下面（用户明确要求：
+          近期账单在上、输入区在下）。移动端 h-[42dvh]——紧贴底部 tab 栏之上，
+          是单手持机时拇指最容易够到的区域；用户反馈最初的 50dvh 挤占了近期
+          账单区，调小几个百分点把空间还给列表。桌面端原来是 lg:h-auto（内容
+          自适应），用户反馈那样太窄、组件显挤，改成显式 lg:h-96，给 Composer
+          内部留出跟移动端类似的呼吸感。 */}
       <div className="mt-3 flex h-[42dvh] shrink-0 flex-col justify-center lg:mt-6 lg:h-96 lg:block">
-        {authed ? (
-          <Composer onSubmit={handleSubmit} />
-        ) : (
-        // 之前是满版品牌渐变+白字的"招牌 CTA"卡片——跟 Logo/CTA/Hero 用的
-        // 是同一个渐变，导致"重要"的东西全用同一招表达，互相抵消层级感
-        // （改善方向 #2：渐变收窄到一个真正的签名时刻，这里改用跟其它
-        // 卡片同一套语言：surface 底 + border，用 brand-soft 图标点题就够，
-        // 不需要整张卡片都是品牌色）。CTA 直接指向 OAuth 端点、不经过
-        // /login 营销页——会看到这张卡片的人已经在用产品了，不需要再看
-        // 一遍营销话术，少一次跳转就少一次流失。这张卡片在访客态占的是
-        // Composer 同一个位置（两者互斥），所以也用 shadow-pop 跟 Composer
-        // 同一个"主操作入口"层级，而不是列表/数据卡片的 shadow-card
-        // （改善方向 #6）。
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-pop">
-          <div className="flex items-start gap-3.5">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <RefreshCw aria-hidden="true" className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-semibold text-ink">{t('logInPrompt')}</p>
-              <p className="mt-1 text-sm text-muted">{t('logInDescription')}</p>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center">
-            <a
-              href="/api/auth/login"
-              className="inline-flex items-center gap-2.5 rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-[#3c4043] shadow-sm transition-colors hover:bg-surface-2"
-            >
-              {/* Google 官方四色 G 标志，"使用 Google 登录"按钮的标准画法——
-                  按钮本身用 Google 品牌指南要求的浅底深字，不跟随这个
-                  项目自己的品牌色。 */}
-              <svg aria-hidden="true" viewBox="0 0 18 18" className="size-[18px] shrink-0">
-                <path
-                  fill="#4285F4"
-                  d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-                />
-              </svg>
-              {t('logInAction')}
-            </a>
-          </div>
-        </div>
-        )}
+        <Composer onSubmit={handleSubmit} />
       </div>
       {lastAdded.length > 0 && (
         // key 用整批 id 拼接而非 length：强制每批新增都重新挂载 AddedFlash，

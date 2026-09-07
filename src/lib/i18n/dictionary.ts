@@ -20,7 +20,7 @@ export type DictKey =
   | 'logInPrompt'
   | 'logInDescription'
   | 'logInAction'
-  | 'backToLedger'
+  | 'backToHistory'
   | 'footerPrivacyPolicy'
   | 'footerTermsOfService'
   | 'localeToggleLabel'
@@ -138,7 +138,7 @@ const en: Record<DictKey, DictValue> = {
   // Drive"）保持一致的技术表述。
   logInDescription: 'Your data stays on this device — sync runs through your own Google Drive.',
   logInAction: 'Continue with Google',
-  backToLedger: 'Back (view local ledger)',
+  backToHistory: 'Back (view local history)',
   footerPrivacyPolicy: 'Privacy Policy',
   footerTermsOfService: 'Terms of Service',
   localeToggleLabel: '中文',
@@ -257,7 +257,7 @@ const zh: Record<DictKey, DictValue> = {
   logInPrompt: '登录开始使用',
   logInDescription: '数据都存在您的设备上，同步功能通过您自己的 Google Drive 实现。',
   logInAction: '使用 Google 登录',
-  backToLedger: '返回（可查看本地账本）',
+  backToHistory: '返回（可查看本地历史）',
   footerPrivacyPolicy: '隐私政策',
   footerTermsOfService: '服务条款',
   localeToggleLabel: 'English',

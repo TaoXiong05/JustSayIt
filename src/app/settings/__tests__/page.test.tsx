@@ -30,13 +30,13 @@ describe('设置页', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe('1');
   });
 
-  it('点登出调用 fetchLogout 并跳回主屏（不是留在原地无反馈）', async () => {
+  it('点登出调用 fetchLogout 并跳登录页（/ledger 现在要求登录，登出后直接给终点）', async () => {
     const { fetchLogout } = await import('@/lib/auth/client');
     const location = stubLocation();
     render(<SettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
     expect(fetchLogout).toHaveBeenCalled();
-    await waitFor(() => expect(window.location.href).toBe('/ledger'));
+    await waitFor(() => expect(window.location.href).toBe('/login'));
     location.restore();
   });
 
