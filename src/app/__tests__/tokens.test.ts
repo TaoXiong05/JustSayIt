@@ -56,6 +56,20 @@ if (mediaStart !== -1) {
   }
 }
 
+/**
+ * 字体族名不随主题变化——同一套自托管字体在亮暗两边都是它自己（见
+ * globals.css 里 --font-outfit 一组的注释）。它们只是恰好和颜色令牌住在
+ * 同一个 :root 块里，往暗色块再抄一份等于制造一份必须同步维护、又永远
+ * 不可能取不同值的重复定义。所以「亮暗键集必须对齐」这条规则只适用于
+ * 随主题变化的令牌，这里把字体族名排除在外。
+ */
+const THEME_INDEPENDENT = new Set([
+  '--font-outfit',
+  '--font-plex-sans',
+  '--font-plex-mono',
+  '--font-noto-sc',
+]);
+
 describe('设计 token（globals.css）', () => {
   it('亮色块定义了完整令牌集', () => {
     for (const name of [
@@ -85,9 +99,10 @@ describe('设计 token（globals.css）', () => {
     }
   });
 
-  it('暗色块重定义了全部亮色令牌——不存在只在亮色里定义的元素', () => {
+  it('暗色块重定义了全部随主题变化的亮色令牌——不存在只在亮色里定义的元素', () => {
     expect(dark, '应存在 @media (prefers-color-scheme: dark) 守卫块').not.toBeNull();
     for (const [name] of light) {
+      if (THEME_INDEPENDENT.has(name)) continue;
       expect(dark!.has(name), `${name} 应在暗色块中重定义`).toBe(true);
     }
   });

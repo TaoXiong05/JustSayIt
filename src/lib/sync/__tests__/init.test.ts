@@ -274,7 +274,14 @@ describe('initSync', () => {
       await vi.advanceTimersByTimeAsync(15_000);
       expect(syncNow).toHaveBeenCalledTimes(2);
     } finally {
+      // 还原成模块 mock 工厂里那个「resolve(undefined)」的实现，而不是
+      // mockReset()——后者连实现一起抹掉，syncNow() 之后返回 undefined，
+      // 后续用例里 init.ts 的 `void syncNow().catch(...)` 会在 undefined 上
+      // 取 .catch 抛 TypeError。那是发生在 hydrate().then() 里的异步抛出，
+      // 不会让任何一条用例变红，只以两条 Unhandled Rejection 的形式浮出来
+      // （vitest 明说这可能造成 false positive）。
       vi.mocked(syncNow).mockReset();
+      vi.mocked(syncNow).mockResolvedValue(undefined);
       vi.useRealTimers();
     }
   });
