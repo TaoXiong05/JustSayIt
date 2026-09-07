@@ -15,7 +15,6 @@ import { addTransactions, queueRawInput } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { recentTransactions } from '@/lib/ledger/history';
 import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
-import { initSync } from '@/lib/sync/init';
 import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
@@ -44,10 +43,6 @@ export default function Home() {
 
   useEffect(() => {
     return initOfflineQueueAutoRetry();
-  }, []);
-
-  useEffect(() => {
-    return initSync();
   }, []);
 
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时

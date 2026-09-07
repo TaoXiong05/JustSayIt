@@ -67,7 +67,7 @@ export function TopNav() {
             {t('localeToggleLabel')}
           </button>
           {user && (
-            <a
+            <Link
               href="/settings"
               aria-label={t('settingsAvatarLabel')}
               className="flex size-8 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
@@ -77,7 +77,7 @@ export function TopNav() {
               ) : (
                 (user.email ?? user.googleSub).slice(0, 1).toUpperCase()
               )}
-            </a>
+            </Link>
           )}
         </div>
       </div>
