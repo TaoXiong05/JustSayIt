@@ -10,6 +10,7 @@ import { CATEGORY_TINTS } from '@/lib/i18n/categoryTint';
 import { useSyncExternalStore } from 'react';
 import { subscribe, getSnapshot as getSyncSnapshot, EMPTY_SYNC_STATE } from '@/lib/sync/status';
 import { amendTransaction, removeTransaction } from '@/lib/ledger/store';
+import { bumpSyncVersion } from '@/lib/sync/version';
 import { EditDialog } from '@/components/EditDialog';
 
 /** 整数分 → 两位小数字符串。展示层唯一的金额格式化入口 */
@@ -91,8 +92,16 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
         open={editing}
         onOpenChange={setEditing}
         transaction={transaction}
-        onSave={(changes) => void amendTransaction(transaction.id, changes)}
-        onDelete={() => void removeTransaction(transaction.id)}
+        onSave={(changes) => {
+          void amendTransaction(transaction.id, changes);
+          // 编辑/删除不过服务器（本地 IndexedDB 事件 + 直接写 Drive），
+          // 需要显式 bump 同步哨兵，让其它设备前端轮询时发现变化去拉取。
+          bumpSyncVersion();
+        }}
+        onDelete={() => {
+          void removeTransaction(transaction.id);
+          bumpSyncVersion();
+        }}
       />
     </li>
   );

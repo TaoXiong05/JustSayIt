@@ -8,6 +8,7 @@ type Row = {
   name: string | null;
   picture: string | null;
   refreshTokenEnc: string | null;
+  syncVersion: number;
 };
 const rows: Row[] = [];
 
@@ -28,13 +29,23 @@ const fakeDb = {
         Object.assign(existing, merged);
         return merged;
       }
-      const row: Row = { id: `u${rows.length + 1}`, ...create };
+      const row: Row = { id: `u${rows.length + 1}`, ...create, syncVersion: 0 };
       rows.push(row);
       return row;
     },
     findUnique: async ({ where }: { where: { googleSub: string } }) => {
       const r = rows.find((x) => x.googleSub === where.googleSub);
       return r ? { refreshTokenEnc: r.refreshTokenEnc } : null;
+    },
+    updateSyncVersion: async ({ where }: { where: { googleSub: string } }) => {
+      const r = rows.find((x) => x.googleSub === where.googleSub);
+      if (!r) return null;
+      r.syncVersion += 1;
+      return { syncVersion: r.syncVersion };
+    },
+    getSyncVersion: async ({ where }: { where: { googleSub: string } }) => {
+      const r = rows.find((x) => x.googleSub === where.googleSub);
+      return r ? { syncVersion: r.syncVersion } : null;
     },
   },
 };
@@ -89,6 +100,8 @@ describe('getRefreshTokenEnc', () => {
       user: {
         upsert: vi.fn(),
         findUnique: vi.fn().mockResolvedValue({ refreshTokenEnc: 'enc-blob' }),
+        updateSyncVersion: vi.fn(),
+        getSyncVersion: vi.fn(),
       },
     };
     const repo = makeUserRepo(db);
@@ -101,9 +114,43 @@ describe('getRefreshTokenEnc', () => {
       user: {
         upsert: vi.fn(),
         findUnique: vi.fn().mockResolvedValue(null),
+        updateSyncVersion: vi.fn(),
+        getSyncVersion: vi.fn(),
       },
     };
     const repo = makeUserRepo(db);
     expect(await repo.getRefreshTokenEnc('sub-none')).toBeNull();
+  });
+});
+describe('syncVersion 哨兵（bumpSyncVersion / fetchSyncVersion）', () => {
+  it('bumpSyncVersion 原子 +1 并返回新值', async () => {
+    const repo = makeUserRepo(fakeDb);
+    await repo.findOrCreateUser({
+      googleSub: 's1',
+      email: null,
+      name: null,
+      picture: null,
+    });
+    expect(await repo.bumpSyncVersion('s1')).toBe(1);
+    expect(await repo.bumpSyncVersion('s1')).toBe(2);
+    expect(rows[0].syncVersion).toBe(2);
+  });
+
+  it('fetchSyncVersion 返回当前哨兵值', async () => {
+    const repo = makeUserRepo(fakeDb);
+    await repo.findOrCreateUser({
+      googleSub: 's1',
+      email: null,
+      name: null,
+      picture: null,
+    });
+    await repo.bumpSyncVersion('s1');
+    expect(await repo.fetchSyncVersion('s1')).toBe(1);
+  });
+
+  it('用户不存在时 bump/fetch 都返回 null（不报错）', async () => {
+    const repo = makeUserRepo(fakeDb);
+    expect(await repo.bumpSyncVersion('nobody')).toBeNull();
+    expect(await repo.fetchSyncVersion('nobody')).toBeNull();
   });
 });

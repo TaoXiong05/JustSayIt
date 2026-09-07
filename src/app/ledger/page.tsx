@@ -109,8 +109,8 @@ export default function Home() {
             快捷路径。同步状态点原来长在全局页眉里，现在挪到这儿——它描述的
             是"这份账本有没有同步"，跟下面这份最近账单列表是同一件事。 */}
         <div className="mb-1.5 flex shrink-0 items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-sm font-semibold text-ink">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 truncate font-display text-sm font-semibold text-ink">
               {t('recentTransactionsTitle')}
             </h2>
             <SyncStatusDot />

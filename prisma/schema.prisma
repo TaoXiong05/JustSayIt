@@ -24,4 +24,9 @@ model User {
   aiCallsToday    Int      @default(0)
   // "YYYY-MM-DD" 本地日期键——决定 aiCallsToday 何时重置。
   lastResetDate   String   @default("")
+  // 同步哨兵（sentinel）：用户任意设备每次对账本有真实写入（AI 记账经
+  // /api/structure、编辑/删除经前端 /api/sync-bump）就 +1。其它设备前端
+  // 每 10s 轻量轮询 /api/sync-version 读这个值，发现比自己记住的大就去
+  // 同步 Google Drive 拉取变化——轮询对象是"一个整数"，不是 Drive。
+  syncVersion     Int      @default(0)
 }

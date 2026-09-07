@@ -60,6 +60,9 @@ export type DictKey =
   | 'syncWarningModalTitle'
   | 'syncRetry'
   | 'syncReconnect'
+  | 'syncing'
+  | 'syncFailedShort'
+  | 'syncDismiss'
   | 'exportBackup'
   | 'editSave'
   | 'editCancel'
@@ -169,6 +172,9 @@ const en: Record<DictKey, DictValue> = {
   syncWarningModalTitle: 'Some entries have been unsynced for a while.',
   syncRetry: 'Retry sync',
   syncReconnect: 'Reconnect Google Drive',
+  syncing: 'Syncing…',
+  syncFailedShort: 'Sync failed',
+  syncDismiss: 'Got it',
   exportBackup: 'Export backup',
   editSave: 'Save',
   editCancel: 'Cancel',
@@ -283,6 +289,9 @@ const zh: Record<DictKey, DictValue> = {
   syncWarningModalTitle: '有些账目已经很久没同步了。',
   syncRetry: '重试同步',
   syncReconnect: '重新连接 Google Drive',
+  syncing: '同步中…',
+  syncFailedShort: '同步失败',
+  syncDismiss: '已了解',
   exportBackup: '导出备份',
   editSave: '保存',
   editCancel: '取消',

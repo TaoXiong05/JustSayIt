@@ -112,11 +112,13 @@ describe('initSync', () => {
     expect(syncNow).toHaveBeenCalled(); // 仍然触发同步——排队事件本身也要同步到 Drive
   });
 
-  it('别的设备产生的事件不会被标记未同步（回归：新设备首次合并进历史账目时，圆点永远显示未同步）', async () => {
+  it('别的设备产生的事件不会被标记未同步，也不触发新一轮同步（回归：曾经无条件 syncNow，每次下载合并远端事件都经 hydrate 再触发一次，与 syncNow 的 rerunRequested 形成自激死循环——POST /api/drive-token 每几秒一次、界面永远 syncing）', async () => {
     vi.resetModules();
     const { initSync } = await import('@/lib/sync/init');
     initSync();
     await flushHydrate();
+    // 基线后那次无条件 syncNow 已发生，清除它，只看"这条其它设备事件"单独触发了几次
+    vi.mocked(syncNow).mockClear();
 
     // 模拟：本设备首次同步，从 Drive 下载合并了另一台设备已经同步过的账目
     eventsSnapshot = [
@@ -131,7 +133,8 @@ describe('initSync', () => {
     await Promise.resolve();
 
     expect(markUnsynced).not.toHaveBeenCalled();
-    expect(syncNow).toHaveBeenCalled(); // 仍然要同步一次（比如本设备自己也有事情要传）
+    // 远端事件已经被同步过、不需要再上传——绝不能触发新一轮同步（否则死循环）
+    expect(syncNow).not.toHaveBeenCalled();
   });
 
   it('返回的取消函数会解除订阅', async () => {

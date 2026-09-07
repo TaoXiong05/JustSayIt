@@ -13,6 +13,8 @@ vi.mock('@/lib/sync/status', () => ({
   markAuthError: vi.fn(),
   markSyncFailed: vi.fn(),
   clearSyncError: vi.fn(),
+  markSyncing: vi.fn(),
+  markSyncSucceeded: vi.fn(),
 }));
 vi.mock('@/lib/ledger/db', () => ({
   readAllEvents: vi.fn(),
@@ -28,7 +30,7 @@ import {
   upsertOwnFile,
   parseEvents,
 } from '@/lib/sync/drive';
-import { markSynced, markAuthError, markSyncFailed, clearSyncError } from '@/lib/sync/status';
+import { markSynced, markAuthError, markSyncFailed, clearSyncError, markSyncing, markSyncSucceeded } from '@/lib/sync/status';
 import { readAllEvents, appendEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
@@ -131,5 +133,20 @@ describe('syncNow', () => {
     // 第一次覆盖第二次到达时正在进行的这次同步；第二次不能被静默丢弃，
     // 必须在第一次跑完后自动补跑一次，才能反映第二次到达时点的最新本地状态
     expect(upsertOwnFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('同步全程上报 syncing 开始与结束，成功后上报一次成功标记（一次 runSyncOnce = 一次 flash，不会因一批多条账目重复闪）', async () => {
+    await syncNow();
+    expect(markSyncing).toHaveBeenCalledWith(true);
+    expect(markSyncing).toHaveBeenCalledWith(false);
+    expect(markSyncSucceeded).toHaveBeenCalled();
+  });
+
+  it('同步失败时上报 syncing 开始与结束，但不标记成功', async () => {
+    vi.mocked(upsertOwnFile).mockRejectedValue(new Error('boom'));
+    await expect(syncNow()).rejects.toThrow();
+    expect(markSyncing).toHaveBeenCalledWith(true);
+    expect(markSyncing).toHaveBeenCalledWith(false);
+    expect(markSyncSucceeded).not.toHaveBeenCalled();
   });
 });

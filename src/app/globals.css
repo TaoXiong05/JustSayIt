@@ -32,6 +32,16 @@
   /* warning (sync tiers, toasts) */
   --warning: #d97706;
   --warning-soft: #fef3c7;
+  /* sync success feedback (瞬态闪光，见 SyncStatusDot.tsx) — deliberately a
+     SEPARATE token from --income even though it starts at the same hex:
+     Global Constraint 1 reserves income/expense exclusively for
+     transaction-amount coloring. A "sync succeeded" pulse is not an income
+     amount, so it must not reference --income directly; keeping them
+     distinct means changing one can never silently change the other. The
+     green here is transient only — it flashes ~2s then falls back to the
+     neutral "synced" state, so it never lingers to compete with income. */
+  --success: #0e9f6e;
+  --success-soft: #e6f5ef;
   /* destructive UI actions (delete/logout, validation & request errors) —
      deliberately a SEPARATE token from --expense even though it starts at
      the same hex: Global Constraint 1 reserves income/expense exclusively
@@ -75,6 +85,8 @@
     --expense-soft: rgba(251, 123, 113, 0.15);
     --warning: #fbbf24;
     --warning-soft: rgba(251, 191, 36, 0.15);
+    --success: #35d399;
+    --success-soft: rgba(53, 211, 153, 0.15);
     --danger: #fb7b71;
     --danger-soft: rgba(251, 123, 113, 0.15);
     --radius-sm: 0.375rem;
@@ -107,6 +119,8 @@
   --color-expense-soft: var(--expense-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --radius-sm: var(--radius-sm);
@@ -269,5 +283,37 @@ textarea {
   to {
     opacity: 0;
     transform: translate(-50%, -48%) scale(0.96);
+  }
+}
+
+/* 同步成功的瞬态反馈（SyncStatusDot.tsx）——徽标短暂弹一下放大再回到常驻
+   大小，配合转绿 + 小勾。一次性，不循环（同步一次闪一次，见 status.ts 里
+   successTick 批量去重：一次 runSyncOnce 传了 N 条也只记一次 tick，动画就
+   不会因为 N 条而重复 N 次）。快进到常驻尺寸，避免和后续 fallback 抖动。 */
+@keyframes sync-success-pop {
+  0% {
+    transform: scale(0.9);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 同步失败的「!」（SyncStatusDot.tsx）——一次性放大弹跳：放大到 1.25，回弹
+   到 1，做出"这里能点"的软提示。只播一次就静止，不做循环抖动——那会重蹈
+   animate-pulse 被用户反馈成"持续打扰"的覆辙（见 SyncStatusDot 里对旧
+   animate-pulse 的说明）。 */
+@keyframes sync-fail-pop {
+  0% {
+    transform: scale(0.8) rotate(-12deg);
+  }
+  50% {
+    transform: scale(1.25) rotate(6deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
   }
 }

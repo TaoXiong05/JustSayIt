@@ -18,6 +18,16 @@ export type SyncState = {
    * 也不打日志——界面上"还没试"和"试了但失败"长得完全一样，无从判断。
    */
   lastError: string | null;
+  /** 是否正在执行一次同步（engine.ts 的 syncNow 开始/结束上报）。UI 据此
+      把状态点换成转圈 + \"Syncing…\"。即时状况，不持久化。 */
+  syncing: boolean;
+  /**
+   * 成功完成一次同步标记的单调递增计数器（一次 runSyncOnce 成功 = +1）。
+   * 成功反馈的\"去重\"粒度就靠它：engine 一次上传成功一批（比如 5 条账目）
+   * 只调用一次 markSyncSucceeded，UI 看到 tick 变化一次、闪一次绿——不会
+   * 因为这一批里 5 条各自的 markSynced 而闪 5 次。即时状况，不持久化。
+   */
+  successTick: number;
 };
 
 /**
@@ -31,6 +41,8 @@ export const EMPTY_SYNC_STATE: SyncState = {
   authError: false,
   lastSyncedAt: null,
   lastError: null,
+  syncing: false,
+  successTick: 0,
 };
 
 const PERSIST_KEY = 'justsayit.sync';
@@ -160,6 +172,18 @@ export function markSyncFailed(message: string): void {
 export function clearSyncError(): void {
   if (state.lastError === null) return;
   commit({ ...state, lastError: null });
+}
+
+/** engine.ts 的 syncNow 究竟同步到哪一步了（开始/结束，结束含失败路径）。
+    即时状况不落盘：刷新后 initSync 会立刻重新跑一次同步重新给出结论。 */
+export function markSyncing(syncing: boolean): void {
+  commit({ ...state, syncing });
+}
+
+/** 成功完成一次同步后调用，驱动 UI 的瞬态绿闪。单调递增，UI 用\"tick 变了没\"
+    判断要不要重播一次闪光（详见 successTick 字段注释的去重语义）。 */
+export function markSyncSucceeded(): void {
+  commit({ ...state, successTick: state.successTick + 1 });
 }
 
 export type BTier = 'ok' | 'lt24h' | '24to72h' | 'gt72h';

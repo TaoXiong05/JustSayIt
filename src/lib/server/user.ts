@@ -31,6 +31,7 @@ type UserRow = {
   name: string | null;
   picture: string | null;
   refreshTokenEnc: string | null;
+  syncVersion: number;
 };
 
 type DbLike = {
@@ -39,6 +40,14 @@ type DbLike = {
     findUnique(args: {
       where: { googleSub: string };
     }): Promise<{ refreshTokenEnc: string | null } | null>;
+    /** 哨兵 +1（原子自增），返回新值；用户不存在返回 null。 */
+    updateSyncVersion(args: {
+      where: { googleSub: string };
+    }): Promise<{ syncVersion: number } | null>;
+    /** 读数哨兵（只 select 这一列，点查）。 */
+    getSyncVersion(args: {
+      where: { googleSub: string };
+    }): Promise<{ syncVersion: number } | null>;
   };
 };
 
@@ -78,6 +87,18 @@ export function makeUserRepo(db: DbLike) {
       const row = await db.user.findUnique({ where: { googleSub } });
       return row?.refreshTokenEnc ?? null;
     },
+
+    /** 同步哨兵 +1（用户任意设备有真实账本写入时调用），返回新版本号。 */
+    async bumpSyncVersion(googleSub: string): Promise<number | null> {
+      const row = await db.user.updateSyncVersion({ where: { googleSub } });
+      return row?.syncVersion ?? null;
+    },
+
+    /** 读当前同步哨兵（供前端轻量轮询，只出一个整数）。 */
+    async fetchSyncVersion(googleSub: string): Promise<number | null> {
+      const row = await db.user.getSyncVersion({ where: { googleSub } });
+      return row?.syncVersion ?? null;
+    },
   };
 }
 
@@ -92,12 +113,24 @@ const defaultDb: DbLike = {
         name: row.name,
         picture: row.picture,
         refreshTokenEnc: row.refreshTokenEnc,
+        syncVersion: row.syncVersion,
       };
     },
     findUnique: (args) =>
       prisma.user.findUnique({
         where: args.where,
         select: { refreshTokenEnc: true },
+      }),
+    updateSyncVersion: (args) =>
+      prisma.user.update({
+        where: args.where,
+        data: { syncVersion: { increment: 1 } },
+        select: { syncVersion: true },
+      }),
+    getSyncVersion: (args) =>
+      prisma.user.findUnique({
+        where: args.where,
+        select: { syncVersion: true },
       }),
   },
 };

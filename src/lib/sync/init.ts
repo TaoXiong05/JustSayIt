@@ -6,6 +6,7 @@ import {
   getSnapshot as getSyncSnapshot,
 } from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
+import { fetchSyncVersion } from '@/lib/sync/version';
 
 /**
  * 兜底重试的**起始**间隔与上限。
@@ -24,6 +25,14 @@ import { syncNow } from '@/lib/sync/engine';
 const RETRY_BASE_MS = 15_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
+/**
+ * 同步哨兵轮询间隔（sentinel polling，见 version.ts / prisma syncVersion）。
+ * 前端每 10s 读一次 User.syncVersion 这个整数，发现比本地记住的大就去
+ * syncNow() 拉取 Drive 变化。轮询对象是"一个整数"而非 Drive——高频但极轻，
+ * 这是"手机记一笔 → 桌面端 ~10s 内看到"的机制（读侧）。
+ */
+const VERSION_POLL_MS = 10_000;
+
 let seenEventIds = new Set<string>();
 
 /**
@@ -34,21 +43,25 @@ let seenEventIds = new Set<string>();
  * 未同步——在一台全新设备/浏览器上首次同步、合并进另一设备的历史账目
  * 后，这些账目会被误判成"待同步"，圆点永远显示空心，即使它们其实
  * 早就同步过了。
+ *
+ * 返回值同时给出"本设备有没有产生任何新事件（不限类型）"——这是
+ * 订阅回调里要不要触发新一轮同步的判据（见 initSync 里对远端合并
+ * 自激循环的说明）。
  */
-function newlyCreatedOrAmendedTxIds(events: LedgerEvent[]): string[] {
+function scanNewEvents(events: LedgerEvent[]): { txIds: string[]; ownHasNew: boolean } {
   const deviceId = getDeviceId();
-  const ids: string[] = [];
+  const txIds: string[] = [];
+  let ownHasNew = false;
   for (const e of events) {
     if (seenEventIds.has(e.eventId)) continue;
     seenEventIds.add(e.eventId);
-    if (
-      e.deviceId === deviceId &&
-      (e.kind === 'transaction_created' || e.kind === 'transaction_amended')
-    ) {
-      ids.push(e.payload.id);
+    if (e.deviceId !== deviceId) continue;
+    ownHasNew = true;
+    if (e.kind === 'transaction_created' || e.kind === 'transaction_amended') {
+      txIds.push(e.payload.id);
     }
   }
-  return ids;
+  return { txIds, ownHasNew };
 }
 
 /**
@@ -99,6 +112,15 @@ export function initSync(): () => void {
   let unsubscribe: (() => void) | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let retryDelay = RETRY_BASE_MS;
+  let versionTimer: ReturnType<typeof setTimeout> | null = null;
+  // 本地记住的哨兵值。-1 表示"还没建立基线"：首次 poll 只记录不触发同步
+  // （基线后那次无条件 syncNow 已经拉过一次，首轮没必要重复）。
+  let lastSyncVersion = -1;
+  // 回到前台/重新聚焦时立即补查一次——不用等下一个 10s 周期（用户从手机
+  // 切回桌面端时几乎瞬时看到最新状态）。
+  const onFocus = () => {
+    if (document.visibilityState === 'visible') void pollVersionOnce();
+  };
 
   void hydrate().then(() => {
     if (cancelled) return;
@@ -109,9 +131,17 @@ export function initSync(): () => void {
     // getEventsSnapshot() 才是本地事件的全集。
     reconcileUnsynced(ownTxIds(getEventsSnapshot()));
     unsubscribe = subscribe(() => {
-      const newIds = newlyCreatedOrAmendedTxIds(getEventsSnapshot());
-      if (newIds.length > 0) markUnsynced(newIds);
-      void syncNow().catch(() => {});
+      const { txIds, ownHasNew } = scanNewEvents(getEventsSnapshot());
+      if (txIds.length > 0) markUnsynced(txIds);
+      // **只在本设备产生了新事件**（本地记账、本设备排队/补跑）时才触发新一轮
+      // 同步。其它设备的数据合并进来时**不**触发——否则每次 syncNow 下载合并
+      // 远端事件都会经 store.hydrate()->emit() 回到这里再触发一次 syncNow，
+      // 而 syncNow 的 rerunRequested 机制会把这次触发排进同一轮 do-while，
+      // 下载→合并→emit→再同步无限循环（用户反馈：POST /api/drive-token 每
+      // 几秒一次、界面永远处于 syncing）。远端事件本来就是已同步的，不需要
+      // 再上传一次。首拉/拉取其它设备后续变化仍由基线的无条件 syncNow 与
+      // 兜底定时重试负责（见下方）。
+      if (ownHasNew) void syncNow().catch(() => {});
     });
     // 回归：上面的订阅只在*后续*账本变化时才触发 syncNow()——全新设备
     // 登录后本地事件流从始至终是空的（没人新建/修改过账目），永远等不到
@@ -120,6 +150,12 @@ export function initSync(): () => void {
     // 一条记录都看不到）。这里的基线一旦建立就主动同步一次，不管本地
     // 有没有变化，新设备首次登录也能立刻把远端历史账目拉下来。
     void syncNow().catch(() => {});
+
+    // 哨兵轮询：立即 poll 一次建立基线，然后每 10s 一次。变化才触发同步。
+    void pollVersionOnce();
+    scheduleVersionPoll();
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
 
     scheduleRetry();
   });
@@ -150,9 +186,39 @@ export function initSync(): () => void {
     }, retryDelay);
   }
 
+  /** 读一次同步哨兵：比本地记住的大 → 其它设备有写入 → 去 Drive 拉取。 */
+  async function pollVersionOnce(): Promise<void> {
+    let version: number;
+    try {
+      version = await fetchSyncVersion();
+    } catch {
+      return; // 网络/服务暂不可用：静默跳过，下一个周期再试
+    }
+    if (lastSyncVersion < 0) {
+      lastSyncVersion = version; // 首次只建立基线
+      return;
+    }
+    if (version > lastSyncVersion) {
+      lastSyncVersion = version;
+      void syncNow().catch(() => {});
+    }
+  }
+
+  function scheduleVersionPoll(): void {
+    versionTimer = setTimeout(() => {
+      void (async () => {
+        await pollVersionOnce();
+        if (!cancelled) scheduleVersionPoll();
+      })();
+    }, VERSION_POLL_MS);
+  }
+
   return () => {
     cancelled = true;
     unsubscribe?.();
     if (retryTimer) clearTimeout(retryTimer);
+    if (versionTimer) clearTimeout(versionTimer);
+    document.removeEventListener('visibilitychange', onFocus);
+    window.removeEventListener('focus', onFocus);
   };
 }

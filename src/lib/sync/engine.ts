@@ -8,7 +8,7 @@ import {
   serializeEvents,
   parseEvents,
 } from '@/lib/sync/drive';
-import { markSynced, markAuthError, markSyncFailed, clearSyncError } from '@/lib/sync/status';
+import { markSynced, markAuthError, markSyncFailed, clearSyncError, markSyncing, markSyncSucceeded } from '@/lib/sync/status';
 import { ApiError, throwApiError } from '@/lib/apiError';
 
 const AUTH_ERROR_CODES = new Set(['DRIVE_REAUTH_REQUIRED', 'DRIVE_NOT_LINKED']);
@@ -55,12 +55,17 @@ export async function syncNow(): Promise<void> {
     return;
   }
   syncing = true;
+  markSyncing(true); // 让状态点立刻变成转圈 + "Syncing…"（即时状况，见 status.ts）
   try {
     do {
       rerunRequested = false;
       try {
         await runSyncOnce();
         clearSyncError();
+        // 一次 runSyncOnce 成功 = 一次成功反馈（不管这一批清了几条账目）。
+        // 放在这里而不是 markSynced 里，就是为了把"同步成功"这个反馈的
+        // 粒度定在一次同步、而不是每一条账目——批量成功的动画不重复。
+        markSyncSucceeded();
       } catch (err) {
         // 在这之前，同步失败是彻底不可见的：调用方（init.ts 的订阅回调、
         // 那次无条件同步、兜底定时器）一律 `.catch(() => {})` 吞掉，而
@@ -78,6 +83,7 @@ export async function syncNow(): Promise<void> {
     } while (rerunRequested);
   } finally {
     syncing = false;
+    markSyncing(false); // 同步流程结束（成功或失败都回落到待同步/已同步态）
   }
 }
 

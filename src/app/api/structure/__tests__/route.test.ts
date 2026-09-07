@@ -4,7 +4,7 @@ vi.mock('@/lib/ai', () => ({ structure: vi.fn() }));
 vi.mock('@/lib/server/guard', () => ({ authenticate: vi.fn() }));
 vi.mock('@/lib/server/quota', () => ({ quotaService: { consume: vi.fn() } }));
 vi.mock('@/lib/server/user', () => ({
-  userRepo: { findOrCreateUser: vi.fn() },
+  userRepo: { findOrCreateUser: vi.fn(), bumpSyncVersion: vi.fn() },
 }));
 
 import { POST } from '@/app/api/structure/route';
@@ -54,6 +54,8 @@ describe('POST /api/structure 已认证', () => {
     expect((await res.json()).records).toHaveLength(1);
     expect(quotaService.consume).toHaveBeenCalledTimes(1);
     expect(vi.mocked(quotaService.consume).mock.calls[0][0]).toBe('u1');
+    // 记账成功 → bump 同步哨兵，让其它设备前端轮询时发现变化去拉取
+    expect(userRepo.bumpSyncVersion).toHaveBeenCalledWith('s1');
   });
 
   it('未登录 → 401 且不调 AI', async () => {

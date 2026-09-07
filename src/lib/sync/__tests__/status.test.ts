@@ -8,6 +8,8 @@ import {
   clearAuthError,
   markSyncFailed,
   clearSyncError,
+  markSyncing,
+  markSyncSucceeded,
   reconcileUnsynced,
   classifyBTier,
 } from '@/lib/sync/status';
@@ -173,7 +175,14 @@ describe('reconcileUnsynced', () => {
 });
 
 describe('classifyBTier', () => {
-  const base = { unsyncedIds: ['tx1'], authError: false, lastSyncedAt: null, lastError: null };
+  const base = {
+    unsyncedIds: ['tx1'],
+    authError: false,
+    lastSyncedAt: null,
+    lastError: null,
+    syncing: false,
+    successTick: 0,
+  };
 
   it('没有未同步项时是 ok', () => {
     expect(classifyBTier({ ...base, unsyncedIds: [], firstUnsyncedAt: null })).toBe('ok');
@@ -195,5 +204,37 @@ describe('classifyBTier', () => {
     const firstUnsyncedAt = new Date('2026-09-01T00:00:00Z').toISOString();
     const now = new Date('2026-09-04T00:00:00Z'); // 恰好 72h
     expect(classifyBTier({ ...base, firstUnsyncedAt }, now)).toBe('gt72h');
+  });
+});
+describe('markSyncing / markSyncSucceeded（新增："Syncing…"转圈与成功闪光的状态出口）', () => {
+  it('markSyncing 置位/复位 syncing 并通知订阅者', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribe(listener);
+    markSyncing(true);
+    expect(getSnapshot().syncing).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+    markSyncing(false);
+    expect(getSnapshot().syncing).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it('markSyncSucceeded 单调递增 successTick 并通知订阅者——UI 以此判定要不要重播一次成功闪光', () => {
+    const before = getSnapshot().successTick;
+    const listener = vi.fn();
+    const unsubscribe = subscribe(listener);
+    markSyncSucceeded();
+    expect(getSnapshot().successTick).toBe(before + 1);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('syncing 与 successTick 不持久化——即时状况，刷新后 initSync 会重新同步给出结论', async () => {
+    markSyncing(true);
+    markSyncSucceeded();
+    vi.resetModules();
+    const reloaded = await import('@/lib/sync/status');
+    expect(reloaded.getSnapshot().syncing).toBe(false);
+    expect(reloaded.getSnapshot().successTick).toBe(0);
   });
 });
