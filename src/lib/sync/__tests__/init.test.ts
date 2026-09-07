@@ -22,10 +22,12 @@ vi.mock('@/lib/ledger/store', () => ({
 }));
 vi.mock('@/lib/ledger/events', () => ({ getDeviceId: vi.fn(() => 'this-device') }));
 let unsyncedIds: string[] = [];
+let lastError: string | null = null;
+let authError = false;
 vi.mock('@/lib/sync/status', () => ({
   markUnsynced: vi.fn(),
   reconcileUnsynced: vi.fn(),
-  getSnapshot: vi.fn(() => ({ unsyncedIds })),
+  getSnapshot: vi.fn(() => ({ unsyncedIds, lastError, authError })),
 }));
 vi.mock('@/lib/sync/engine', () => ({ syncNow: vi.fn().mockResolvedValue(undefined) }));
 
@@ -38,6 +40,8 @@ beforeEach(() => {
   listeners.clear();
   eventsSnapshot = [];
   unsyncedIds = [];
+  lastError = null;
+  authError = false;
 });
 
 /** initSync() 内部先 await 一次 hydrate() 才建立基线——等这次微任务落地。 */
@@ -197,6 +201,77 @@ describe('initSync', () => {
       await vi.advanceTimersByTimeAsync(15_000);
       expect(syncNow).not.toHaveBeenCalled();
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // 回归："一个 sync 失败卡住就会导致所有卡住"。原来的兜底重试只在
+  // unsyncedIds 非空时才跑——失败如果发生在**下载/合并**那一侧（本机没有
+  // 待上传的东西，只是拉不到别的设备的数据），这个条件永远不成立，于是
+  // 根本没有任何重试，只能等下一次账本变化或用户刷新页面。
+  it('本机没有待上传项、但上次同步留下了错误时，兜底重试照样补跑', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.resetModules();
+      const { initSync } = await import('@/lib/sync/init');
+      initSync();
+      await flushHydrate();
+      vi.mocked(syncNow).mockClear();
+
+      unsyncedIds = [];
+      lastError = 'Drive 下载失败：HTTP 500';
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(syncNow).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // A 类失败：重试在用户重新授权之前不可能成功，原来会每 15 秒白撞一次。
+  it('authError（A 类）下不做兜底重试', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.resetModules();
+      const { initSync } = await import('@/lib/sync/init');
+      initSync();
+      await flushHydrate();
+      vi.mocked(syncNow).mockClear();
+
+      unsyncedIds = ['tx-stuck'];
+      authError = true;
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(syncNow).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // 持久性故障下不再以固定 15s 原地反复撞：失败一次就把间隔翻倍。
+  it('连续失败时重试间隔退避，不是固定 15 秒', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.resetModules();
+      const { initSync } = await import('@/lib/sync/init');
+      initSync();
+      await flushHydrate();
+      vi.mocked(syncNow).mockClear();
+      vi.mocked(syncNow).mockRejectedValue(new Error('boom'));
+
+      unsyncedIds = ['tx-stuck'];
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(syncNow).toHaveBeenCalledTimes(1);
+
+      // 再过 15s 还不到下一次（下一次要等 30s）
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(syncNow).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(syncNow).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.mocked(syncNow).mockReset();
       vi.useRealTimers();
     }
   });

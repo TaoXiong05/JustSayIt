@@ -55,6 +55,7 @@ export type DictKey =
   | 'queuedOffline'
   | 'syncPendingCount'
   | 'syncedUpToDate'
+  | 'rowUnsynced'
   | 'syncLastError'
   | 'syncWarningModalTitle'
   | 'syncRetry'
@@ -63,6 +64,7 @@ export type DictKey =
   | 'editSave'
   | 'editCancel'
   | 'editDelete'
+  | 'editDeleteConfirm'
   | 'editDialogTitle'
   | 'editCategoryLabel'
   | 'editAmountLabel'
@@ -162,6 +164,7 @@ const en: Record<DictKey, DictValue> = {
     `Recorded ${count} item${count === 1 ? '' : 's'}${Number(unsynced) > 0 ? ' · pending sync' : ''}`,
   syncPendingCount: ({ count }) => `${count} pending sync`,
   syncedUpToDate: 'Synced',
+  rowUnsynced: 'Not synced yet',
   syncLastError: ({ message }) => `Last sync failed: ${message}`,
   syncWarningModalTitle: 'Some entries have been unsynced for a while.',
   syncRetry: 'Retry sync',
@@ -170,6 +173,7 @@ const en: Record<DictKey, DictValue> = {
   editSave: 'Save',
   editCancel: 'Cancel',
   editDelete: 'Delete',
+  editDeleteConfirm: 'Delete this record?',
   editDialogTitle: 'Edit transaction',
   editCategoryLabel: 'Category',
   editAmountLabel: 'Amount',
@@ -274,6 +278,7 @@ const zh: Record<DictKey, DictValue> = {
     `已记录 ${count} 笔${Number(unsynced) > 0 ? ' · 待同步' : ''}`,
   syncPendingCount: ({ count }) => `${count} 笔待同步`,
   syncedUpToDate: '已同步',
+  rowUnsynced: '尚未同步',
   syncLastError: ({ message }) => `上次同步失败：${message}`,
   syncWarningModalTitle: '有些账目已经很久没同步了。',
   syncRetry: '重试同步',
@@ -282,6 +287,7 @@ const zh: Record<DictKey, DictValue> = {
   editSave: '保存',
   editCancel: '取消',
   editDelete: '删除',
+  editDeleteConfirm: '确定删除这笔记录？',
   editDialogTitle: '编辑账目',
   editCategoryLabel: '分类',
   editAmountLabel: '金额',

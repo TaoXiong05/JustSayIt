@@ -89,7 +89,7 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getByText('麦当劳')).toBeDefined());
-    expect(screen.getByText('-25.00')).toBeDefined();
+    expect(screen.getByText('25.00')).toBeDefined();
   });
 
   it('近似拼写的商户名归并到历史已用过的写法（打通 normalizeMerchant + knownMerchants + handleSubmit）', async () => {
@@ -244,7 +244,7 @@ describe('主屏 - 提交/归并/失败路径（Plan 1 既有用例）', () => {
     expect(screen.getByText('交通', { exact: false })).toBeDefined();
     expect(screen.queryByText('Transport', { exact: false })).toBeNull();
     expect(screen.getByText('Uber')).toBeDefined();
-    expect(screen.getByText('-25.00')).toBeDefined();
+    expect(screen.getByText('25.00')).toBeDefined();
 
     // 切回英文：反向验证同样成立，且切换是可逆的展示层操作
     await user.click(screen.getByRole('button', { name: 'English' }));

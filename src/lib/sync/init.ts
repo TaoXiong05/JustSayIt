@@ -7,13 +7,22 @@ import {
 } from '@/lib/sync/status';
 import { syncNow } from '@/lib/sync/engine';
 
-// 兜底重试间隔（回归：用户反馈"提交记录，不刷新页面就一直显示等待
-// 同步"）。账本变化触发的那次 syncNow() 偶尔会因为一次性的瞬时失败
-// （网络抖动等 B 类错误）没能追上，如果此后再也没有别的账本变化，
-// 待同步项就永远等不到下一次尝试——之前唯一的补救是用户手动刷新页面，
-// 重新走一遍 initSync() 那次无条件同步。定期检查一次，只要还有未同步项
-// 就补跑一次；追上后 unsyncedIds 变空，这里自然就没有实际同步动作。
-const RETRY_INTERVAL_MS = 15_000;
+/**
+ * 兜底重试的**起始**间隔与上限。
+ *
+ * 原来是固定 15s 的 setInterval，两个毛病：
+ * 1. 只在 unsyncedIds 非空时才跑。同步失败如果发生在**下载/合并**那一侧
+ *    （本机没有待上传的东西，只是拉不到别的设备的数据），这个条件永远
+ *    不成立——于是根本没有任何重试，只能等下一次账本变化或用户刷新页面。
+ * 2. 持久性故障（后端数据库连不上、Drive 授权被撤销）下它会每 15 秒
+ *    原地撞一次，撞到天荒地老。
+ *
+ * 现在改成失败即退避（15s → 30s → 60s …… 封顶 5 分钟），成功后立刻
+ * 回到起始间隔；A 类失败（authError）直接不重试——重试在用户重新授权
+ * 之前不可能成功，SyncWarning 里有那个入口。
+ */
+const RETRY_BASE_MS = 15_000;
+const RETRY_MAX_MS = 5 * 60_000;
 
 let seenEventIds = new Set<string>();
 
@@ -88,7 +97,8 @@ function ownTxIds(events: LedgerEvent[]): string[] {
 export function initSync(): () => void {
   let cancelled = false;
   let unsubscribe: (() => void) | null = null;
-  let retryTimer: ReturnType<typeof setInterval> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryDelay = RETRY_BASE_MS;
 
   void hydrate().then(() => {
     if (cancelled) return;
@@ -111,14 +121,38 @@ export function initSync(): () => void {
     // 有没有变化，新设备首次登录也能立刻把远端历史账目拉下来。
     void syncNow().catch(() => {});
 
-    retryTimer = setInterval(() => {
-      if (getSyncSnapshot().unsyncedIds.length > 0) void syncNow().catch(() => {});
-    }, RETRY_INTERVAL_MS);
+    scheduleRetry();
   });
+
+  function scheduleRetry(): void {
+    retryTimer = setTimeout(() => {
+      void (async () => {
+        const snapshot = getSyncSnapshot();
+        // 有待上传的东西，**或者**上一次尝试留下了错误（后者才覆盖得到
+        // "只是拉不下来别人的数据"这类失败）。authError 是 A 类，重试
+        // 在用户重新授权之前不可能成功，不浪费请求。
+        // 用真假判断而不是 `!== null`：这两个字段在部分调用路径下可能是
+        // undefined，`undefined !== null` 会是 true，等于无条件重试。
+        const shouldRetry =
+          !snapshot.authError && (snapshot.unsyncedIds.length > 0 || Boolean(snapshot.lastError));
+        if (shouldRetry) {
+          try {
+            await syncNow();
+            retryDelay = RETRY_BASE_MS;
+          } catch {
+            retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+          }
+        } else {
+          retryDelay = RETRY_BASE_MS;
+        }
+        if (!cancelled) scheduleRetry();
+      })();
+    }, retryDelay);
+  }
 
   return () => {
     cancelled = true;
     unsubscribe?.();
-    if (retryTimer) clearInterval(retryTimer);
+    if (retryTimer) clearTimeout(retryTimer);
   };
 }

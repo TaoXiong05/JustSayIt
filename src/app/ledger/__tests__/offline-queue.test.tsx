@@ -74,7 +74,7 @@ describe('主屏 · 离线队列', () => {
     await user.type(screen.getByRole('textbox'), '早餐25');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() => expect(screen.getByText('-25.00')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('25.00')).toBeDefined());
     expect(screen.queryByText(/Queued offline/)).toBeNull();
   });
 });

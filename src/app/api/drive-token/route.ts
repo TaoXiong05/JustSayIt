@@ -22,7 +22,29 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const enc = await userRepo.getRefreshTokenEnc(auth.googleSub);
+  // 这次读库原来在下面那个 try 之外，于是数据库连不上（本地 Postgres 没起、
+  // 生产数据库瞬时抖动）会直接冒泡成一个**未处理的 500**，响应体里没有
+  // code 字段。前端 engine.ts 靠 code 区分 A 类（授权失效，重试没用）和
+  // B 类（瞬时故障，该重试）——拿不到 code 就只能落进 B 类，行为上恰好
+  // 正确，但那是运气不是设计，而且日志里是一条刺眼的 Prisma 崩栈。
+  // 明确按"服务暂时不可用"回 503 + 自己的 code：语义对得上，也跟
+  // DRIVE_REAUTH_REQUIRED（授权真的坏了，重试无用）彻底区分开。
+  let enc: string | null;
+  try {
+    enc = await userRepo.getRefreshTokenEnc(auth.googleSub);
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        route: 'drive-token',
+        ok: false,
+        error: err instanceof Error ? err.message : 'unknown',
+      }),
+    );
+    return Response.json(
+      { error: '同步服务暂时不可用，请稍后重试', code: 'SYNC_UNAVAILABLE' },
+      { status: 503 },
+    );
+  }
   if (!enc) {
     return Response.json(
       { error: '尚未授权 Drive 访问，请重新登录', code: 'DRIVE_NOT_LINKED' },

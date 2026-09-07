@@ -42,33 +42,48 @@ export function EditDialog({
         />
         <Dialog.Content
           onOpenAutoFocus={(e) => e.preventDefault()}
-          // 居中用 [transform:translate(-50%,-50%)] 这个任意值类，不用
-          // Tailwind v4 的 -translate-x-1/2 -translate-y-1/2 工具类——v4 起
-          // 那两个工具类写的是独立的 CSS `translate` 属性，跟下面动画
-          // 操作的 `transform` 属性是两个不同属性，会同时生效、叠加：
-          // 动画播放期间实际位移变成两者相加（约 -100%/-100%），弹窗会先
-          // 明显偏到左上角，动画播完只剩 `translate` 属性单独生效才弹回
-          // 正确的居中位置——这正是用户反馈的"从偏左上跳到居中"。改用
-          // 同一个 `transform` 属性做静态基准 + 动画，两者只有一个在起
-          // 作用，不会叠加；forwards 让动画结束后停在 to 关键帧（依然是
-          // 同一个 translate(-50%,-50%)），不依赖动画结束后"回退到静态值"
-          // 这层隐式行为。
-          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md [transform:translate(-50%,-50%)] rounded-xl border border-border bg-surface p-5 shadow-pop data-[state=closed]:[animation:dialog-content-hide_150ms_ease-in_forwards] data-[state=open]:[animation:dialog-content-show_150ms_ease-out_forwards]"
+          // 移动端是**贴底 sheet**、桌面端才是居中弹窗（sm: 起覆盖）。
+          //
+          // 换成 sheet 不是审美偏好，是治两个具体毛病：
+          // 1. 原来 Save 在弹窗左下角（单手持机最难够到的位置），Delete 靠
+          //    ml-auto 钉在右下角（拇指的自然落点）——主操作和破坏性操作的
+          //    位置正好反了。贴底全宽之后主按钮横跨整个拇指区。
+          // 2. 原来居中弹窗底边在 y≈619（375×812 实测），手机键盘一弹起来
+          //    就把 Save 盖住了，而 top-1/2 的居中弹窗不会让位。
+          //
+          // 居中那套的 [transform:translate(-50%,-50%)] 只在 sm: 起生效——
+          // sheet 是 inset-x-0 bottom-0 全宽铺开的，带上那个位移会跑偏；
+          // 两套动画关键帧也因此必须分开（见 globals.css 的 sheet-show）。
+          //
+          // max-h-[85dvh] + overflow-y-auto：表单控件全部放大到 48px 之后
+          // 内容会更高，矮屏上让 sheet 自己内部滚动，而不是顶出屏幕。
+          // pb 用 env(safe-area-inset-bottom) 兜底：贴底元素必须避开 iPhone
+          // 的 home indicator，否则最下面那行删除入口会被它压住。
+          className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-pop data-[state=closed]:[animation:sheet-hide_200ms_ease-in_forwards] data-[state=open]:[animation:sheet-show_200ms_ease-out_forwards] sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:max-w-md sm:rounded-xl sm:border sm:pb-5 sm:[transform:translate(-50%,-50%)] sm:data-[state=closed]:[animation:dialog-content-hide_150ms_ease-in_forwards] sm:data-[state=open]:[animation:dialog-content-show_150ms_ease-out_forwards]"
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
+          {/* sheet 顶部的抓握条：贴底面板的通用视觉约定，告诉用户这块是从
+              底部升起来的一层、可以关掉。纯装饰，不承担交互。 */}
+          <div
+            aria-hidden="true"
+            className="mx-auto mb-3 h-1 w-10 rounded-full bg-border sm:hidden"
+          />
+          <div className="mb-4 flex items-center justify-between gap-3">
             <Dialog.Title className="font-display text-base font-semibold text-ink">
               {t('editDialogTitle')}
             </Dialog.Title>
-            {/* 用 toastDismiss（"Dismiss"/"关闭"）而不是 editCancel（"Cancel"）
-                做这个 X 的无障碍名——表单下方还有一个文字版"Cancel"按钮，
-                两个控件如果读出同一个名字，靠 accessible name 定位任一个都
-                会因为"找到不止一个"而失败，用户用读屏器听到两个同名按钮
-                也分不清哪个是哪个。 */}
+            {/* 这个 X 现在是**唯一的取消入口**（表单底部不再有文字版
+                Cancel，见 EditForm.tsx），所以尺寸必须达标：原来只有
+                23×23px，是整个弹窗里最小的点击目标。size-11 = 44px，
+                踩住 Apple HIG 的下限。
+                无障碍名用 toastDismiss（"Dismiss"/"关闭"）而不是 editCancel——
+                删除确认态里会出现一个真正叫 "Cancel" 的按钮，两个控件读出
+                同一个名字的话，靠 accessible name 定位任一个都会因为"找到
+                不止一个"而失败。 */}
             <Dialog.Close
               aria-label={t('toastDismiss')}
-              className="rounded p-1 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
-              <X aria-hidden="true" className="size-4" />
+              <X aria-hidden="true" className="size-5" />
             </Dialog.Close>
           </div>
           <EditForm
@@ -81,7 +96,6 @@ export function EditDialog({
               onDelete();
               onOpenChange(false);
             }}
-            onCancel={() => onOpenChange(false)}
           />
         </Dialog.Content>
       </Dialog.Portal>

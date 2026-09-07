@@ -53,7 +53,10 @@ describe('LedgerList', () => {
     expect(screen.getByText('Transport', { exact: false })).toBeDefined();
   });
 
-  it('支出显示负号，收入显示正号', () => {
+  // 只有收入带正号且着色，支出是裸数字（中性色）：支出是常态，一屏全是
+  // 红色负号既没有区分度，又给记账平添压力；收入是稀有事件，加号+绿色才
+  // 真正起到"这条不一样"的作用。
+  it('收入显示正号，支出不带任何符号', () => {
     render(
       <LedgerList
         transactions={[
@@ -62,8 +65,17 @@ describe('LedgerList', () => {
         ]}
       />,
     );
-    expect(screen.getByText('-25.00')).toBeDefined();
+    expect(screen.getByText('25.00')).toBeDefined();
+    expect(screen.queryByText('-25.00')).toBeNull();
     expect(screen.getByText('+5000.00')).toBeDefined();
+  });
+
+  // merchant 为 null 时（prompt 规则 9 明确允许），主行降级显示 description，
+  // 不再是一个占着主行位置的破折号。
+  it('没有商户名时，description 顶到主行且不再出现破折号', () => {
+    render(<LedgerList transactions={[tx('a', { merchant: null, description: '早餐' })]} />);
+    expect(screen.getByText('早餐')).toBeDefined();
+    expect(screen.queryByText('—')).toBeNull();
   });
 
   it('按日期分组，每个日期只出现一个标题', () => {
@@ -78,20 +90,30 @@ describe('LedgerList', () => {
     );
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
   });
+
+  // 回归：首页原来直接渲染裸的 `2026-09-04`，而 History 页同一份列表显示的是
+  // 本地化的 "Fri, Sep 4"——同一个列表在两个页面长得不一样。
+  it('日期标题本地化，不再是裸 ISO 字符串', () => {
+    render(<LedgerList transactions={[tx('a', { date: '2026-09-04' })]} />);
+    expect(screen.queryByText('2026-09-04')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toContain('Sep');
+  });
 });
 
-describe('同步状态圆点', () => {
+// 同步标记只在异常态出现：已同步是 99% 的常态，常态不该占视觉预算，
+// 也不该占一整列宽度（原来是 ●/○ 两个裸字符各占一列）。
+describe('未同步标记', () => {
   beforeEach(() => markSynced(getSyncSnapshot().unsyncedIds));
 
-  it('未同步的账目显示空心圆点', () => {
+  it('未同步的账目带一个可读的离线图标', () => {
     markUnsynced(['a']);
     render(<LedgerList transactions={[tx('a')]} />);
-    expect(screen.getByText('○')).toBeDefined();
+    expect(screen.getByLabelText('Not synced yet')).toBeDefined();
   });
 
-  it('已同步的账目显示实心圆点', () => {
+  it('已同步的账目不显示任何同步标记', () => {
     render(<LedgerList transactions={[tx('a')]} />);
-    expect(screen.getByText('●')).toBeDefined();
+    expect(screen.queryByLabelText('Not synced yet')).toBeNull();
   });
 });
 
@@ -110,17 +132,21 @@ describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹�
     expect(screen.queryByLabelText('Description')).toBeNull();
   });
 
-  it('点删除调用 removeTransaction 并收起表单', async () => {
+  // 删除要两步：第一下只展开确认，第二下才真删（见 EditForm.tsx）。
+  it('删除需二次确认，确认后调用 removeTransaction 并收起表单', async () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
     fireEvent.click(screen.getByText('买菜', { exact: false }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(removeTransaction).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(removeTransaction).toHaveBeenCalledWith('a'));
   });
 
-  it('点取消关闭弹窗，不调用任何保存/删除', () => {
+  // 底部那个文字版 Cancel 已去掉，取消统一走头部 44px 的 X（无障碍名 Dismiss）。
+  it('点头部关闭按钮关掉弹窗，不调用任何保存/删除', () => {
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
     fireEvent.click(screen.getByText('买菜', { exact: false }));
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByLabelText('Description')).toBeNull();
     expect(amendTransaction).not.toHaveBeenCalled();
     expect(removeTransaction).not.toHaveBeenCalled();
@@ -148,7 +174,7 @@ describe('点击弹窗编辑（Plan 5 二次改版：原位展开 -> 居中弹�
     render(<LedgerList transactions={[tx('a', { description: '买菜' })]} />);
     fireEvent.click(screen.getByText('买菜', { exact: false }));
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: '改过但没保存' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     fireEvent.click(screen.getByText('买菜', { exact: false }));
     expect(screen.getByLabelText('Description')).toHaveProperty('value', '买菜');
   });

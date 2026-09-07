@@ -221,6 +221,30 @@ textarea {
     opacity: 0;
   }
 }
+/* 移动端底部 sheet 的进出场。跟 dialog-content-show/hide 是两套独立关键帧：
+   那两套自带 translate(-50%,-50%) 的居中基准，sheet 是贴着 inset-x-0 bottom-0
+   全宽铺开的，不需要也不能带那个位移。EditDialog 里 base 用这套、sm: 覆盖成
+   居中那套。 */
+@keyframes sheet-show {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes sheet-hide {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
 @keyframes dialog-content-show {
   from {
     opacity: 0;

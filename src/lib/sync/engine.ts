@@ -13,8 +13,15 @@ import { ApiError, throwApiError } from '@/lib/apiError';
 
 const AUTH_ERROR_CODES = new Set(['DRIVE_REAUTH_REQUIRED', 'DRIVE_NOT_LINKED']);
 
+/** 同上（见 drive.ts 的 REQUEST_TIMEOUT_MS）：没有超时的 fetch 会把
+ *  `syncing` 永久锁死，之后整个会话的同步都进不来。 */
+const TOKEN_TIMEOUT_MS = 15_000;
+
 async function getAccessToken(): Promise<string> {
-  const res = await fetch('/api/drive-token', { method: 'POST' });
+  const res = await fetch('/api/drive-token', {
+    method: 'POST',
+    signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
+  });
   if (!res.ok) await throwApiError(res, '获取 Drive 访问令牌失败');
   const data = (await res.json()) as { accessToken?: string };
   if (!data.accessToken) throw new Error('Drive 访问令牌响应缺少 accessToken');
@@ -105,12 +112,29 @@ async function runSyncOnce(): Promise<void> {
   const otherFiles = files.filter((f) => f.name !== ownFileName && f.name.startsWith('events-'));
 
   if (otherFiles.length > 0) {
-    const remoteEvents = (
-      await Promise.all(otherFiles.map((f) => downloadFile(accessToken, f.id)))
-    ).flatMap(parseEvents);
+    // allSettled 而不是 all：Promise.all 一个 reject 就整体 reject，等于
+    // **一台设备的文件读不下来，所有其它设备的数据都合不进来**——而且是
+    // 永久性的，每次重试都会在同一个文件上以同样的方式失败。这正是
+    // "一个 sync 失败卡住就会导致所有卡住"里最实在的一条。
+    // 现在先把能读到的全部合并落地，再把失败的部分作为错误抛出去（顺序
+    // 很重要：先保住已经取得的进展，再报告失败）。
+    const results = await Promise.allSettled(
+      otherFiles.map((f) => downloadFile(accessToken, f.id)),
+    );
+    const remoteEvents = results.flatMap((r) =>
+      r.status === 'fulfilled' ? parseEvents(r.value) : [],
+    );
     if (remoteEvents.length > 0) {
       await appendEvents(remoteEvents); // 已按 eventId 去重（db.ts 既有逻辑）
       await hydrate();
+    }
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length > 0) {
+      const reason = failures[0].reason;
+      throw new Error(
+        `${failures.length}/${otherFiles.length} 个远端设备文件下载失败：` +
+          (reason instanceof Error ? reason.message : String(reason)),
+      );
     }
   }
 }

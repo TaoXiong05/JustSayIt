@@ -6,7 +6,7 @@ export function PendingRow({ text, viaVoice = false }: { text: string; viaVoice?
   return (
     <li
       aria-live="polite"
-      className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0"
+      className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 last:border-b-0"
     >
       <span className="flex min-w-0 items-center gap-2">
         {/* "刚刚是说出来的"标记（改善方向 #3）：只在这条占位行还活着的这

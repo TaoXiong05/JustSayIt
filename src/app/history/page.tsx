@@ -7,6 +7,7 @@ import { filterHistory, groupByDay, type HistoryFilter } from '@/lib/ledger/hist
 import { MonthSwitcher, useMonthNav } from '@/components/MonthSwitcher';
 import { TransactionRow, formatAmount } from '@/components/TransactionRow';
 import { useLocale } from '@/lib/i18n/context';
+import { formatDayHeader } from '@/lib/i18n/date';
 
 const EMPTY_FILTER: HistoryFilter = { dateFrom: '', dateTo: '', keyword: '' };
 
@@ -32,15 +33,6 @@ function monthBounds(month: Date): { start: string; end: string } {
     start: `${y}-${pad2(m + 1)}-01`,
     end: `${last.getFullYear()}-${pad2(last.getMonth() + 1)}-${pad2(last.getDate())}`,
   };
-}
-
-function formatDayHeader(dateStr: string, locale: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(y, m - 1, d, 12));
 }
 
 export default function HistoryPage() {

@@ -1,6 +1,7 @@
 import { TransactionRow } from '@/components/TransactionRow';
 import type { Transaction } from '@/lib/ai/schema';
 import { useLocale } from '@/lib/i18n/context';
+import { formatDayHeader } from '@/lib/i18n/date';
 
 function groupByDate(transactions: Transaction[]): [string, Transaction[]][] {
   const groups = new Map<string, Transaction[]>();
@@ -22,7 +23,7 @@ function groupByDate(transactions: Transaction[]): [string, Transaction[]][] {
  * 其实已经在滚动容器里"的地方。
  */
 export function LedgerList({ transactions }: { transactions: Transaction[] }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   if (transactions.length === 0) {
     // 外层容器（ledger/page.tsx）本身已经是白底+边框的卡片，这里不用
     // 再画第二层边框，否则会变成"卡片里嵌卡片"。
@@ -37,8 +38,13 @@ export function LedgerList({ transactions }: { transactions: Transaction[] }) {
               下面滚上来的账目卡片会被它盖住，没有实色背景会透出来叠在
               一起看不清；二是保持整个滚动容器视觉上是同一块白色，不要
               露出一条颜色不一样的缝。 */}
-          <h2 className="sticky top-0 z-10 bg-surface px-4 py-2 font-display text-sm font-semibold text-muted">
-            {date}
+          {/* 日期用 formatDayHeader 本地化（"Sun, Sep 7"），跟 History 页共用
+              同一个实现——这里原来直接渲染裸的 `2026-09-07`，同一份列表在两个
+              页面长得不一样。
+              py-1.5 + text-xs：标题原来 36px，比一整行账目（48px）的 3/4 还高，
+              作为分隔符抢了太多注意力；压到 28px 之后它只是个刻度，不是内容。 */}
+          <h2 className="sticky top-0 z-10 bg-surface px-4 py-1.5 font-display text-xs font-semibold uppercase tracking-wide text-muted">
+            {formatDayHeader(date, locale)}
           </h2>
           <ul>
             {items.map((t) => (
