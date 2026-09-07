@@ -32,3 +32,4 @@ Thumbs.db
 next-env.d.ts
 coverage/
 *.tsbuildinfo
+.clinerules/ponytail.md
