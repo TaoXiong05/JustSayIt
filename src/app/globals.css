@@ -42,9 +42,11 @@
      never silently change the other. */
   --danger: #e0463b;
   --danger-soft: #fdeaec;
-  /* Noto Sans SC 自托管（见 layout.tsx 顶部注释）——不走 next/font 的自动
-     变量生成，手动声明成真实字体族名，配合 fonts/noto-sans-sc.css 里的
-     @font-face 规则。 */
+  /* 全部四套字体自托管（见 layout.tsx 顶部注释）——不走 next/font 的自动
+     变量生成，手动声明成真实字体族名，配合 fonts/*.css 里的 @font-face 规则。 */
+  --font-outfit: 'Outfit';
+  --font-plex-sans: 'IBM Plex Sans';
+  --font-plex-mono: 'IBM Plex Mono';
   --font-noto-sc: 'Noto Sans SC';
   /* geometry */
   --radius-sm: 0.375rem;
