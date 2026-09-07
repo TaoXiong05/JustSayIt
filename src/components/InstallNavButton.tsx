@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { isIOS, isStandalone } from '@/lib/platform';
-import { canPromptInstall, promptInstall } from '@/lib/pwa/install';
+import { promptInstall } from '@/lib/pwa/install';
+import { useInstallPromptState } from '@/lib/pwa/useInstallPromptState';
 import { useLocale } from '@/lib/i18n/context';
 
 /**
@@ -12,56 +12,34 @@ import { useLocale } from '@/lib/i18n/context';
  * 标题旁边了（见 ledger/page.tsx），这里腾出来的位置留给真正只需要被看
  * 一次、但那一次必须显眼的安装入口。
  *
- * **首帧即渲染、不依赖登录态。** 曾经的写法是 `if (!mounted) return null`：
- * 服务端渲染/未登录用户初次访问时，安装入口完全不出现（用户反馈原话：
- * "用户初次访问页面，没有登录就看不到 install 按钮"）。这里有意让
- * SSR 首帧就渲染**降级成 `/settings` 链接**的安装入口——这恰好也和客户端
- * 首次渲染一致，不引入 hydration mismatch：
- * - SSR（mounted=false）→ 渲染 `/settings` 链接。
- * - 客户端首次渲染（mounted 仍为 false）→ 同一份链接，两边一致。
- * - effect 之后 mounted=true → 再按真实环境切换成原生按钮、或（已安装
- *   standalone）隐藏。这一步是纯客户端更新，不会 mismatch。
+ * 点击的触发逻辑跟 settings 页 InstallBanner 的按钮完全一致——都是直接调用
+ * promptInstall()，共用 useInstallPromptState()（mounted/installable 状态，
+ * 见该文件注释）。曾经这里在"未捕获到 beforeinstallprompt"时会降级渲染一个
+ * 指向 /settings 的链接：这条链接在 /settings 页自己点自己会触发整页刷新，
+ * 刷新又会让 beforeinstallprompt 这个一次性事件永久丢失——看起来就是"点
+ * Install 一直跳转 settings、永远弹不出安装框"（2026-09-08 回归）。
  *
- * 安装入口的"降级"规则：
- * - 已安装到主屏幕（isStandalone）→ 不渲染（客户端 mounted 后才知道）。
- * - Android/Chrome 捕获到 beforeinstallprompt → 原生安装按钮（promptInstall）。
- * - iOS → 链接到 /settings（那里有手动"添加到主屏幕"步骤）。
- * - 其它浏览器（桌面、或 Chrome 处于"已安装过又卸载"的冷却期，不派发
- *   beforeinstallprompt）→ 同样降级成 /settings 链接，**而不是隐藏**。
+ * 现在统一成：非 iOS 无条件渲染真正的安装按钮，不管 installable 与否——
+ * installable 为 false 时点击只是安静地 no-op（promptInstall 内部判断
+ * capturedEvent 为空就直接返回 'unavailable'），不会误导用户去一个自我循环
+ * 的链接，也保留了"未登录/首次访问依然能看到安装入口"（这是 2026-09-08
+ * 那次改动本来要解决的问题）——mounted 还是 false 的 SSR 首帧/客户端首次
+ * 渲染，同样落在这个按钮分支，两边输出一致，不会 hydration mismatch。
  *
- * 曾经"没捕获到事件就不渲染"：Chrome 在用户卸载过同一个 PWA 后会在很长
- * 一段时间内不再派发 beforeinstallprompt（防骚扰的冷却机制），于是安装入口
- * 在"卸载过"之后永久消失，用户再想装回来根本找不到入口。安装入口不该依赖
- * 那一次性的派发——"这个浏览器可不可装"跟"这次有没有派发事件"是两回事，
- * 后者会漏掉大量真实可安装场景。降到 /settings 链接保留入口，同时完全不动
- * Android Chrome 的原生安装体验。
+ * iOS 是唯一仍然链接去 /settings 的分支：iOS 没有 beforeinstallprompt API，
+ * promptInstall() 在那上面永远只会是 no-op，settings 页的 InstallBanner 才
+ * 有真正管用的"分享→添加到主屏幕"手动步骤。
  */
 export function InstallNavButton() {
   const { t } = useLocale();
-  const [mounted, setMounted] = useState(false);
-  const [installable, setInstallable] = useState(false);
+  const { mounted } = useInstallPromptState();
 
-  useEffect(() => {
-    setMounted(true);
-    setInstallable(canPromptInstall());
-    // 见 InstallBanner.tsx 同一处注释：beforeinstallprompt 的捕获早于这个
-    // 组件挂载就已经完成，这里只需要轮询一次挂载后的结果。
-    const id = setInterval(() => setInstallable(canPromptInstall()), 500);
-    return () => clearInterval(id);
-  }, []);
+  if (mounted && isStandalone()) return null;
 
   const className =
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink transition-colors hover:opacity-90';
 
-  // 已安装到主屏幕时，客户端 mounted 后才判定得到，这时才真正隐藏。
-  if (mounted && isStandalone()) return null;
-
-  // SSR / 客户端首次渲染 / iOS / 未捕获到事件：统一降级成 /settings 链接。
-  // mounted=false（SSR 首帧）也走这里，保证首次访问就有安装入口。
-  // iOS 没有 beforeinstallprompt 只能手动引导；非 iOS 但没捕获到事件
-  // （卸载后的冷却期、桌面/非 Chrome）同样降级，入口不因"这次没派发事件"
-  // 而消失。
-  if (!mounted || isIOS() || !installable) {
+  if (mounted && isIOS()) {
     return (
       <a href="/settings" className={className}>
         <Download aria-hidden="true" className="size-3.5" />
