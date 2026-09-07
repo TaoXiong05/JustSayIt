@@ -92,6 +92,40 @@ describe('replay', () => {
     expect(l.transactions[0].description).toBe('第二次创建');
   });
 
+  it('并发 amend 同一字段时按 createdAt 生效，不依赖事件数组本身的顺序（回归：多设备合并后，数组顺序是"本地写入顺序"而非"实际编辑时间"，曾经谁排在数组后面谁就生效，导致两台设备各自合并出不同结果，永久不一致）', () => {
+    const created = evt('transaction_created', tx('a'));
+    const earlyAmend = {
+      ...evt('transaction_amended', { id: 'a', changes: { amountCents: 3000 } }),
+      createdAt: '2026-09-04T10:00:00+10:00',
+    };
+    const laterAmend = {
+      ...evt('transaction_amended', { id: 'a', changes: { amountCents: 4000 } }),
+      createdAt: '2026-09-04T10:05:00+10:00',
+    };
+
+    // 数组顺序刻意反过来，模拟"更晚发生的编辑反而先被本地存下"（同步合并
+    // 的典型情形）——不管数组顺序如何，createdAt 更晚的那次编辑都该生效。
+    const l1 = replay([created, laterAmend, earlyAmend]);
+    const l2 = replay([created, earlyAmend, laterAmend]);
+    expect(l1.transactions[0].amountCents).toBe(4000);
+    expect(l2.transactions[0].amountCents).toBe(4000);
+  });
+
+  it('createdAt 完全相同时（同一毫秒的真并发）按 eventId 排序兜底，保证两种数组顺序算出同一个结果', () => {
+    const created = evt('transaction_created', tx('a'));
+    const amendX = {
+      ...evt('transaction_amended', { id: 'a', changes: { amountCents: 3000 } }),
+      eventId: 'x',
+    };
+    const amendY = {
+      ...evt('transaction_amended', { id: 'a', changes: { amountCents: 4000 } }),
+      eventId: 'y',
+    };
+    const l1 = replay([created, amendY, amendX]);
+    const l2 = replay([created, amendX, amendY]);
+    expect(l1.transactions[0].amountCents).toBe(l2.transactions[0].amountCents);
+  });
+
   it('raw_input_queued / raw_input_resolved 不影响 transactions（不是 Transaction 事件）', () => {
     const created = createTransactionCreated(tx('a'));
     const queued = createRawInputQueued({
