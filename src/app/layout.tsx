@@ -1,5 +1,6 @@
 import './globals.css';
-import { Outfit, IBM_Plex_Sans, IBM_Plex_Mono, Noto_Sans_SC } from 'next/font/google';
+import './fonts/noto-sans-sc.css';
+import { Outfit, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import { LocaleProvider } from '@/lib/i18n/context';
 import { TopNav } from '@/components/TopNav';
 import { MobileHeader } from '@/components/MobileHeader';
@@ -35,18 +36,18 @@ const mono = IBM_Plex_Mono({
 // 系统默认无衬线（等于中文用户完全看不到这套字体体系的个性）。Noto Sans SC
 // 跟 Outfit 同属几何/人文无衬线，粗细节奏接近，插进 display/body 栈的第二位——
 // 按字符找字形：Outfit 没有的汉字字形交给它，不影响拉丁字符仍然用 Outfit。
-const cjk = Noto_Sans_SC({
-  // next/font/google 对 CJK 字体不支持按 subset 精简下载（它的 subsets
-  // 选项只有 cyrillic/latin/latin-ext/vietnamese，没有 chinese-simplified）——
-  // 中文字形本来就大，这是嵌入自定义中文字体躲不开的体积代价。
-  // preload 依赖能声明的 subset 才能生效，这里没有可声明的中文 subset，
-  // 只能关掉 preload（跟 next.js 官方文档对非拉丁 Google 字体的建议一致），
-  // display:'swap' 已经保证不会阻塞首屏文字渲染。
-  weight: ['500', '700', '900'],
-  variable: '--font-noto-sc',
-  display: 'swap',
-  preload: false,
-});
+//
+// 改成自托管的原生 @font-face，而不是 next/font/google：后者在 Docker build
+// 阶段要连 fonts.gstatic.com 下载字重文件，Oracle VM 的构建环境对它偶发
+// ETIMEDOUT/ENETUNREACH，build 直接失败。改成从 ./fonts/noto-sans-sc.css
+// 加载（这份 CSS 没法用 next/font/local 生成——它的 src 数组不支持按
+// unicode-range 切分成多个 @font-face，只能手写/生成原生 CSS）——这份
+// CSS 是从 Google Fonts CSS2 API 抓下来的 303 个按 unicode-range 切分的
+// woff2 文件（vendored 到 public/fonts/noto-sans-sc/），逐条抓换成本地路径，
+// 保留了原本按字符区间懒加载的行为（浏览器只下当前页面实际用到的字形子集，
+// 不是一次性拖 14MB 全量文件），只是不再依赖 build 时的出网。
+// --font-noto-sc 变量因此改在 globals.css 的 :root 里手写声明，不再由
+// next/font 自动生成。
 
 export const metadata = {
   title: 'JustSayIt',
@@ -57,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${display.variable} ${bodyFont.variable} ${mono.variable} ${cjk.variable}`}
+      className={`${display.variable} ${bodyFont.variable} ${mono.variable}`}
     >
       <body>
         <LocaleProvider>
