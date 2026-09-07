@@ -35,6 +35,13 @@ async function transcribeViaApi(audio: Blob, vocab: string[]): Promise<{ text: s
   return { text: data.text };
 }
 
+/**
+ * 随请求发出的商户词表条数上限——纯粹为了 URL 长度安全（见 stop() 里的
+ * 说明）。取 60：服务端 224 字符的预算装不下这么多，留了富余，同时
+ * 60 条商户名 URL 编码后仍在 1KB 量级，离任何 URL/请求头上限都很远。
+ */
+const VOCAB_MAX_ENTRIES = 60;
+
 type Status = 'idle' | 'recording' | 'transcribing' | 'unsupported';
 
 /** 每条声波竖线错开起伏的延迟，做出参差感（不是所有条同步跳动）。 */
@@ -108,8 +115,18 @@ export function VoiceButton({
         setStatus('idle');
         return;
       }
-      // 商户词表偏置（§16.3）：历史出现过写法的商户更容易被听对
-      const vocab = knownMerchants();
+      // 商户词表偏置（§16.3）：历史出现过写法的商户更容易被听对。
+      //
+      // 必须在这里截断，不能把 knownMerchants() 的全量结果直接发出去：
+      // 它返回的是**历史上所有**商户、随使用无上限增长，而 vocab 是走
+      // URL query string 传的——几百个商户就能把 URL 涨到几 KB，撞上
+      // Node 的请求行/请求头上限（默认 16KB）直接 431，整个转写请求失败。
+      // 服务端最终也只用得上 224 字符（见 groq.ts 的 buildPrompt）。
+      //
+      // reverse()：knownMerchants() 按事件顺序返回，最早出现的在前；
+      // 而偏置对**最近**用过的商户最有价值，服务端又是从前往后取，
+      // 所以这里倒过来，让两层对"越靠前越相关"的理解一致。
+      const vocab = knownMerchants().slice(-VOCAB_MAX_ENTRIES).reverse();
       const { text } = await transcribeViaApi(blob, vocab);
       onTranscribed(text);
       setStatus('idle');

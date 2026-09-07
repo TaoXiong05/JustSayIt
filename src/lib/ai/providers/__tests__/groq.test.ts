@@ -85,6 +85,30 @@ describe('groqTranscribe', () => {
     expect(prompt).not.toMatch(/Woolworths|Coles|Uber/i);
   });
 
+  // 回归：数字样例原来拼在词表**前面**，而 Whisper 超过 224 token 时丢的
+  // 是开头——词表越长，样例越先被丢掉，恰好在最该起作用的场景失效。
+  it('词表很长时仍保住数字样例，且不从中间切断商户名', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: 'ok' }),
+    } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const many = Array.from({ length: 60 }, (_, i) => `MerchantNumber${i}`);
+    await groqTranscribe(audio, many);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const prompt = String((init.body as FormData).get('prompt'));
+    expect(prompt.length).toBeLessThanOrEqual(224);
+    // 样例在最后一段，不会被开头截断吃掉
+    expect(prompt.endsWith('65, 12.50, 4.8')).toBe(true);
+    // 每一条商户名都是完整的，没有 "MerchantNumb" 这种切一半的残词
+    for (const entry of prompt.split(', ').slice(0, -3)) {
+      expect(many).toContain(entry);
+    }
+  });
+
   // MediaRecorder 的默认输出是平台相关的（桌面 Chrome 给 WebM/Opus，
   // iOS Safari 给 MP4/AAC），扩展名写死 webm 等于把 MP4 谎报成 WebM。
   it('上传文件名的扩展名跟随音频真实容器', async () => {
