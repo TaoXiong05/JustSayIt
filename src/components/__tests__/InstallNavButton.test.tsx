@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { render } from '@/test/renderWithLocale';
 import { LocaleProvider } from '@/lib/i18n/context';
@@ -27,6 +27,8 @@ describe('InstallNavButton（全局页眉里醒目的安装入口）', () => {
     vi.mocked(isIOS).mockReturnValue(false);
     vi.mocked(isStandalone).mockReturnValue(false);
     vi.mocked(canPromptInstall).mockReturnValue(true);
+    // 返回 dismissed 让 handleInstall 走完就回来、无状态更新（本用例只关心点击触发调用）
+    vi.mocked(promptInstall).mockResolvedValue('dismissed');
     render(<InstallNavButton />);
     const button = await screen.findByRole('button', { name: 'Install' });
     fireEvent.click(button);
@@ -37,11 +39,70 @@ describe('InstallNavButton（全局页眉里醒目的安装入口）', () => {
     vi.mocked(isIOS).mockReturnValue(false);
     vi.mocked(isStandalone).mockReturnValue(false);
     vi.mocked(canPromptInstall).mockReturnValue(false);
+    // 返回 dismissed：本用例只关心"不管 installable 与否都渲染同一颗按钮、点击
+    // 直接调用 promptInstall"，返回值本身不在此验证范围。
+    vi.mocked(promptInstall).mockResolvedValue('dismissed');
     render(<InstallNavButton />);
     const button = await screen.findByRole('button', { name: 'Install' });
     expect(screen.queryByRole('link', { name: 'Install' })).toBeNull();
     fireEvent.click(button);
     expect(promptInstall).toHaveBeenCalled();
+  });
+
+  it('点击后 promptInstall 返回 accepted → 冒泡提示"安装已完成"，4 秒后自动消失', async () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.mocked(canPromptInstall).mockReturnValue(true);
+    vi.mocked(promptInstall).mockResolvedValue('accepted');
+    render(<InstallNavButton />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }));
+    expect(await screen.findByText('Installed successfully.')).toBeDefined();
+  });
+
+  it('点击后 promptInstall 返回 unavailable → 冒泡提示"当前不可用"', async () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.mocked(canPromptInstall).mockReturnValue(false);
+    vi.mocked(promptInstall).mockResolvedValue('unavailable');
+    render(<InstallNavButton />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }));
+    expect(await screen.findByText("Install isn't available in this browser.")).toBeDefined();
+  });
+
+  it('点击后 promptInstall 返回 dismissed（用户在系统安装框里取消）→ 不冒泡打扰', async () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.mocked(promptInstall).mockResolvedValue('dismissed');
+    render(<InstallNavButton />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }));
+    // 等 handleInstall 完整跑完（promptInstall resolve 并走完 dismissed 分支）再断言
+    await waitFor(() => expect(promptInstall).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('反馈气泡 4 秒后自动消失', async () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    vi.mocked(isStandalone).mockReturnValue(false);
+    vi.mocked(canPromptInstall).mockReturnValue(true);
+    vi.mocked(promptInstall).mockResolvedValue('accepted');
+    vi.useFakeTimers();
+    try {
+      render(<InstallNavButton />);
+      // 点击 → promptInstall resolve → setFeedback：全程在 act 里包裹，
+      // 让状态更新同步落到 DOM（fake timers 下微任务不会被自动 flush）
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+        await Promise.resolve();
+      });
+      expect(screen.getByText('Installed successfully.')).toBeDefined();
+      act(() => vi.advanceTimersByTime(4000));
+      expect(screen.queryByText('Installed successfully.')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('iOS 未安装时渲染链接到设置页（那里有手动安装步骤），不直接调用 promptInstall', async () => {

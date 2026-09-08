@@ -104,6 +104,8 @@ export type DictKey =
   | 'installInstructionsIOS'
   | 'installAlreadyInstalled'
   | 'installNudgeUnsynced'
+  | 'installToastSuccess'
+  | 'installToastUnavailable'
   | 'toastDismiss'
   | 'toastRegion'
   | 'monthPrev'
@@ -252,6 +254,8 @@ const en: Record<DictKey, DictValue> = {
   installInstructionsIOS: 'Tap the Share button, then "Add to Home Screen".',
   installAlreadyInstalled: 'Already installed to your home screen.',
   installNudgeUnsynced: "Add to Home Screen to keep this device's data safe.",
+  installToastSuccess: 'Installed successfully.',
+  installToastUnavailable: 'Install isn\'t available in this browser.',
   toastDismiss: 'Dismiss',
   toastRegion: 'Notifications',
   monthPrev: 'Previous month',
@@ -388,6 +392,8 @@ const zh: Record<DictKey, DictValue> = {
   installInstructionsIOS: '点击分享按钮，选择"添加到主屏幕"。',
   installAlreadyInstalled: '已经安装到主屏幕了。',
   installNudgeUnsynced: '添加到主屏幕以保护这台设备上的数据。',
+  installToastSuccess: '安装已完成。',
+  installToastUnavailable: '当前不可用。',
   toastDismiss: '关闭',
   toastRegion: '通知',
   monthPrev: '上月',
