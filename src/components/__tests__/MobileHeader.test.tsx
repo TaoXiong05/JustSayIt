@@ -24,7 +24,7 @@ describe('MobileHeader（移动端全局页眉：品牌 logo + 安装入口/语�
     render(<MobileHeader />);
     expect(screen.getByRole('link', { name: 'JustSayIt' })).toHaveProperty(
       'href',
-      'http://localhost:3000/ledger',
+      'http://localhost:3000/',
     );
   });
 

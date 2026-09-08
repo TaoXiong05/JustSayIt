@@ -31,7 +31,7 @@ describe('TopNav（桌面端全局顶部导航，替代原侧边栏）', () => {
     render(<TopNav />);
     expect(screen.getByRole('link', { name: 'JustSayIt' })).toHaveProperty(
       'href',
-      'http://localhost:3000/ledger',
+      'http://localhost:3000/',
     );
     expect(screen.getByRole('link', { name: 'Ledger' })).toHaveProperty(
       'href',
