@@ -1,23 +1,24 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { RefreshCw, ChevronRight } from 'lucide-react';
+import { ChevronRight, RefreshCw, WifiOff } from 'lucide-react';
 import { Composer } from '@/components/Composer';
 import { LedgerList } from '@/components/LedgerList';
 import { PendingRow } from '@/components/PendingRow';
-import { QueuedRow } from '@/components/QueuedRow';
 import { SyncWarning } from '@/components/SyncWarning';
 import { SyncStatusDot } from '@/components/SyncStatusDot';
 import { AddedFlash } from '@/components/AddedFlash';
-import { useLedger, usePendingRawInputs } from '@/lib/ledger/useLedger';
-import { addTransactions, queueRawInput } from '@/lib/ledger/store';
+import { NoticeCard } from '@/components/NoticeCard';
+import { GoogleLoginButton } from '@/components/GoogleLoginButton';
+import { useLedger } from '@/lib/ledger/useLedger';
+import { addTransactions } from '@/lib/ledger/store';
 import { structureTextToTransactions } from '@/lib/ledger/structureAndSave';
 import { recentTransactions } from '@/lib/ledger/history';
-import { initOfflineQueueAutoRetry } from '@/lib/ledger/offlineQueue';
 import { getSnapshot as getSyncSnapshot } from '@/lib/sync/status';
 import { useSession } from '@/lib/auth/client';
 import { useLocale } from '@/lib/i18n/context';
+import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import { randomUUID } from '@/lib/platform';
 import { ApiError } from '@/lib/apiError';
 import { LedgerSkeleton } from '@/components/LedgerSkeleton';
@@ -27,15 +28,11 @@ const DEFAULT_CURRENCY = 'AUD';
 export default function Home() {
   const ledger = useLedger();
   const transactions = ledger.transactions;   // 稳定引用，无需 memo（见 Task 14）
-  // §11.4 local-first：账本不因登录状态而隐藏；登录仅用于调用 AI / 语音
+  // §11.4 local-first：账本不因登录状态而隐藏；登录仅用于调用 AI / 语音。
   const { user, loading } = useSession();
   const authed = !loading && user != null;
+  const online = useOnlineStatus();
   const { t } = useLocale();
-  const pendingRawInputs = usePendingRawInputs();
-
-  useEffect(() => {
-    return initOfflineQueueAutoRetry();
-  }, []);
 
   // 用提交自身的 id 而非文本内容作 key：两次提交内容完全相同时
   // （用户手滑连点，或确实连记两笔一样的账），按文本过滤会把两条
@@ -58,32 +55,26 @@ export default function Home() {
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         defaultCurrency: DEFAULT_CURRENCY,
       };
-      if (!navigator.onLine) {
-        await queueRawInput({ text, ...ctx });
-        return; // 离线：不乐观插入账目，只排队等待联网后补跑（spec §9、§11.4）
-      }
       let txs;
       try {
         txs = await structureTextToTransactions(text, ctx);
       } catch (err) {
-        // navigator.onLine 只反映"网络接口是否连着什么"，连着 WiFi/热点但
-        // 实际上不通网（路由器掉线、公共 WiFi 卡在认证页、飞行模式下某些
-        // 系统仍报 true）时它仍然是 true，上面那道预检完全挡不住——这正是
-        // 用户反馈"离线根本不可用，没网会直接报错"的根因：预检通过后
-        // fetch() 自己才发现连不上，抛出的异常直接被当成"结构化失败"扔给
-        // 用户看，而不是像真正离线那样退化成排队。
-        // fetch() 规范保证：网络层面失败（DNS/连接失败/被拦截）时 reject
-        // 的永远是 TypeError（各浏览器文案不同，如 "Failed to fetch"/
-        // "NetworkError when attempting to fetch resource"/"Load failed"），
-        // 跟服务器正常响应但内容有问题的两种失败模式互斥：HTTP 错误状态码
-        // 走 throwApiError 抛 ApiError，响应体解析失败走 zod 的 ZodError——
-        // 都不是 TypeError，用 instanceof 就能把"真离线"从这两者里筛出来，
-        // 不会把货真价实的业务报错（配额超限、AI 没识别出账目等）也悄悄
-        // 吞成排队，那样用户会以为记上了，其实这笔账再也不会被人看见
-        // 是不是记错了。
+        // useOnlineStatus 只在"确实没有可用网络接口"时可靠——这里能被调用
+        // 到，说明它当时判断是在线的（离线时输入区整个换成了 NoticeCard，
+        // 提交按钮根本不存在，见下面的渲染分支）。连着 WiFi/热点却上不了网
+        // （路由器掉线、公共 WiFi 卡在认证页）这种"看着在线其实不通"的
+        // 假阳性它防不住，得靠这里兜底：fetch() 规范保证网络层面失败
+        // （DNS/连接失败/被拦截）时 reject 的永远是 TypeError，跟服务器
+        // 正常响应但内容有问题的两种失败模式互斥（HTTP 错误状态码走
+        // throwApiError 抛 ApiError，响应体解析失败是 zod 的 ZodError，
+        // 都不是 TypeError）——命中就转成一条"网络连接失败"的错误直接给
+        // 用户看。离线支持已经砍掉排队记账这条路（AI 结构化本来就要联网+
+        // 登录，假装能排队只是把"记不上"的问题延后），所以这里不再退化
+        // 成排队，是明确报错，跟一次货真价实的业务失败（配额超限、AI 没
+        // 识别出账目）用完全一样的处理路径——都复用 Composer 已有的失败
+        // 处理（把原文还回输入框、显示红字提示）。
         if (err instanceof TypeError) {
-          await queueRawInput({ text, ...ctx });
-          return;
+          throw new ApiError('网络连接失败', 'NETWORK_ERROR');
         }
         throw err;
       }
@@ -120,7 +111,9 @@ export default function Home() {
       {/* 近期账单区（用户明确要求：挪到输入区上面）：flex-1 吃掉除输入区
           外的所有剩余高度，min-h-0 是让 flex 子项的 overflow-y-auto 真正
           生效的关键（没有它，flex item 默认不会收缩到比内容更矮，滚动条
-          永远不会出现）。 */}
+          永远不会出现）。这块查看/编辑历史的能力不受登录/网络状态影响
+          （§11.4 local-first；离线砍掉的只是"记新的一笔"，见下面输入区
+          的三态分支）。 */}
       <div className="flex min-h-0 flex-1 flex-col">
         {/* 主屏只展示最近 10 条（Plan 5 Task 9 的 Ruling：10 是起始值，日后好调），
             完整历史由 /history 承担。"查看全部历史"链接只在首页出现：History
@@ -146,9 +139,7 @@ export default function Home() {
             直接搬到这一层，日期标题也改用同色背景，见 LedgerList.tsx）——
             滚动容器的可见范围和可交互范围完全重合，不会出现"看着是外面、
             其实已经在里面"的灰色地带。overscroll-contain 防止滑到顶/底之后
-            继续被"接力"到页面滚动。pending/queued 占位行并入这同一张滚动
-            卡片顶部（原来是各自独立的卡片）——它们本来就是"即将变成账单"
-            的条目，跟着历史记录一起滚动更自然，也不再挤占输入区的空间。 */}
+            继续被"接力"到页面滚动。 */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface shadow-card">
           {pending.length > 0 && (
             <ul className="border-b border-border">
@@ -157,77 +148,40 @@ export default function Home() {
               ))}
             </ul>
           )}
-          {pendingRawInputs.length > 0 && (
-            <ul className="border-b border-border">
-              {pendingRawInputs.map((item) => (
-                <QueuedRow key={item.id} text={item.text} />
-              ))}
-            </ul>
-          )}
           <LedgerList transactions={recentTransactions(transactions, 10)} />
         </div>
       </div>
       <SyncWarning />
-      {/* 输入区（已登录：Composer；访客：登录引导 banner）挪到最下面
-          （用户明确要求：近期账单在上、输入区在下）。移动端 h-[42dvh]——
-          紧贴底部 tab 栏之上，是单手持机时拇指最容易够到的区域；用户反馈
-          最初的 50dvh 挤占了近期账单区，调小几个百分点把空间还给列表。
-          桌面端原来是 lg:h-auto（内容自适应），用户反馈那样太窄、组件显挤，
-          改成显式 lg:h-96，给 Composer 内部留出跟移动端类似的呼吸感。 */}
+      {/* 输入区三态，互斥（挪到最下面：用户明确要求，近期账单在上、输入区
+          在下）。移动端 h-[42dvh]——紧贴底部 tab 栏之上，是单手持机时拇指
+          最容易够到的区域；用户反馈最初的 50dvh 挤占了近期账单区，调小
+          几个百分点把空间还给列表。桌面端原来是 lg:h-auto（内容自适应），
+          用户反馈那样太窄、组件显挤，改成显式 lg:h-96，给 Composer 内部
+          留出跟移动端类似的呼吸感。
+          三态用同一张 NoticeCard 视觉外壳（见该组件注释），只换图标/文案/
+          底部动作：
+          1) 未登录 + 在线——登录引导，CTA 可点；
+          2) 未登录 + 离线——同一张登录卡，说明文案换成"登录也需要联网"，
+             CTA 换成禁用态（OAuth 整页跳转离线时点了也走不通）；
+          3) 已登录 + 离线——历史账目仍可查看/编辑，只是记不了新的一笔
+             （AI 结构化本来就要联网），没有可点的动作，纯提示。 */}
       <div className="mt-3 flex h-[42dvh] shrink-0 flex-col justify-center lg:mt-6 lg:h-96 lg:block">
-        {authed ? (
-          <Composer onSubmit={handleSubmit} />
+        {!authed ? (
+          <NoticeCard
+            icon={RefreshCw}
+            title={t('logInPrompt')}
+            description={online ? t('logInDescription') : t('logInOfflineDescription')}
+          >
+            <GoogleLoginButton disabled={!online} />
+          </NoticeCard>
+        ) : !online ? (
+          <NoticeCard
+            icon={WifiOff}
+            title={t('composerOfflineTitle')}
+            description={t('composerOfflineDescription')}
+          />
         ) : (
-        // 之前是满版品牌渐变+白字的"招牌 CTA"卡片——跟 Logo/CTA/Hero 用的
-        // 是同一个渐变，导致"重要"的东西全用同一招表达，互相抵消层级感
-        // （改善方向 #2：渐变收窄到一个真正的签名时刻，这里改用跟其它
-        // 卡片同一套语言：surface 底 + border，用 brand-soft 图标点题就够，
-        // 不需要整张卡片都是品牌色）。CTA 直接指向 OAuth 端点、不经过
-        // /login 营销页——会看到这张卡片的人已经在用产品了，不需要再看
-        // 一遍营销话术，少一次跳转就少一次流失。这张卡片在访客态占的是
-        // Composer 同一个位置（两者互斥），所以也用 shadow-pop 跟 Composer
-        // 同一个"主操作入口"层级，而不是列表/数据卡片的 shadow-card
-        // （改善方向 #6）。
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-pop">
-          <div className="flex items-start gap-3.5">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <RefreshCw aria-hidden="true" className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-semibold text-ink">{t('logInPrompt')}</p>
-              <p className="mt-1 text-sm text-muted">{t('logInDescription')}</p>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center">
-            <a
-              href="/api/auth/login"
-              className="inline-flex items-center gap-2.5 rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-[#3c4043] shadow-sm transition-colors hover:bg-surface-2"
-            >
-              {/* Google 官方四色 G 标志，"使用 Google 登录"按钮的标准画法——
-                  按钮本身用 Google 品牌指南要求的浅底深字，不跟随这个
-                  项目自己的品牌色。 */}
-              <svg aria-hidden="true" viewBox="0 0 18 18" className="size-[18px] shrink-0">
-                <path
-                  fill="#4285F4"
-                  d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-                />
-              </svg>
-              {t('logInAction')}
-            </a>
-          </div>
-        </div>
+          <Composer onSubmit={handleSubmit} />
         )}
       </div>
       {lastAdded.length > 0 && (

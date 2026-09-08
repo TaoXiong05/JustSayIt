@@ -17,8 +17,11 @@ export type DictKey =
   | 'logOut'
   | 'logInPrompt'
   | 'logInDescription'
+  | 'logInOfflineDescription'
   | 'logInAction'
   | 'backToLedger'
+  | 'composerOfflineTitle'
+  | 'composerOfflineDescription'
   | 'footerPrivacyPolicy'
   | 'footerTermsOfService'
   | 'localeToggleLabel'
@@ -49,8 +52,13 @@ export type DictKey =
   | 'errorNoTransactionsFound'
   | 'errorMissingAmount'
   | 'errorTranscribeFailed'
+  | 'errorNetworkFailed'
   | 'errorGeneric'
-  | 'queuedOffline'
+  | 'accountSwitchTitle'
+  | 'accountSwitchBodySafe'
+  | 'accountSwitchBodyUnsynced'
+  | 'accountSwitchClear'
+  | 'accountSwitchKeep'
   | 'syncPendingCount'
   | 'syncedUpToDate'
   | 'rowUnsynced'
@@ -143,8 +151,16 @@ const en: Record<DictKey, DictValue> = {
   // "Google 云"，跟营销首页 Hero 已经在用的说法（"syncs to your own
   // Drive"）保持一致的技术表述。
   logInDescription: 'Your data stays on this device — sync runs through your own Google Drive.',
+  // 访客且离线时替换上面那条——登录本身要走 Google OAuth，没有网络这一步
+  // 连开始都开始不了，说"数据存在本地"这句在这个状态下答非所问。
+  logInOfflineDescription: 'Signing in needs a connection — reconnect, then continue with Google.',
   logInAction: 'Continue with Google',
   backToLedger: 'Back (view local ledger)',
+  // 已登录但离线时，输入区换成这张卡片（跟访客引导卡同一套视觉，见
+  // ledger/page.tsx）——历史账目仍可查看/编辑，只是记不了新的一笔。
+  composerOfflineTitle: 'You need a connection to record',
+  composerOfflineDescription:
+    'Your existing entries are still here to view and edit. Reconnect to add a new one.',
   footerPrivacyPolicy: 'Privacy Policy',
   footerTermsOfService: 'Terms of Service',
   localeToggleLabel: '中文',
@@ -210,8 +226,19 @@ const en: Record<DictKey, DictValue> = {
   errorNoTransactionsFound: "Couldn't find anything to record — try rephrasing",
   errorMissingAmount: 'Add an amount, e.g. "lunch 15"',
   errorTranscribeFailed: 'Transcription failed, please retry',
+  // 客户端本地判定（见 ledger/page.tsx、VoiceButton.tsx）：fetch() 本身
+  // 因为网络层面失败而 reject（不是服务器返回了错误状态码）时用这条，
+  // 跟"结构化失败"/"转写失败"区分开——那两条暗示的是"服务出了问题"，
+  // 这条讲的是"请求根本没送到"，用户该做的事不一样（检查网络 vs 换个说法重试）。
+  errorNetworkFailed: 'Network connection failed — check your connection and try again',
   errorGeneric: 'Something went wrong, please retry',
-  queuedOffline: 'Queued offline — will record once back online',
+  accountSwitchTitle: 'Different Google account detected',
+  accountSwitchBodySafe:
+    "This device's local ledger belongs to a different account, and everything in it is already synced. Clear it to start fresh with this account?",
+  accountSwitchBodyUnsynced: ({ count }) =>
+    `This device's local ledger belongs to a different account, and ${count} of its entries have never synced anywhere. Clearing will permanently delete them; keeping them means your next sync could push them into this account's Google Drive.`,
+  accountSwitchClear: 'Clear local data',
+  accountSwitchKeep: 'Keep as is',
   settingsTitle: 'Settings',
   settingsAccount: 'Account',
   settingsStorageUsage: ({ used, quota }) => `${used} MB / ${quota} MB`,
@@ -262,8 +289,8 @@ const en: Record<DictKey, DictValue> = {
   featureVoiceDesc: 'Tap once, say it, done — no forms to fill.',
   featureAutoTitle: 'Smart categorization',
   featureAutoDesc: 'AI sorts every entry into the right category.',
-  featureOfflineTitle: 'Works offline',
-  featureOfflineDesc: 'Entries queue up and sync when you are back online.',
+  featureOfflineTitle: 'Local-first storage',
+  featureOfflineDesc: 'View and edit your history anytime — even offline. Recording a new entry needs a connection.',
   featurePrivacyTitle: 'Local-first & private',
   featurePrivacyDesc: 'Your data lives on your device — the cloud is just backup.',
 };
@@ -272,8 +299,11 @@ const zh: Record<DictKey, DictValue> = {
   logOut: '退出',
   logInPrompt: '登录开始使用',
   logInDescription: '数据都存在您的设备上，同步功能通过您自己的 Google Drive 实现。',
+  logInOfflineDescription: '登录需要联网——请先连接网络，再用 Google 账号继续。',
   logInAction: '使用 Google 登录',
   backToLedger: '返回（可查看本地账本）',
+  composerOfflineTitle: '需要联网才能记账',
+  composerOfflineDescription: '已经记好的账目仍然可以查看和编辑，联网后即可记新的一笔。',
   footerPrivacyPolicy: '隐私政策',
   footerTermsOfService: '服务条款',
   localeToggleLabel: 'English',
@@ -337,8 +367,14 @@ const zh: Record<DictKey, DictValue> = {
   errorNoTransactionsFound: '没有识别到可记录的账目，换个说法再试试',
   errorMissingAmount: '请包含具体金额，比如"午饭 15"',
   errorTranscribeFailed: '转写失败，请重试',
+  errorNetworkFailed: '网络连接失败，请检查网络后重试',
   errorGeneric: '出了点问题，请重试',
-  queuedOffline: '离线待处理，联网后自动记账',
+  accountSwitchTitle: '检测到不同的 Google 账号',
+  accountSwitchBodySafe: '这台设备本地的账本属于另一个账号，且已经全部同步过。要清空本机数据、以这个账号重新开始吗？',
+  accountSwitchBodyUnsynced: ({ count }) =>
+    `这台设备本地的账本属于另一个账号，其中有 ${count} 条从未同步到任何地方。清空会永久删除这些记录；保留则可能在下次同步时被推送进当前账号的 Google Drive。`,
+  accountSwitchClear: '清空本机数据',
+  accountSwitchKeep: '保留不变',
   settingsTitle: '设置',
   settingsAccount: '账号',
   settingsStorageUsage: ({ used, quota }) => `${used} MB / ${quota} MB`,
@@ -386,8 +422,8 @@ const zh: Record<DictKey, DictValue> = {
   featureVoiceDesc: '点一下，说出来，就记好了——不用填表。',
   featureAutoTitle: '智能分类',
   featureAutoDesc: 'AI 把每笔消费自动归到正确的分类。',
-  featureOfflineTitle: '离线也能记',
-  featureOfflineDesc: '离线时记账自动排队，联网后自动同步。',
+  featureOfflineTitle: '数据本地优先',
+  featureOfflineDesc: '离线也能随时查看、编辑历史账目；记新的一笔需要联网。',
   featurePrivacyTitle: '本地优先、隐私安全',
   featurePrivacyDesc: '数据存留在你的设备上——云端只作备份。',
 };
@@ -450,6 +486,10 @@ const ERROR_CODE_TO_KEY: Record<string, DictKey> = {
   // 两回事，需要一条不同的文案，不能落进 errorStructureFailed 那句
   // "记账失败"（这次调用其实没有失败）。
   NO_TRANSACTIONS: 'errorNoTransactionsFound',
+  // 客户端本地抛出（见 ledger/page.tsx、VoiceButton.tsx）：fetch() 因网络
+  // 层面失败而 reject（不是服务器给了个错误状态码）时用这条，见
+  // errorNetworkFailed 定义处的说明。
+  NETWORK_ERROR: 'errorNetworkFailed',
 };
 
 export function errorCodeToKey(code: string | undefined, fallback: DictKey): DictKey {

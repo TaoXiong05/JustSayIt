@@ -41,4 +41,15 @@ describe('主屏（未登录）', () => {
     // 本地账本区仍渲染（空态文案）
     expect(screen.getByText(/No records yet/)).toBeDefined();
   });
+
+  it('未登录 + 离线：登录按钮换成禁用态，不再是可点的 OAuth 链接（登录本身要走整页跳转，离线时点了也走不通）', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    render(<Home />);
+    await waitFor(() =>
+      expect(screen.getByText('Signing in needs a connection — reconnect, then continue with Google.')).toBeDefined(),
+    );
+    expect(screen.queryByRole('link', { name: 'Continue with Google' })).toBeNull();
+    const button = screen.getByRole('button', { name: 'Continue with Google' });
+    expect(button).toHaveProperty('disabled', true);
+  });
 });

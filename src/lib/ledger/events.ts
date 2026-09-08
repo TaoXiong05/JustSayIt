@@ -26,7 +26,18 @@ type BaseEvent = {
   schemaVersion: typeof SCHEMA_VERSION;
 };
 
-/** 判别字段用 kind 而非 type——Transaction 已经占用了 type 表示收支方向 */
+/**
+ * 离线排队功能已下线（离线时不再支持记账，只支持查看/编辑已有账目——AI
+ * 结构化本来就要联网+登录，假装能排队只是把"记不上"的问题延后，不是
+ * 解决它）。这两个事件类型和下面 `LedgerEvent` 联合类型里的对应分支、
+ * replay.ts 里吞掉这两种 kind 的 no-op case 都特意保留：万一某台设备的
+ * 本地 IndexedDB 里还躺着旧版本产生的 raw_input_queued/resolved 事件，
+ * replay() 得认得这两种 kind 才不会在类型收窄或运行时处理上出岔子。
+ * 真正"制造"这两种事件的入口（store.ts 的 queueRawInput/resolveRawInput、
+ * offlineQueue.ts 整个模块、QueuedRow 组件）已经删掉，不会再有新的这类
+ * 事件产生。判别字段用 kind 而非 type——Transaction 已经占用了 type
+ * 表示收支方向。
+ */
 export type RawInputQueuedPayload = {
   id: string;
   text: string;
@@ -83,20 +94,4 @@ export function createTransactionAmended(
 
 export function createTransactionDeleted(id: string): LedgerEvent {
   return { ...base(), kind: 'transaction_deleted', payload: { id } };
-}
-
-/** 离线时的原始输入（spec §5.1、§9）：先落盘排队，联网后由 lib/ledger/offlineQueue.ts 补跑。 */
-export function createRawInputQueued(
-  input: Omit<RawInputQueuedPayload, 'id'>,
-): RawInputQueuedEvent {
-  return {
-    ...base(),
-    kind: 'raw_input_queued',
-    payload: { id: randomUUID(), ...input },
-  };
-}
-
-/** 标记某条排队输入已结构化完成（对应的 transaction_created 事件单独追加）。 */
-export function createRawInputResolved(queuedId: string): RawInputResolvedEvent {
-  return { ...base(), kind: 'raw_input_resolved', payload: { queuedId } };
 }

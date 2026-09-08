@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { replay } from '@/lib/ledger/replay';
-import {
-  createTransactionCreated,
-  createRawInputQueued,
-  createRawInputResolved,
-  type LedgerEvent,
-} from '@/lib/ledger/events';
+import { createTransactionCreated, type LedgerEvent } from '@/lib/ledger/events';
 import type { Transaction } from '@/lib/ai/schema';
 
 let seq = 0;
@@ -126,15 +121,16 @@ describe('replay', () => {
     expect(l1.transactions[0].amountCents).toBe(l2.transactions[0].amountCents);
   });
 
-  it('raw_input_queued / raw_input_resolved 不影响 transactions（不是 Transaction 事件）', () => {
+  it('raw_input_queued / raw_input_resolved 不影响 transactions（离线排队功能已下线，这两种 kind 不会再被制造出来，但 replay 仍要认得它们、不出岔子——万一某台设备本地还留着旧版本产生的这类事件）', () => {
     const created = createTransactionCreated(tx('a'));
-    const queued = createRawInputQueued({
+    const queued = evt('raw_input_queued', {
+      id: 'q1',
       text: 'x',
       localTime: '2026-09-05T10:00:00+10:00',
       timeZone: 'Australia/Sydney',
       defaultCurrency: 'AUD',
     });
-    const resolved = createRawInputResolved('some-queued-id');
+    const resolved = evt('raw_input_resolved', { queuedId: 'some-queued-id' });
     const withExtra = replay([created, queued, resolved]);
     const without = replay([created]);
     expect(withExtra).toEqual(without);

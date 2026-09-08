@@ -131,7 +131,13 @@ export function VoiceButton({
       onTranscribed(text);
       setStatus('idle');
     } catch (err) {
-      const code = err instanceof ApiError ? err.code : undefined;
+      // fetch() 规范保证网络层面失败（DNS/连接失败/被拦截）时 reject 的
+      // 永远是 TypeError，跟服务器正常响应但内容有问题的失败模式互斥
+      // （HTTP 错误状态码走 throwApiError 抛 ApiError）——命中就给一条
+      // "网络连接失败"，别跟"转写失败"混在一起：后者暗示的是服务本身
+      // 出了问题，前者是请求根本没送到，用户该做的事不一样（同
+      // ledger/page.tsx 的 handleSubmit 同一处理）。
+      const code = err instanceof TypeError ? 'NETWORK_ERROR' : err instanceof ApiError ? err.code : undefined;
       setError(t(errorCodeToKey(code, 'errorTranscribeFailed')));
       setStatus('idle');
     }

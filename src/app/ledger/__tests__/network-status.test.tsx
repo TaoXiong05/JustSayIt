@@ -14,7 +14,6 @@ vi.mock('@/lib/auth/client', () => ({
   fetchLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
-
 beforeEach(async () => {
   localStorage.clear();
   await clearAllEvents();
@@ -22,29 +21,32 @@ beforeEach(async () => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-describe('主屏 · 离线队列', () => {
-  it('离线时提交不发请求，落入排队队列并显示待处理', async () => {
+/**
+ * 离线排队功能已下线（AI 结构化本来就要联网+登录，假装能排队只是把
+ * "记不上"的问题延后）。这个文件原来叫 offline-queue.test.tsx，测的是
+ * "离线时排队、联网后补跑"；现在改测新决定的行为：离线时输入区整个换成
+ * 提示卡片（不给提交的机会），以及"看着在线其实不通网"时提交要明确报错
+ * 而不是悄悄排队。
+ */
+describe('主屏 · 已登录时的网络状态', () => {
+  it('离线（navigator.onLine=false）时输入区换成提示卡片，不渲染 Composer，历史账目仍可见', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
 
-    const user = userEvent.setup();
     render(<Home />);
-    await user.type(screen.getByRole('textbox'), '买菜50块');
-    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() => expect(screen.getByText(/Queued offline/)).toBeDefined());
-    // 用 selector 限定在排队行内部：受控 <textarea> 会把值镜像成自己的
-    // 文本节点（用户看到的输入框其实已经清空了，清的是 value），裸的
-    // getByText 会同时命中排队行和输入框，取决于清空提交在哪一刻落地，
-    // 整套跑起来时会间歇性地报"找到多个元素"。同 optimistic.test.tsx。
-    expect(
-      screen.getByText('买菜50块', { selector: 'li[aria-live="polite"] span' }),
-    ).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByText('You need a connection to record')).toBeDefined(),
+    );
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Submit' })).toBeNull();
+    // 空态账本文案仍然渲染——查看历史不受离线影响（§11.4 local-first）。
+    expect(screen.getByText(/No records yet/)).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('navigator.onLine 误报为 true（连着 WiFi 但实际不通网）时，fetch 失败也要落入排队而不是报错（回归：曾经预检通过后 fetch 抛出的 TypeError 被当成 AI 结构化失败直接展示给用户）', async () => {
+  it('navigator.onLine 误报为 true（连着 WiFi 但实际不通网）时，提交要明确报网络错误，不再悄悄排队（回归：曾经这种情况会被当成"真离线"塞进排队，用户以为记上了）', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
 
@@ -53,11 +55,17 @@ describe('主屏 · 离线队列', () => {
     await user.type(screen.getByRole('textbox'), '买菜50块');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() => expect(screen.getByText(/Queued offline/)).toBeDefined());
-    expect(screen.queryByRole('alert')).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getByText('Network connection failed — check your connection and try again'),
+      ).toBeDefined(),
+    );
+    // 失败时原文还回输入框，供重试/编辑（Composer 既有行为，这里只是确认
+    // 网络错误没有被特殊处理成"清空输入框假装记上了"）。
+    expect(screen.getByRole('textbox')).toHaveProperty('value', '买菜50块');
   });
 
-  it('在线时提交行为不变（回归：不因为加了离线分支而破坏既有路径）', async () => {
+  it('在线时提交行为不变（回归：网络状态判断不影响既有的正常提交路径）', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -85,6 +93,6 @@ describe('主屏 · 离线队列', () => {
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(screen.getByText('25.00')).toBeDefined());
-    expect(screen.queryByText(/Queued offline/)).toBeNull();
+    expect(screen.queryByText('You need a connection to record')).toBeNull();
   });
 });

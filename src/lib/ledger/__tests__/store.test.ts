@@ -9,10 +9,6 @@ import {
   removeTransaction,
   amendTransaction,
   knownMerchants,
-  queueRawInput,
-  resolveRawInput,
-  pendingRawInputsFrom,
-  pendingRawInputs,
   getEventsSnapshot,
 } from '@/lib/ledger/store';
 import type { Transaction } from '@/lib/ai/schema';
@@ -91,57 +87,16 @@ describe('store', () => {
   });
 });
 
-describe('离线队列', () => {
-  const ctx = {
-    text: '买菜50块',
-    localTime: '2026-09-05T10:00:00+10:00',
-    timeZone: 'Australia/Sydney',
-    defaultCurrency: 'AUD',
-  };
-
-  it('queueRawInput 落盘一个 raw_input_queued 事件并返回其 id', async () => {
-    const id = await queueRawInput(ctx);
-    expect(id).toBeTruthy();
-    expect(pendingRawInputs()).toEqual([{ id, ...ctx }]);
-  });
-
-  it('resolveRawInput 后该条从 pendingRawInputs 消失，且对应账目已入账', async () => {
-    const id = await queueRawInput(ctx);
-    const tx: Transaction = {
-      id: 'tx-from-queue',
-      type: 'EXPENSE',
-      amountCents: 5000,
-      currency: 'AUD',
-      date: '2026-09-05',
-      category: 'FOOD',
-      merchant: null,
-      description: '买菜',
-    };
-    await resolveRawInput(id, [tx]);
-    expect(pendingRawInputs()).toEqual([]);
-    expect(getSnapshot().transactions.map((t) => t.id)).toContain('tx-from-queue');
-  });
-
-  it('resolveRawInput 允许空数组（AI 判定这句话不含收支信息）', async () => {
-    const id = await queueRawInput(ctx);
-    await resolveRawInput(id, []);
-    expect(pendingRawInputs()).toEqual([]);
-  });
-
-  it('pendingRawInputsFrom 是纯函数：同一份事件多次调用返回值相等（可安全放进 useMemo 依赖）', () => {
-    const events = getEventsSnapshot();
-    expect(pendingRawInputsFrom(events)).toEqual(pendingRawInputsFrom(events));
-  });
-
-  it('getEventsSnapshot 在没有新事件时返回同一引用（同 getSnapshot 的稳定性规则，§6.6）', () => {
+describe('getEventsSnapshot', () => {
+  it('在没有新事件时返回同一引用（同 getSnapshot 的稳定性规则，§6.6）', () => {
     const a = getEventsSnapshot();
     const b = getEventsSnapshot();
     expect(a).toBe(b);
   });
 
-  it('getEventsSnapshot 在 append 后返回新引用', async () => {
+  it('在 append 后返回新引用', async () => {
     const before = getEventsSnapshot();
-    await queueRawInput(ctx);
+    await addTransactions([tx('evt-snapshot-1')]);
     expect(getEventsSnapshot()).not.toBe(before);
   });
 });

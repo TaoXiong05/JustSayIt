@@ -11,11 +11,9 @@ export type StructureRequestContext = {
 };
 
 /**
- * 文本 → 入库形态的 Transaction[]。page.tsx 的在线提交与
- * lib/ledger/offlineQueue.ts 的联网后补跑共用这同一段逻辑，
- * 避免两处对 AI 响应的校验/商户归一化行为漂移。
- * 不在这里 addTransactions——写入时机由调用方决定（离线补跑还要
- * 同时追加 raw_input_resolved，见 store.ts 的 resolveRawInput）。
+ * 文本 → 入库形态的 Transaction[]。目前唯一调用方是 page.tsx 的在线提交
+ * （离线排队补跑那条路径已下线，见 events.ts 里 RawInputQueuedPayload 上
+ * 的说明）。不在这里 addTransactions——写入时机由调用方决定。
  */
 export async function structureTextToTransactions(
   text: string,

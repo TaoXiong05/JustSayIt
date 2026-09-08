@@ -10,6 +10,7 @@ import { MobileHeader } from '@/components/MobileHeader';
 import { BottomNav } from '@/components/BottomNav';
 import { Footer } from '@/components/Footer';
 import { PersistStorageOnMount } from '@/components/PersistStorageOnMount';
+import { AccountSwitchGuard } from '@/components/AccountSwitchGuard';
 
 // Plan 5 字体体系：display=Outfit、body=IBM Plex Sans、numerals=IBM Plex Mono、
 // CJK 兜底=Noto Sans SC。全部四套字体都走自托管的原生 @font-face（./fonts/*.css
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SerwistProvider swUrl="/sw.js" reloadOnOnline={false}>
           <LocaleProvider>
             <PersistStorageOnMount />
+            <AccountSwitchGuard />
             {/* 桌面端从侧边栏改成顶部导航条（用户明确要求去掉侧边栏），内容区
                 不再需要永久左边距——各页面自己的 max-w-* + mx-auto 负责居中。
                 移动端保持底部 tab 栏不变（用户自己选的，没跟着改成汉堡菜单），

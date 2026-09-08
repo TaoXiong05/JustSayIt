@@ -54,9 +54,11 @@ export function replay(events: LedgerEvent[]): Ledger {
       }
       case 'raw_input_queued':
       case 'raw_input_resolved':
-        // 不产生/修改任何 Transaction——这两种事件由 lib/ledger/store.ts 的
-        // pendingRawInputsFrom() 单独从原始事件流里读取，不进入 replay 的
-        // byId 累积逻辑（它们本来就不是 Transaction）。
+        // 离线排队功能已下线，不会再有新的这两种事件产生（见 events.ts
+        // 里 RawInputQueuedPayload 上的说明）——这个 case 纯粹是兼容性
+        // no-op：万一某台设备的本地 IndexedDB 里还躺着旧版本留下的这类
+        // 事件，replay 得认得这个 kind 才不会当成未知事件出岔子，但它们
+        // 本来就不是 Transaction，不产生/修改任何账目。
         break;
     }
   }

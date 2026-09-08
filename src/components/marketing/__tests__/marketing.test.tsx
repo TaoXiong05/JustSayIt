@@ -46,11 +46,11 @@ describe('营销段 · 独立渲染', () => {
     render(<FeatureGrid />);
     expect(screen.getByRole('heading', { name: 'Voice-first input' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Smart categorization' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Works offline' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Local-first storage' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Local-first & private' })).toBeDefined();
     expect(screen.getByText(/Tap once, say it/)).toBeDefined();
     expect(screen.getByText(/AI sorts every entry/)).toBeDefined();
-    expect(screen.getByText(/Entries queue up and sync/)).toBeDefined();
+    expect(screen.getByText(/View and edit your history anytime/)).toBeDefined();
     expect(screen.getByText(/cloud is just backup/)).toBeDefined();
   });
 });
