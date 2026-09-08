@@ -25,6 +25,18 @@ export function Hero() {
             {t('loginHeroTitle')}
           </h1>
           <p className="mt-4 text-base text-muted sm:text-lg">{t('loginHeroSubhead')}</p>
+          <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-left shadow-card">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand">{t('dataFlowTitle')}</p>
+            <div className="mt-3 grid grid-cols-3 items-center gap-2 text-center text-xs text-ink">
+              <span className="rounded-lg bg-surface-2 px-2 py-2">{t('dataFlowInput')}</span>
+              <span aria-hidden="true" className="text-muted">→</span>
+              <span className="rounded-lg bg-surface-2 px-2 py-2">{t('dataFlowAI')}</span>
+              <span aria-hidden="true" className="col-start-2 text-muted">↓</span>
+              <span className="col-start-3 rounded-lg bg-brand-soft px-2 py-2 font-semibold">{t('dataFlowLedger')}</span>
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-muted">{t('dataFlowNote')}</p>
+            <p className="mt-2 text-xs font-medium text-brand">{t('dataFlowSync')}</p>
+          </div>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
             <a
               href="/api/auth/login"

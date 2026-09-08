@@ -54,6 +54,3 @@ export function useSession(): SessionState {
   }, []);
   return useSyncExternalStore(subscribe, getSession, () => SERVER_SNAPSHOT);
 }
-
-/** 供测试/其他模块判断当前内存会话（不触发网络）。 */
-export { getSession as getSessionSnapshot };

@@ -18,7 +18,7 @@ describe('登录营销页（加载中/已登录都不该先闪一下营销内容
   it('未登录：正常渲染营销页', () => {
     useSession.mockReturnValue({ user: null, loading: false });
     const { getByText } = render(<LoginPage />);
-    expect(getByText('Just say it.')).toBeDefined();
+    expect(getByText(/Just say it\. Your ledger stays on your device/)).toBeDefined();
   });
 
   it('已登录：不渲染营销内容，直接跳到 /ledger（不经过根路径 /）', async () => {

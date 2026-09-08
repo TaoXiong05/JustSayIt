@@ -2,8 +2,6 @@ import type { CategoryKey } from '@/lib/ai/schema';
 
 export type Locale = 'en' | 'zh';
 
-export const LOCALES: Locale[] = ['en', 'zh'];
-
 /** 面向澳洲用户，默认英文；中文是可切换的选项，不是自动探测（spec 要求） */
 export const DEFAULT_LOCALE: Locale = 'en';
 
@@ -20,7 +18,7 @@ export type DictKey =
   | 'logInPrompt'
   | 'logInDescription'
   | 'logInAction'
-  | 'backToHistory'
+  | 'backToLedger'
   | 'footerPrivacyPolicy'
   | 'footerTermsOfService'
   | 'localeToggleLabel'
@@ -114,6 +112,14 @@ export type DictKey =
   | 'loginHeroTitle'
   | 'loginHeroSubhead'
   | 'heroSecondaryCta'
+  | 'dataFlowTitle'
+  | 'dataFlowInput'
+  | 'dataFlowAI'
+  | 'dataFlowLedger'
+  | 'dataFlowSync'
+  | 'dataFlowNote'
+  | 'settingsStorageDescription'
+  | 'settingsDataDescription'
   | 'statSpeedNumber'
   | 'statSpeedLabel'
   | 'statLocalNumber'
@@ -138,7 +144,7 @@ const en: Record<DictKey, DictValue> = {
   // Drive"）保持一致的技术表述。
   logInDescription: 'Your data stays on this device — sync runs through your own Google Drive.',
   logInAction: 'Continue with Google',
-  backToHistory: 'Back (view local history)',
+  backToLedger: 'Back (view local ledger)',
   footerPrivacyPolicy: 'Privacy Policy',
   footerTermsOfService: 'Terms of Service',
   localeToggleLabel: '中文',
@@ -232,14 +238,24 @@ const en: Record<DictKey, DictValue> = {
   historyClearFilter: 'Clear filter',
   historyNoResults: 'No matching records — try a different date range or keyword.',
   historySummaryTitle: 'Net by currency',
-  loginHeroTitle: 'Just say it.',
+  loginHeroTitle: 'Just say it. Your ledger stays on your device.',
   loginHeroSubhead:
-    'Record expenses by voice in seconds — auto-categorized, local-first, always yours.',
+    'Record expenses by voice in seconds — auto-categorized, local-first, with your device as the ledger’s primary home.',
   heroSecondaryCta: 'See how it works',
+  dataFlowTitle: 'Where your data goes',
+  dataFlowInput: 'You say it',
+  dataFlowAI: 'AI understands it',
+  dataFlowLedger: 'Your ledger stays on your device',
+  dataFlowSync: 'Optional sync to your own Google Drive',
+  dataFlowNote:
+    'AI helps understand each entry. JustSayIt does not keep a cloud copy of your complete ledger.',
+  settingsStorageDescription:
+    'Your device holds the primary copy of your ledger. Keep a backup or enable sync if you need to recover after losing or clearing this device.',
+  settingsDataDescription: 'Export a copy whenever you want. Optional sync goes to your own Google Drive, not a JustSayIt cloud ledger.',
   statSpeedNumber: '<3s',
   statSpeedLabel: 'from voice to record',
-  statLocalNumber: '100%',
-  statLocalLabel: 'processed on your device',
+  statLocalNumber: 'LOCAL',
+  statLocalLabel: 'primary ledger copy on your device',
   statZeroNumber: '0',
   statZeroLabel: 'copies held on our servers',
   featureVoiceTitle: 'Voice-first input',
@@ -257,7 +273,7 @@ const zh: Record<DictKey, DictValue> = {
   logInPrompt: '登录开始使用',
   logInDescription: '数据都存在您的设备上，同步功能通过您自己的 Google Drive 实现。',
   logInAction: '使用 Google 登录',
-  backToHistory: '返回（可查看本地历史）',
+  backToLedger: '返回（可查看本地账本）',
   footerPrivacyPolicy: '隐私政策',
   footerTermsOfService: '服务条款',
   localeToggleLabel: 'English',
@@ -349,13 +365,21 @@ const zh: Record<DictKey, DictValue> = {
   historyClearFilter: '清除筛选',
   historyNoResults: '没有匹配的记录，试试换个日期范围或关键词。',
   historySummaryTitle: '按币种净额',
-  loginHeroTitle: '说一句，账就记好了',
-  loginHeroSubhead: '用一句话记下一笔——自动分类、本地优先、数据永远属于你。',
+  loginHeroTitle: '说一句，账就记好了。账本留在你的设备。',
+  loginHeroSubhead: '用一句话记下一笔——自动分类、本地优先，账本主副本由你的设备掌控。',
   heroSecondaryCta: '看看它是怎么记的',
+  dataFlowTitle: '数据去哪了？',
+  dataFlowInput: '你说一句',
+  dataFlowAI: 'AI 帮你理解',
+  dataFlowLedger: '账本留在你的设备',
+  dataFlowSync: '可选：同步到你自己的 Google Drive',
+  dataFlowNote: 'AI 只负责理解当次输入。JustSayIt 不保存你的完整账本副本。',
+  settingsStorageDescription: '账本主副本保存在你的设备上。如果设备丢失或存储被清理，请开启同步或定期导出备份，以便恢复。',
+  settingsDataDescription: '随时导出一份副本。可选同步会写入你自己的 Google Drive，而不是 JustSayIt 的云端账本。',
   statSpeedNumber: '<3s',
   statSpeedLabel: '从说出口到记好账',
-  statLocalNumber: '100%',
-  statLocalLabel: '全部在你的设备上处理',
+  statLocalNumber: '本地',
+  statLocalLabel: '账本主副本在你的设备上',
   statZeroNumber: '0',
   statZeroLabel: '服务器上零副本',
   featureVoiceTitle: '语音输入为主',

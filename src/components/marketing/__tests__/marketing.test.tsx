@@ -10,8 +10,10 @@ import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 describe('营销段 · 独立渲染', () => {
   it('Hero 独立渲染：标题、副标题、双 CTA（登录直达 /api/auth/login）', () => {
     render(<Hero />);
-    expect(screen.getByText('Just say it.')).toBeDefined();
+    expect(screen.getByText(/Just say it\. Your ledger stays on your device/)).toBeDefined();
     expect(screen.getByText(/Record expenses by voice/)).toBeDefined();
+    expect(screen.getByText(/Where your data goes/)).toBeDefined();
+    expect(screen.getByText(/Optional sync to your own Google Drive/)).toBeDefined();
     const primary = screen.getByRole('link', { name: 'Continue with Google' });
     expect(primary).toHaveProperty('href', 'http://localhost:3000/api/auth/login');
     const secondary = screen.getByRole('link', { name: 'See how it works' });
@@ -33,10 +35,10 @@ describe('营销段 · 独立渲染', () => {
   it('StatStrip 独立渲染：三组数字 + 标签', () => {
     render(<StatStrip />);
     expect(screen.getByText('<3s')).toBeDefined();
-    expect(screen.getByText('100%')).toBeDefined();
+    expect(screen.getByText('LOCAL')).toBeDefined();
     expect(screen.getByText('0')).toBeDefined();
     expect(screen.getByText(/from voice to record/)).toBeDefined();
-    expect(screen.getByText(/processed on your device/)).toBeDefined();
+    expect(screen.getByText(/primary ledger copy on your device/)).toBeDefined();
     expect(screen.getByText(/copies held on our servers/)).toBeDefined();
   });
 

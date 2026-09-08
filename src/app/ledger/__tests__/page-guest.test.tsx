@@ -1,19 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { render } from '@/test/renderWithLocale';
-import { stubLocation } from '@/test/mockLocation';
 import Home from '@/app/ledger/page';
 import { clearAllEvents } from '@/lib/ledger/db';
 import { hydrate } from '@/lib/ledger/store';
 
-// 未登录状态：useSession 返回 user null。账本页现在要求登录——未登录用户
-// 访问 /ledger 被直接送去 /login（他们不需要这个页面来登录；要看本地账本
-// 历史去 /history，那是未登录可访问的）。
+// 未登录状态：useSession 返回 user null。验证 §11.4 —— 账本仍可见、
+// 输入区被登录引导替代、header 不显示用户信息。
 vi.mock('@/lib/auth/client', () => ({
   useSession: () => ({ user: null, loading: false }),
   fetchLogout: vi.fn().mockResolvedValue(undefined),
 }));
-
 
 beforeEach(async () => {
   localStorage.clear();
@@ -24,10 +21,24 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('主屏（未登录）', () => {
-  it('未登录访问 /ledger 直接跳转到 /login，不渲染账本内容', async () => {
-    const location = stubLocation();
+  it('隐藏输入区、显示登录引导，本地账本仍可见（§11.4）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ records: [] }) }),
+    );
     render(<Home />);
-    await waitFor(() => expect(window.location.href).toBe('/login'));
-    location.restore();
+    await waitFor(() =>
+      expect(screen.getByText('Log in to get started')).toBeDefined(),
+    );
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Log out' })).toBeNull();
+    // 登录引导 banner 的行动按钮直接指向 OAuth 端点，不经过 /login 营销页——
+    // 已经在用产品的人不需要再看一遍营销话术。
+    expect(screen.getByRole('link', { name: 'Continue with Google' })).toHaveProperty(
+      'href',
+      'http://localhost:3000/api/auth/login',
+    );
+    // 本地账本区仍渲染（空态文案）
+    expect(screen.getByText(/No records yet/)).toBeDefined();
   });
 });

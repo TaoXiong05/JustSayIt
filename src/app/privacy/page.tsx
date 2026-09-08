@@ -33,7 +33,7 @@ function EnglishContent() {
 
       <section>
         <h2 className="font-display text-base font-semibold text-ink">
-          1. Your ledger data never touches our servers
+          1. Your complete ledger is not stored on our servers
         </h2>
         <p className="mt-2 text-muted">
           Every expense you record — amount, category, merchant, date,
@@ -45,9 +45,11 @@ function EnglishContent() {
           </code>{' '}
           scope). That area is not visible in your regular Drive file list,
           is not shared with any other app, and — just as importantly —
-          this app cannot see or touch any other file in your Drive. Your
-          ledger content is never sent to, processed by, or stored on our
-          own servers.
+          this app cannot see or touch any other file in your Drive. The text
+          or audio needed for each entry is sent through our server
+          for that one AI request. We do not keep a persistent copy of your
+          complete ledger on our servers. The ledger itself is stored on your
+          device, with optional syncing to your own Google Drive.
         </p>
       </section>
 
@@ -179,7 +181,7 @@ function ChineseContent() {
 
       <section>
         <h2 className="font-display text-base font-semibold text-ink">
-          1. 您的账本数据从不经过我们的服务器
+          1. 您的完整账本不存储在我们的服务器
         </h2>
         <p className="mt-2 text-muted">
           您记录的每一笔消费——金额、分类、商户、日期、描述——都保存在您的
@@ -191,7 +193,9 @@ function ChineseContent() {
           权限范围）。这个区域不会出现在您常规的 Drive 文件列表里，不与
           任何其它应用共享，同样重要的是——本应用也无法看到或访问您 Drive
           中的任何其它文件。您的账本内容从不会被发送到、处理于，或存储在
-          我们自己的服务器上。
+          我们自己的服务器上。每次记账所需的文字或音频会经过我们的服务器，
+          用于完成当次 AI 请求；但我们不会在服务器上长期保存您的完整账本副本。
+          账本保存在您的设备上，也可以选择同步到您自己的 Google Drive。
         </p>
       </section>
 

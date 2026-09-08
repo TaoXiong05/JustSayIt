@@ -68,8 +68,6 @@ export const AiResponseSchema = z.object({
   records: z.array(AiTransactionSchema),
 });
 
-export type AiResponse = z.infer<typeof AiResponseSchema>;
-
 /** 入库形态：金额为整数分，currency 永不为 null */
 export type Transaction = {
   id: string;

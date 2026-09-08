@@ -30,7 +30,7 @@ describe('设置页', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe('1');
   });
 
-  it('点登出调用 fetchLogout 并跳登录页（/ledger 现在要求登录，登出后直接给终点）', async () => {
+  it('点登出调用 fetchLogout 并跳登录页（登出后直接给终点，不回访客账本）', async () => {
     const { fetchLogout } = await import('@/lib/auth/client');
     const location = stubLocation();
     render(<SettingsPage />);

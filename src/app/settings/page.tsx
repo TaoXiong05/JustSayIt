@@ -24,14 +24,15 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<{ usageBytes: number; quotaBytes: number } | null>(null);
 
   // 点击后没有任何可见反馈——账号那行邮箱悄悄消失很容易被忽略，用户会以为
-  // 按钮没反应。直接跳 /login：/ledger 现在要求登录，刚登出的用户跳去会被
-  // 立刻弹回 /login（多一次无意义的跳转），不如直接给终点。根路径 / 现在是
-  // 按登录态分流的路由页（见 app/page.tsx），也不能直接跳那儿——刚登出的这
-  // 一刻 useSession 缓存可能还没来得及更新，跳 / 有极小概率被当成"已登录"弹
-  // 回 /ledger（殊途同归但多一次无意义的跳转）。用 window.location 而不是
-  // next/navigation 的 useRouter——后者需要 App Router context，组件测试里没
-  // 有挂载真实路由树会直接抛 invariant；login/page.tsx 的既有跳转就是这个
-  // 写法，这里保持一致。
+  // 按钮没反应。直接跳 /login 给一个清晰的终点：退出登录是一个明确的动作，
+  // 不该把人送回 /ledger 的访客视图（技术上访客也能看本地账本，但那样"登出"
+  // 这个动作本身没有任何可见结果，用户会怀疑是不是真的登出了）。根路径 /
+  // 现在是按登录态分流的路由页（见 app/page.tsx），也不能直接跳那儿——刚
+  // 登出的这一刻 useSession 缓存可能还没来得及更新，跳 / 有极小概率被当成
+  // "已登录"弹回 /ledger（殊途同归但多一次无意义的跳转）。用 window.location
+  // 而不是 next/navigation 的 useRouter——后者需要 App Router context，组件
+  // 测试里没有挂载真实路由树会直接抛 invariant；login/page.tsx 的既有跳转
+  // 就是这个写法，这里保持一致。
   async function handleLogout(): Promise<void> {
     await fetchLogout();
     if (typeof window !== 'undefined') window.location.href = '/login';
@@ -91,6 +92,7 @@ export default function SettingsPage() {
                 })}
               </span>
             </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{t('settingsStorageDescription')}</p>
             <div
               role="progressbar"
               aria-label={t('settingsStorageTitle')}
@@ -119,6 +121,7 @@ export default function SettingsPage() {
               {t('settingsExport')}
             </button>
           </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{t('settingsDataDescription')}</p>
         </SettingsCard>
 
         <InstallBanner />
