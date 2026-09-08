@@ -36,21 +36,20 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    # 原生 arm64 runner（GitHub 2025 年起提供的 hosted 选项，非 self-hosted）——
+    # 部署目标（VM）是 arm64，这里不再靠 QEMU 在 amd64 上逐指令模拟着编译，
+    # 直接原生跑。私有仓库这个 runner 按分钟计费（$0.008/分钟 vs
+    # ubuntu-latest 的 $0.006/分钟），但规格也从 2 核/7GB 提到 4 核/16GB，
+    # 加上去掉 QEMU 模拟开销，构建这种 CPU 密集型流程通常能差出数量级的
+    # 耗时（QEMU 用户态模拟一般有 5-10x 减速），总分钟数大概率反而更省。
+    # deploy/sync-caddy 两个 job 只做 SSH 编排、不编译，没有理由跟着换成
+    # arm64（白白多付单价），仍然留在 ubuntu-latest。
+    runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
-
-      # Mandatory (Global Constraint 4) — GitHub's hosted runners are
-      # amd64; without QEMU the build silently produces an amd64-only
-      # manifest and `docker compose pull` on the arm64 VM fails with
-      # "no matching manifest for linux/arm64/v8".
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
