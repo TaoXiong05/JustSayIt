@@ -44,6 +44,19 @@ describe('主屏 · 离线队列', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('navigator.onLine 误报为 true（连着 WiFi 但实际不通网）时，fetch 失败也要落入排队而不是报错（回归：曾经预检通过后 fetch 抛出的 TypeError 被当成 AI 结构化失败直接展示给用户）', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+
+    const user = userEvent.setup();
+    render(<Home />);
+    await user.type(screen.getByRole('textbox'), '买菜50块');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(() => expect(screen.getByText(/Queued offline/)).toBeDefined());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('在线时提交行为不变（回归：不因为加了离线分支而破坏既有路径）', async () => {
     vi.stubGlobal(
       'fetch',

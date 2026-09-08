@@ -62,7 +62,31 @@ export default function Home() {
         await queueRawInput({ text, ...ctx });
         return; // 离线：不乐观插入账目，只排队等待联网后补跑（spec §9、§11.4）
       }
-      const txs = await structureTextToTransactions(text, ctx);
+      let txs;
+      try {
+        txs = await structureTextToTransactions(text, ctx);
+      } catch (err) {
+        // navigator.onLine 只反映"网络接口是否连着什么"，连着 WiFi/热点但
+        // 实际上不通网（路由器掉线、公共 WiFi 卡在认证页、飞行模式下某些
+        // 系统仍报 true）时它仍然是 true，上面那道预检完全挡不住——这正是
+        // 用户反馈"离线根本不可用，没网会直接报错"的根因：预检通过后
+        // fetch() 自己才发现连不上，抛出的异常直接被当成"结构化失败"扔给
+        // 用户看，而不是像真正离线那样退化成排队。
+        // fetch() 规范保证：网络层面失败（DNS/连接失败/被拦截）时 reject
+        // 的永远是 TypeError（各浏览器文案不同，如 "Failed to fetch"/
+        // "NetworkError when attempting to fetch resource"/"Load failed"），
+        // 跟服务器正常响应但内容有问题的两种失败模式互斥：HTTP 错误状态码
+        // 走 throwApiError 抛 ApiError，响应体解析失败走 zod 的 ZodError——
+        // 都不是 TypeError，用 instanceof 就能把"真离线"从这两者里筛出来，
+        // 不会把货真价实的业务报错（配额超限、AI 没识别出账目等）也悄悄
+        // 吞成排队，那样用户会以为记上了，其实这笔账再也不会被人看见
+        // 是不是记错了。
+        if (err instanceof TypeError) {
+          await queueRawInput({ text, ...ctx });
+          return;
+        }
+        throw err;
+      }
       // AI 调用本身成功，但一条账目都没识别出来（比如提交了一串无意义
       // 字符）——跟真正的请求失败是两回事，但对用户来说同样需要反馈：
       // 不能既不提示、也不把占位行的"记账中"变成"记成功了"，否则用户会
