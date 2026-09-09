@@ -21,9 +21,15 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Skip CI for pushes that only touch non-functional files (docs,
+    # repo metadata) — nothing here affects the built app or deploy.
     paths-ignore:
       - 'docs/**'
       - '**.md'
+      - '.gitignore'
+      - '.gitattributes'
+      - '.editorconfig'
+      - 'LICENSE'
   workflow_dispatch: {}
 
 concurrency:
