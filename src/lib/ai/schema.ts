@@ -68,6 +68,55 @@ export const AiResponseSchema = z.object({
   records: z.array(AiTransactionSchema),
 });
 
+/**
+ * 一次输入能产出的记录条数上限。route 层放行 2000 字符（面向非浏览器
+ * 调用方的防御性上限，浏览器侧 Composer 只让输入 80 字），一条正常的
+ * 记账口述拆不出 25 笔；给 schema 加上这个约束，让"失控"在结构化输出
+ * 这一层就被拦住，而不是靠 token 上限兜底后拿到半截 JSON。
+ */
+export const MAX_AI_RECORDS = 25;
+
+/**
+ * OpenAI 兼容的 strict json_schema response_format（spec §10.2b）：
+ * 所有字段必须 required、对象必须 additionalProperties:false、
+ * 可空字段用联合类型而非 nullable。Cerebras 与 OpenRouter 用的都是这套
+ * 格式，在此共用同一份定义——分类枚举、字段、约束只在一处定义，换 provider
+ * 不会导致两处漂移（spec §10.3）。model/temperature/reasoning_effort 等
+ * 纯 provider 参数仍留在各自适配器内，不属于这份共享定义。
+ */
+export const AI_STRICT_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'transactions',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        records: {
+          type: 'array',
+          maxItems: MAX_AI_RECORDS,
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['EXPENSE', 'INCOME'] },
+              amount: { type: 'number' },
+              currency: { type: ['string', 'null'] },
+              date: { type: 'string' },
+              category: { type: 'string', enum: [...ALL_CATEGORIES] },
+              merchant: { type: ['string', 'null'] },
+              description: { type: 'string' },
+            },
+            required: ['type', 'amount', 'currency', 'date', 'category', 'merchant', 'description'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['records'],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 /** 入库形态：金额为整数分，currency 永不为 null */
 export type Transaction = {
   id: string;

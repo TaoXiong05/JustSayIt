@@ -1,7 +1,7 @@
 import Cerebras from '@cerebras/cerebras_cloud_sdk';
 import {
-  ALL_CATEGORIES,
   AiResponseSchema,
+  AI_STRICT_RESPONSE_FORMAT,
   type AiTransaction,
 } from '@/lib/ai/schema';
 import { buildSystemPrompt, type StructureContext } from '@/lib/ai/prompt';
@@ -15,45 +15,6 @@ const MODEL = 'qwen-3.8-27b';
  * 25 条记录 × 每条约 60 token ≈ 1.5k，4096 留足富余又封住了失控。
  */
 const MAX_COMPLETION_TOKENS = 4096;
-
-/**
- * 一次输入能产出的记录条数上限。route 层放行 2000 字符（面向非浏览器
- * 调用方的防御性上限，浏览器侧 Composer 只让输入 80 字），一条正常的
- * 记账口述拆不出 25 笔；给 schema 加上这个约束，让"失控"在结构化输出
- * 这一层就被拦住，而不是靠 token 上限兜底后拿到半截 JSON。
- */
-const MAX_RECORDS = 25;
-
-/**
- * strict json_schema 模式的 schema 要求（spec §10.2b，沿用 Groq 时期的约定）：
- * 所有字段必须 required、对象必须 additionalProperties:false、
- * 可空字段用联合类型而非 nullable。已实测 Cerebras 的 qwen-3.8-27b 遵守此模式。
- */
-const STRICT_SCHEMA = {
-  type: 'object',
-  properties: {
-    records: {
-      type: 'array',
-      maxItems: MAX_RECORDS,
-      items: {
-        type: 'object',
-        properties: {
-          type: { type: 'string', enum: ['EXPENSE', 'INCOME'] },
-          amount: { type: 'number' },
-          currency: { type: ['string', 'null'] },
-          date: { type: 'string' },
-          category: { type: 'string', enum: [...ALL_CATEGORIES] },
-          merchant: { type: ['string', 'null'] },
-          description: { type: 'string' },
-        },
-        required: ['type', 'amount', 'currency', 'date', 'category', 'merchant', 'description'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['records'],
-  additionalProperties: false,
-} as const;
 
 export async function cerebrasStructure(
   text: string,
@@ -77,10 +38,7 @@ export async function cerebrasStructure(
       // 关掉推理模型的思维链：这是提取任务，不需要——同 Groq 版本的
       // reasoning_effort:'none'，避免不必要的 reasoning token 拖慢响应。
       reasoning_effort: 'none',
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'transactions', strict: true, schema: STRICT_SCHEMA },
-      },
+      response_format: AI_STRICT_RESPONSE_FORMAT,
     });
   } catch (err) {
     // 只带状态码，绝不把用户输入或响应体写进错误信息（§10.5 零内容日志）
