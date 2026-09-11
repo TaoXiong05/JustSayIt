@@ -28,9 +28,36 @@ import { AccountSwitchGuard } from '@/components/AccountSwitchGuard';
 // @theme 用到的变量因此都改在 globals.css 的 :root 里手写声明字体族名，
 // 不再由 next/font 自动生成 class + inline style。
 
-export const metadata = {
-  title: 'JustSayIt',
+import type { Metadata } from 'next';
+
+// 站点默认 description/OG 文案取自 loginHeroTitle/loginHeroSubhead
+// （src/lib/i18n/dictionary.ts）英文版——metadata 是构建期生成的静态
+// HTML，不会跟着客户端的 LocaleProvider 切换，所以固定用 DEFAULT_LOCALE
+// （'en'）对应的文案，与 <html lang="en"> 保持一致。
+const SITE_DESCRIPTION =
+  'Record expenses by voice in seconds — auto-categorized, local-first, with your device as the ledger’s primary home.';
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://justsayit.taoxiong.site'),
+  title: {
+    default: 'JustSayIt',
+    template: '%s | JustSayIt',
+  },
+  description: SITE_DESCRIPTION,
   manifest: '/manifest.webmanifest',
+  openGraph: {
+    siteName: 'JustSayIt',
+    title: 'Just say it. Your ledger stays on your device.',
+    description: SITE_DESCRIPTION,
+    type: 'website',
+    images: [{ url: '/icon-512.png', width: 512, height: 512 }],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Just say it. Your ledger stays on your device.',
+    description: SITE_DESCRIPTION,
+    images: ['/icon-512.png'],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
