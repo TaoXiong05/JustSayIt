@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import './globals.css';
 import './fonts/outfit.css';
 import './fonts/ibm-plex-sans.css';
@@ -95,6 +96,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <BottomNav />
           </LocaleProvider>
         </SerwistProvider>
+        {/* Cloudflare Web Analytics：全站访问统计，token 是公开的站点标识，
+            不是需要保密的凭证。afterInteractive 让它在 hydrate 之后再加载，
+            不占用首屏渲染时间。 */}
+        <Script
+          type="module"
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "b31ae9d44fbb48fc8d91df87efe94fbf"}'
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
