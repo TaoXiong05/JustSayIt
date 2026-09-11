@@ -57,12 +57,12 @@ describe('openrouterStructure', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
     const body = JSON.parse(init.body as string);
-    expect(body.model).toBe('qwen/qwen3.8-27b');
+    expect(body.model).toBe('deepseek/deepseek-v4-flash-0731');
     expect(body.temperature).toBe(0);
     expect(body.reasoning_effort).toBe('none');
-    // CoreWeave 排第一（实测延迟最低最稳），Reka 排最后（确定性弱于另外两家）
+    // Wafer 排第一、Makora 次之——两家都实测确认支持这个模型的 structured output
     expect(body.provider).toEqual({
-      order: ['coreweave', 'parasail', 'reka'],
+      order: ['wafer', 'makora'],
       allow_fallbacks: false,
       data_collection: 'deny',
     });

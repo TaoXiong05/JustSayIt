@@ -6,18 +6,24 @@ import {
 import { buildSystemPrompt, type StructureContext } from '@/lib/ai/prompt';
 
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'qwen/qwen3.8-27b';
+/**
+ * 换自 qwen/qwen3.8-27b：50 次基准对照（10 类边界用例 × 5 次，含多笔拆分、
+ * 规则9 乱码+数字、口语币种、退款/礼金分类等）里两个模型解析正确率打平
+ * （出结果时都是 100% 通过），改用这个纯粹是原来的 CoreWeave/Parasail/Reka
+ * 三家都不支持这个模型的 structured output（用 OpenRouter 的 endpoints API
+ * 核实过），换成 Wafer/Makora 这两家来测。
+ */
+const MODEL = 'deepseek/deepseek-v4-flash-0731';
 
 /**
- * 限定只走这三家、且拒绝可能存储数据的供应商（spec §10.4b 要求接入任何
+ * 限定只走这两家、且拒绝可能存储数据的供应商（spec §10.4b 要求接入任何
  * provider 前查证数据条款）。顺序即优先级、`allow_fallbacks:false`：
- * 三家都不可用就直接失败，绝不路由到列表之外的供应商——跟 §10.3
+ * 两家都不可用就直接失败，绝不路由到列表之外的供应商——跟 §10.3
  * "不做 provider 间自动 fallback"的哲学一致。
- * 排序依据实测：CoreWeave 延迟最低最稳（~370ms，几乎不抖动），Parasail
- * 次之；Reka 排最后——在 temperature:0 下对同一输入两次给出了不同结果
- * （一次空、一次正确），确定性弱于另外两家，出问题时希望受影响的请求最少。
+ * 两家都通过 endpoints API 确认支持这个模型的 structured output
+ * （`supported_parameters` 里带 `response_format`/`structured_outputs`）。
  */
-const PROVIDER_ORDER = ['coreweave', 'parasail', 'reka'];
+const PROVIDER_ORDER = ['wafer', 'makora'];
 const ALLOW_FALLBACKS = false;
 const DATA_COLLECTION = 'deny';
 
